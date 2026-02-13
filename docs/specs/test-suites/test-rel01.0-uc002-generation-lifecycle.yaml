@@ -10,6 +10,7 @@ preconditions:
   - Clean git repository on main branch
   - Beads initialized
   - At least one Go source directory configured
+  - configuration.yaml present with cycles=1 and max_issues=1
 
 test_cases:
   - name: GeneratorStart creates tagged generation branch
@@ -32,10 +33,12 @@ test_cases:
       exit_code: 1
       stderr_contains: "switching to main"
 
-  - name: GeneratorRun executes specified cycles
-    description: After generator:start, run with --cycles 1 to execute one measure+stitch cycle
+  - name: GeneratorRun executes configured cycles
+    description: After generator:start, run executes the number of cycles from configuration.yaml
     inputs:
-      command: mage generator:run --cycles 1 --max-issues 1
+      command: mage generator:run
+      env:
+        config: "cycles: 1, max_issues: 1"
     expected:
       exit_code: 0
       stdout_contains: "complete, ran 1 cycle(s)"
@@ -51,18 +54,12 @@ test_cases:
         tag_exists_suffix_2: "-merged"
         generation_branch_deleted: true
 
-  - name: GeneratorList shows active generations
+  - name: GeneratorList shows all generations
     inputs:
       command: mage generator:list
     expected:
       exit_code: 0
       stdout_contains: "generation-"
-
-  - name: GeneratorList with --all shows abandoned
-    inputs:
-      command: mage generator:list --all
-    expected:
-      exit_code: 0
 
   - name: GeneratorReset returns to clean main
     inputs:
@@ -74,10 +71,13 @@ test_cases:
         generation_branches: 0
 
   - name: GeneratorSwitch saves work and changes branch
+    description: Set generation_branch in configuration.yaml to "main" before switching
     inputs:
       command: |
         mage generator:start
-        mage generator:switch main
+        mage generator:switch
+      env:
+        config: "generation_branch: main"
     expected:
       exit_code: 0
       state:

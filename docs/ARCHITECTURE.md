@@ -75,7 +75,7 @@ Recovery handles interrupted runs. On resume, we scan for stale task branches (w
 
 ### Orchestrator and Config
 
-The Orchestrator is the entry point. Consuming projects create a Config, pass it to `New()`, and call methods on the returned Orchestrator.
+The Orchestrator is the entry point. Consuming projects place a `configuration.yaml` at the repository root and call `NewFromFile()`, or construct a Config in Go code and pass it to `New()`.
 
 ```go
 type Orchestrator struct {
@@ -83,30 +83,40 @@ type Orchestrator struct {
 }
 
 func New(cfg Config) *Orchestrator
+func NewFromFile(path string) (*Orchestrator, error)
 ```
 
-Config holds project-specific settings. The orchestrator applies defaults to zero-value fields.
+Config holds all orchestrator settings. The YAML file is the sole source of truth for all options, making every generation reproducible. The orchestrator applies defaults to zero-value fields.
 
 Table 1 Config Fields
 
-| Field | Type | Default | Purpose |
-|-------|------|---------|---------|
-| ModulePath | string | (required) | Go module path |
-| BinaryName | string | (required) | Compiled binary name |
-| BinaryDir | string | "bin" | Output directory for binaries |
-| MainPackage | string | | Path to main.go entry point |
-| GoSourceDirs | []string | | Directories containing Go source |
-| VersionFile | string | | Path to version.go |
-| GenPrefix | string | "generation-" | Prefix for generation branches |
-| BeadsDir | string | ".beads/" | Beads database directory |
-| CobblerDir | string | ".cobbler/" | Scratch directory |
-| MagefilesDir | string | "magefiles" | Directory skipped when deleting Go files |
-| SecretsDir | string | ".secrets" | Directory for token files |
-| DefaultTokenFile | string | "claude.json" | Credential filename |
-| SpecGlobs | map[string]string | | Glob patterns for word-count stats |
-| SeedFiles | map[string]string | | Template files seeded during reset |
-| MeasurePrompt | string | (embedded) | Custom measure prompt template |
-| StitchPrompt | string | (embedded) | Custom stitch prompt template |
+| Field | Type | YAML Key | Default | Purpose |
+|-------|------|----------|---------|---------|
+| ModulePath | string | module_path | (required) | Go module path |
+| BinaryName | string | binary_name | (required) | Compiled binary name |
+| BinaryDir | string | binary_dir | "bin" | Output directory for binaries |
+| MainPackage | string | main_package | | Path to main.go entry point |
+| GoSourceDirs | []string | go_source_dirs | | Directories containing Go source |
+| VersionFile | string | version_file | | Path to version.go |
+| GenPrefix | string | gen_prefix | "generation-" | Prefix for generation branches |
+| BeadsDir | string | beads_dir | ".beads/" | Beads database directory |
+| CobblerDir | string | cobbler_dir | ".cobbler/" | Scratch directory |
+| MagefilesDir | string | magefiles_dir | "magefiles" | Directory skipped when deleting Go files |
+| SecretsDir | string | secrets_dir | ".secrets" | Directory for token files |
+| DefaultTokenFile | string | default_token_file | "claude.json" | Credential filename |
+| SpecGlobs | map[string]string | spec_globs | | Glob patterns for word-count stats |
+| SeedFiles | map[string]string | seed_files | | Template file paths seeded during reset |
+| MeasurePrompt | string | measure_prompt | (embedded) | File path to custom measure prompt template |
+| StitchPrompt | string | stitch_prompt | (embedded) | File path to custom stitch prompt template |
+| ClaudeArgs | []string | claude_args | (standard flags) | CLI arguments for Claude execution |
+| SilenceAgent | *bool | silence_agent | true | Suppress Claude stdout |
+| MaxIssues | int | max_issues | 10 | Maximum tasks per measure or stitch phase |
+| Cycles | int | cycles | 1 | Number of measure+stitch cycles per run |
+| UserPrompt | string | user_prompt | "" | Additional context for the measure prompt |
+| GenerationBranch | string | generation_branch | "" | Explicit branch to work on (auto-detect if empty) |
+| TokenFile | string | token_file | DefaultTokenFile | Credential file override in SecretsDir |
+
+`LoadConfig(path)` reads the YAML file, resolves SeedFiles values (file paths to template content), resolves MeasurePrompt/StitchPrompt (file paths to template content), and applies defaults. SilenceAgent uses a `*bool` to distinguish "not set in YAML" (nil, defaults to true) from "explicitly set to false".
 
 ### Operations
 
@@ -130,25 +140,11 @@ Table 2 Orchestrator Operations
 | BeadsInit() | Initialize beads database | prd001 |
 | BeadsReset() | Reset beads database | prd001 |
 
-### Cobbler Configuration
-
-Measure and stitch share a CobblerConfig that controls Claude invocation behavior.
-
-Table 3 CobblerConfig Fields
-
-| Field | Type | Default | Purpose |
-|-------|------|---------|---------|
-| SilenceAgent | bool | true | Suppress Claude stdout |
-| MaxIssues | int | 10 | Maximum tasks per phase |
-| UserPrompt | string | "" | Additional context for Claude |
-| GenerationBranch | string | "" | Explicit branch to work on |
-| TokenFile | string | Config.DefaultTokenFile | Credential file in .secrets/ |
-
 ### Prompt Templates
 
 Prompts are Go text/template strings embedded from `prompts/measure.tmpl` and `prompts/stitch.tmpl`. Consuming projects can override them via Config.MeasurePrompt and Config.StitchPrompt.
 
-Table 4 Template Data Types
+Table 3 Template Data Types
 
 | Template | Data Type | Fields |
 |----------|-----------|--------|
@@ -159,7 +155,7 @@ Table 4 Template Data Types
 
 Every Claude invocation records an InvocationRecord as a JSON comment on the beads issue.
 
-Table 5 InvocationRecord Fields
+Table 4 InvocationRecord Fields
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -181,21 +177,19 @@ Table 5 InvocationRecord Fields
 
 **Cobbler - Stitch (stitch.go)**: Picks ready tasks from beads, creates worktrees, invokes Claude, merges branches, records metrics, and closes tasks. Handles recovery of stale tasks from interrupted runs.
 
-**Cobbler Common (cobbler.go)**: Shared configuration (CobblerConfig), flag registration, Claude invocation (runClaude), token parsing, LOC capture, invocation recording, and worktree path management.
+**Cobbler Common (cobbler.go)**: Claude invocation (runClaude), token parsing, LOC capture, invocation recording, configuration logging, and worktree path management.
 
 **Commands (commands.go)**: Wrapper functions for external tools. Over 50 functions wrapping git, beads (bd), and Go CLI commands. Centralizes binary names as constants and provides structured access to command output.
-
-**Flags (flags.go)**: Mage flag interception. Captures flags from os.Args before Mage processes them, enabling per-target flag parsing. Provides InitFlags(), ParseTargetFlags(), and TargetArgs().
 
 **Stats (stats.go)**: Collects Go LOC counts (production and test) and documentation word counts. Uses the configured GoSourceDirs and SpecGlobs. Output is used for invocation records and the `mage stats` target.
 
 **Beads (beads.go)**: Initializes and resets the beads issue tracker. Manages the beads database directory and provides helpers for beads lifecycle operations.
 
-**Config (config.go)**: Config struct definition with SeedData template data. Provides applyDefaults() for zero-value fields.
+**Config (config.go)**: Config struct with YAML tags, LoadConfig() for reading configuration.yaml, SeedData template data, Silence() and EffectiveTokenFile() helpers, and applyDefaults() for zero-value fields.
 
 ## Design Decisions
 
-**Decision 1: Library, not application.** We chose to build a library that consuming projects import, not a standalone CLI. This allows each project to configure the orchestrator with its own module path, source directories, and prompt templates. The Mage build system provides the CLI interface. Alternative: a standalone CLI would require configuration files and lose the type-safe Config struct.
+**Decision 1: Library with YAML configuration.** We chose to build a library that consuming projects import, configured via a `configuration.yaml` file at the repository root. This makes every generation reproducible: the YAML file records exactly what options were used. Consuming projects call `NewFromFile("configuration.yaml")` or construct a Config in Go and pass it to `New()`. The Mage build system provides the CLI interface. Alternative: a standalone CLI would duplicate configuration concerns; CLI flags would lose reproducibility since flag values are not recorded.
 
 **Decision 2: Git worktree isolation.** Each stitch task runs in a separate git worktree on its own branch. This prevents concurrent tasks from interfering and keeps the generation branch clean. Worktrees are temporary and cleaned up after merge. Alternative: running Claude directly on the generation branch risks partial commits and merge conflicts between tasks.
 
@@ -211,7 +205,7 @@ Table 5 InvocationRecord Fields
 
 ## Technology Choices
 
-Table 6 Technology Choices
+Table 5 Technology Choices
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
@@ -221,23 +215,22 @@ Table 6 Technology Choices
 | Issue tracking | Beads (bd CLI) | Git-backed task management via JSONL |
 | AI execution | Claude Code (CLI) | Code generation and task execution |
 | Prompt templating | Go text/template | Parameterized prompts |
-| Dependencies | Standard library only | No external Go dependencies |
+| YAML parsing | gopkg.in/yaml.v3 | Configuration file parsing |
 
 ## Project Structure
 
 ```
 mage-claude-orchestrator/
-  orchestrator.go     # Orchestrator struct, New(), logging
-  config.go           # Config struct, SeedData, defaults
-  flags.go            # Mage flag interception
-  cobbler.go          # Shared cobbler config, runClaude, metrics
+  orchestrator.go     # Orchestrator struct, New(), NewFromFile(), logging
+  config.go           # Config struct, LoadConfig(), YAML parsing, defaults
+  cobbler.go          # runClaude, token parsing, LOC capture, metrics
   measure.go          # Measure phase: prompt, Claude, import
   stitch.go           # Stitch phase: worktree, Claude, merge
   generator.go        # Generation lifecycle: start/run/resume/stop/reset
   commands.go         # Git, beads, Go command wrappers
   beads.go            # Beads initialization and reset
   stats.go            # LOC and documentation metrics
-  go.mod              # Module definition (no external deps)
+  go.mod              # Module definition (gopkg.in/yaml.v3)
   prompts/
     measure.tmpl      # Default measure prompt template
     stitch.tmpl       # Default stitch prompt template
@@ -251,13 +244,13 @@ The orchestrator is implemented and in active use by the Crumbs project. All com
 
 ## Related Documents
 
-Table 7 Related Documents
+Table 6 Related Documents
 
 | Document | Purpose |
 |----------|---------|
 | VISION.md | What we build and why; success criteria and boundaries |
 | road-map.yaml | Release schedule and use case status |
-| prd001-orchestrator-core | Config, Orchestrator struct, flag parsing, initialization |
+| prd001-orchestrator-core | Config, Orchestrator struct, YAML loading, initialization |
 | prd002-generation-lifecycle | Generation start, run, resume, stop, reset, list, switch |
 | prd003-cobbler-workflows | Measure and stitch phases, prompt templates, task execution |
 | prd005-metrics-collection | Stats, invocation records, LOC snapshots |

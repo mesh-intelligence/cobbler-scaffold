@@ -27,7 +27,7 @@ flow:
   - F13: "Repeat: go to F3 until no ready tasks remain or MaxIssues is reached"
 
 touchpoints:
-  - T1: "StitchConfig and CobblerConfig: prd003-cobbler-workflows R1, R3"
+  - T1: "Config (workflow fields): prd001-orchestrator-core R1, prd003-cobbler-workflows R1, R3"
   - T2: "Worktree management: task branch naming per prd003 R3.8"
   - T3: "Claude invocation: prd003-cobbler-workflows R6"
   - T4: "Recovery: prd003-cobbler-workflows R4"

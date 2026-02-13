@@ -10,11 +10,14 @@ preconditions:
   - Clean git repository on a generation branch
   - Beads initialized with at least one ready task
   - Claude binary available
+  - configuration.yaml present with appropriate max_issues setting
 
 test_cases:
   - name: Stitch picks and executes a ready task
     inputs:
-      command: mage cobbler:stitch --max-issues 1
+      command: mage cobbler:stitch
+      env:
+        config: "max_issues: 1"
     expected:
       exit_code: 0
       state:
@@ -38,9 +41,11 @@ test_cases:
       exit_code: 0
       stdout_contains: "completed 0 task(s)"
 
-  - name: Stitch respects --max-issues limit
+  - name: Stitch respects max_issues limit
     inputs:
-      command: mage cobbler:stitch --max-issues 2
+      command: mage cobbler:stitch
+      env:
+        config: "max_issues: 2"
     expected:
       exit_code: 0
       state:
@@ -49,7 +54,9 @@ test_cases:
   - name: Stitch creates worktree on task branch
     description: During execution, a worktree should exist at the temp path on a task/ branch
     inputs:
-      command: mage cobbler:stitch --max-issues 1
+      command: mage cobbler:stitch
+      env:
+        config: "max_issues: 1"
     expected:
       exit_code: 0
       state:
@@ -58,15 +65,19 @@ test_cases:
   - name: Stitch merges task branch back to base
     inputs:
       command: |
-        mage cobbler:stitch --max-issues 1
+        mage cobbler:stitch
         git log --oneline -5
+      env:
+        config: "max_issues: 1"
     expected:
       exit_code: 0
       stdout_contains: "Merge branch"
 
   - name: Stitch records InvocationRecord with diff stats
     inputs:
-      command: mage cobbler:stitch --max-issues 1
+      command: mage cobbler:stitch
+      env:
+        config: "max_issues: 1"
     expected:
       exit_code: 0
       state:

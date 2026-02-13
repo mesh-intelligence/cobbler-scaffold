@@ -13,7 +13,7 @@ trigger: Running mage generator:start to begin a new generation
 
 flow:
   - F1: "Start generation: call GeneratorStart() which tags main, creates a generation branch, resets Go sources, and commits clean state"
-  - F2: "Run cycles: call GeneratorRun() with --cycles N to execute N measure+stitch cycles on the generation branch"
+  - F2: "Run cycles: call GeneratorRun() to execute Config.Cycles measure+stitch cycles on the generation branch"
   - F3: "Monitor progress: call GeneratorList() to see active generations and their lifecycle tags"
   - F4: "Stop generation: call GeneratorStop() which tags the generation, switches to main, merges, tags the result, and deletes the branch"
   - F5: "Verify: confirm main has the generated code and the generation branch is deleted"

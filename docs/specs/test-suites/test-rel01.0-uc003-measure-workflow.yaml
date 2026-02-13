@@ -10,11 +10,14 @@ preconditions:
   - Clean git repository on a generation branch
   - Beads initialized with no existing issues
   - Claude binary available
+  - configuration.yaml present with appropriate max_issues setting
 
 test_cases:
   - name: Measure queries existing issues
     inputs:
-      command: mage cobbler:measure --max-issues 3
+      command: mage cobbler:measure
+      env:
+        config: "max_issues: 3"
     expected:
       exit_code: 0
       state:
@@ -33,16 +36,20 @@ test_cases:
     description: After a successful measure, beads should contain the proposed issues
     inputs:
       command: |
-        mage cobbler:measure --max-issues 3
+        mage cobbler:measure
         bd list --json
+      env:
+        config: "max_issues: 3"
     expected:
       exit_code: 0
       state:
         issues_created: true
 
-  - name: Measure respects --max-issues limit
+  - name: Measure respects max_issues limit
     inputs:
-      command: mage cobbler:measure --max-issues 2
+      command: mage cobbler:measure
+      env:
+        config: "max_issues: 2"
     expected:
       exit_code: 0
       state:
@@ -51,8 +58,10 @@ test_cases:
   - name: Measure records InvocationRecord on created issues
     inputs:
       command: |
-        mage cobbler:measure --max-issues 1
+        mage cobbler:measure
         bd list --json
+      env:
+        config: "max_issues: 1"
     expected:
       exit_code: 0
       state:

@@ -36,14 +36,14 @@ requirements:
     title: GeneratorRun
     items:
       - R3.1: GeneratorRun must execute N cycles of measure followed by stitch
-      - R3.2: The --cycles flag must control the number of cycles (default 1)
+      - R3.2: Config.Cycles must control the number of cycles (default 1)
       - R3.3: GeneratorRun must use the current branch as the generation branch
       - R3.4: Each cycle must log its progress with cycle number and total
 
   R4:
     title: GeneratorResume
     items:
-      - R4.1: GeneratorResume must resolve the generation branch from positional arg or auto-detect
+      - R4.1: GeneratorResume must resolve the generation branch from Config.GenerationBranch or auto-detect
       - R4.2: GeneratorResume must commit uncommitted work before switching branches
       - R4.3: GeneratorResume must prune stale worktrees and remove the worktree base directory
       - R4.4: GeneratorResume must recover stale tasks (reset orphaned in_progress issues to ready)
@@ -53,7 +53,7 @@ requirements:
   R5:
     title: GeneratorStop
     items:
-      - R5.1: GeneratorStop must resolve the generation branch from positional arg, current branch, or auto-detect
+      - R5.1: GeneratorStop must resolve the generation branch from Config.GenerationBranch, current branch, or auto-detect
       - R5.2: GeneratorStop must tag the generation as {generationName}-finished
       - R5.3: GeneratorStop must switch to main and prepare for merge by resetting Go sources
       - R5.4: GeneratorStop must merge the generation branch into main
@@ -77,13 +77,12 @@ requirements:
     items:
       - R7.1: GeneratorList must show active generation branches with lifecycle tags
       - R7.2: GeneratorList must indicate the current branch with an asterisk
-      - R7.3: The --all flag must include abandoned generations in the listing
-      - R7.4: GeneratorList must show merged generations by default
+      - R7.3: GeneratorList must show all generations including abandoned ones
 
   R8:
     title: GeneratorSwitch
     items:
-      - R8.1: GeneratorSwitch must accept a branch name as positional argument
+      - R8.1: GeneratorSwitch must use Config.GenerationBranch as the target branch
       - R8.2: GeneratorSwitch must commit uncommitted work before switching
       - R8.3: GeneratorSwitch must only switch to generation branches or main
       - R8.4: GeneratorSwitch must verify the target branch exists
@@ -106,5 +105,5 @@ acceptance_criteria:
   - GeneratorResume recovers from interruption and continues without data loss
   - GeneratorStop merges to main with correct tags and cleans up the branch
   - GeneratorReset returns to a clean main-only state
-  - GeneratorList shows active, merged, and optionally abandoned generations
+  - GeneratorList shows active, merged, and abandoned generations
   - GeneratorSwitch commits work and changes branches safely

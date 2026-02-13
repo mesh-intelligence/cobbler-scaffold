@@ -24,7 +24,7 @@ flow:
   - F10: "Commit: commit beads changes"
 
 touchpoints:
-  - T1: "MeasureConfig and CobblerConfig: prd003-cobbler-workflows R1, R2"
+  - T1: "Config (workflow fields): prd001-orchestrator-core R1, prd003-cobbler-workflows R1, R2"
   - T2: "Prompt templates: prd003-cobbler-workflows R5"
   - T3: "Claude invocation: prd003-cobbler-workflows R6"
   - T4: "Issue import: prd003-cobbler-workflows R7"

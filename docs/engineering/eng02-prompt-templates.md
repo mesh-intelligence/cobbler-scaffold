@@ -28,9 +28,9 @@ Table 2 MeasurePromptData Fields
 | Field | Type | Source |
 |-------|------|--------|
 | ExistingIssues | string (JSON) | bd list output |
-| Limit | int | CobblerConfig.MaxIssues |
-| OutputPath | string | Computed file path in CobblerDir |
-| UserInput | string | CobblerConfig.UserPrompt |
+| Limit | int | Config.MaxIssues |
+| OutputPath | string | Computed file path in Config.CobblerDir |
+| UserInput | string | Config.UserPrompt |
 
 The measure template receives a JSON string of existing issues. We render it inline in the prompt so Claude sees the full issue tracker state. The Limit field tells Claude how many tasks to propose. The OutputPath is where Claude writes its JSON response.
 
@@ -49,13 +49,12 @@ The stitch template receives the task details. Claude uses these to understand w
 
 ## Customization
 
-Consuming projects override templates by setting Config.MeasurePrompt or Config.StitchPrompt to a non-empty string. The string must be a valid Go text/template that uses the corresponding data type.
+Consuming projects override templates by setting `measure_prompt` or `stitch_prompt` in `configuration.yaml` to a file path. During `LoadConfig`, the orchestrator reads the file and stores its content in the Config field. The file content must be a valid Go text/template that uses the corresponding data type.
 
-```go
-cfg := orchestrator.Config{
-    MeasurePrompt: myCustomMeasureTemplate,
-    StitchPrompt:  myCustomStitchTemplate,
-}
+```yaml
+# configuration.yaml
+measure_prompt: "templates/measure.tmpl"
+stitch_prompt: "templates/stitch.tmpl"
 ```
 
 When writing custom templates, we reference the data fields using `{{.FieldName}}` syntax. Conditional sections use `{{- if .UserInput}}...{{- end}}`.

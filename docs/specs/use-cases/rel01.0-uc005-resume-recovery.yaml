@@ -12,7 +12,7 @@ actor: Developer recovering from an interrupted generation
 trigger: Running mage generator:resume after an interrupted generator:run
 
 flow:
-  - F1: "Resolve branch: determine the generation branch from positional arg or auto-detect"
+  - F1: "Resolve branch: determine the generation branch from Config.GenerationBranch or auto-detect"
   - F2: "Save state: commit any uncommitted work on the current branch"
   - F3: "Switch: check out the generation branch"
   - F4: "Prune worktrees: remove stale git worktrees and the worktree base directory"

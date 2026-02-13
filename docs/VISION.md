@@ -44,7 +44,7 @@ We measure success along three dimensions.
 
 ### Automation Efficiency
 
-A single `mage generator:run --cycles N` command produces working code from specifications. Each cycle proposes tasks aligned with the roadmap and executes them without human intervention. Recovery from interrupted runs (`generator:resume`) restores state and continues without data loss.
+A single `mage generator:run` command produces working code from specifications. The number of cycles, task limits, and all other options live in `configuration.yaml`, making every generation reproducible. Each cycle proposes tasks aligned with the roadmap and executes them without human intervention. Recovery from interrupted runs (`generator:resume`) restores state and continues without data loss.
 
 ### Code Quality
 
@@ -52,7 +52,7 @@ Generated code conforms to project PRDs and architecture. Commits reference the 
 
 ### Developer Experience
 
-Consuming projects integrate the orchestrator by creating a Config struct and calling `New()`. The orchestrator handles git and issue tracking internally. Customization is available through prompt templates, seed files, and configuration fields. The developer's interaction surface is Mage targets, not orchestrator internals.
+Consuming projects integrate the orchestrator by placing a `configuration.yaml` at the repository root and calling `NewFromFile()`. The orchestrator handles git and issue tracking internally. Customization is available through prompt templates, seed files, and YAML configuration fields. The developer's interaction surface is Mage targets, not orchestrator internals.
 
 ## Implementation Phases
 
@@ -60,7 +60,7 @@ Table 2 Implementation Phases
 
 | Phase | Focus | Deliverables |
 |-------|-------|--------------|
-| 01.0 | Core orchestrator | Config, Orchestrator struct, logging, flag parsing |
+| 01.0 | Core orchestrator | Config, Orchestrator struct, logging, YAML configuration |
 | 01.1 | Cobbler workflows | Measure and stitch phases, prompt templates, Claude invocation |
 | 02.0 | Generation lifecycle | Start, run, resume, stop, reset, list, switch |
 | 03.0 | Metrics and tracking | Stats collection, invocation records, LOC snapshots, beads integration |

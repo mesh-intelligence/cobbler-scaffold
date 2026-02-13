@@ -17,13 +17,11 @@ goals:
 
 requirements:
   R1:
-    title: CobblerConfig
+    title: Workflow Configuration
     items:
-      - R1.1: CobblerConfig must include SilenceAgent (bool, default true) to suppress Claude stdout
-      - R1.2: CobblerConfig must include MaxIssues (int, default 10) for the task limit per phase
-      - R1.3: CobblerConfig must include UserPrompt (string) for additional context
-      - R1.4: CobblerConfig must include GenerationBranch (string) for explicit branch selection
-      - R1.5: CobblerConfig must include TokenFile (string) for the credential filename
+      - R1.1: Measure and stitch must read SilenceAgent, MaxIssues, UserPrompt, GenerationBranch, and TokenFile from Config (see prd001 R1.17-R1.23)
+      - R1.2: Measure and stitch must read ClaudeArgs from Config for Claude invocation arguments
+      - R1.3: RunMeasure and RunStitch must take no parameters; all options come from Config
 
   R2:
     title: Measure Workflow

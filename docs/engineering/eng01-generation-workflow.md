@@ -42,7 +42,7 @@ Worktrees live in a temporary directory: `$TMPDIR/{repoName}-worktrees/{issueID}
 A typical generation session follows this sequence.
 
 1. **Start**: `mage generator:start` creates the generation branch from main.
-2. **Run**: `mage generator:run --cycles N` executes N measure+stitch cycles.
+2. **Run**: `mage generator:run` executes measure+stitch cycles (count set by `cycles` in configuration.yaml).
 3. **Monitor**: `mage generator:list` shows active and past generations.
 4. **Stop**: `mage generator:stop` merges the generation into main.
 
