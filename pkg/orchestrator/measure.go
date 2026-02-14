@@ -30,7 +30,7 @@ func (o *Orchestrator) RunMeasure() error {
 	logf("measure: starting")
 	o.logConfig("measure")
 
-	if err := o.checkPodman(); err != nil {
+	if err := o.checkClaude(); err != nil {
 		return err
 	}
 

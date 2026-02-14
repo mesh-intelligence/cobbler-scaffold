@@ -30,7 +30,7 @@ func (o *Orchestrator) RunStitch() error {
 	logf("stitch: starting")
 	o.logConfig("stitch")
 
-	if err := o.checkPodman(); err != nil {
+	if err := o.checkClaude(); err != nil {
 		return err
 	}
 
