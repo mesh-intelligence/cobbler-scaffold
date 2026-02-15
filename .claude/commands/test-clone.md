@@ -16,7 +16,7 @@ Examples:
 
 ### 1. Read the test plan
 
-Read `test-plan.yaml` from the orchestrator repo root. Parse preconditions and test cases. Sections 5, 7, 8 require Claude; sections 1-4, 6 do not.
+Read `test-plan.yaml` from the orchestrator repo root. Parse preconditions and test cases.
 
 ### 2. Scaffold the target
 
@@ -56,7 +56,7 @@ ORCH_DIRTY_BEFORE=$(git status --porcelain)
 - `mage` available: `which mage`
 - `configuration.yaml` present (created by scaffold)
 
-### 4. Run test cases (sections 1-4, 6)
+### 4. Run test cases
 
 Execute each test case from `test-plan.yaml` in order. For each:
 
@@ -71,8 +71,6 @@ Track results:
 | # | Test name | Result | Notes |
 |---|-----------|--------|-------|
 | 1 | ...       | PASS/FAIL | ... |
-
-Skip sections 5, 7, 8 (require Claude) unless explicitly requested.
 
 ### 5. Fix failures
 
@@ -91,7 +89,7 @@ If the failure is a setup issue (not an orchestrator bug), fix it in `$REPO_DIR`
 
 ### 6. Full regression pass
 
-After fixing failures, re-run ALL test cases from sections 1-4 and 6. Repeat until clean.
+After fixing failures, re-run ALL test cases. Repeat until clean.
 
 ### 7. Verify orchestrator repo is unchanged
 
@@ -114,7 +112,7 @@ Summarize:
 1. Target module and version tested
 2. Total test cases: run / passed / failed / skipped
 3. Fixes applied to the orchestrator
-4. Skipped tests (Claude-dependent or unfixable)
+4. Skipped tests (unfixable)
 5. `mage stats` output from `$ORCH_ROOT`
 
 ```bash
@@ -126,4 +124,3 @@ rm -rf "$(dirname "$REPO_DIR")"
 - Orchestrator fixes go into THIS repo (`$ORCH_ROOT`). Commit them here.
 - Target workspace (`$REPO_DIR`) is ephemeral.
 - Do not push any changes. Everything is local.
-- Do not run Claude-dependent tests (sections 5, 7, 8) unless explicitly requested.

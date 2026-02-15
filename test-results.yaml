@@ -1,0 +1,155 @@
+# Test clone results — tracks which repositories we tested the orchestrator against.
+# Each entry records the target module, version, date, orchestrator commit, and per-test results.
+
+results:
+  - module: github.com/petar-djukic/mcp-calc
+    version: v0.20260214.2
+    started: "2026-02-14T18:29:01-05:00"
+    orchestrator_commit: 9546f6a
+    total: 23
+    passed: 23
+    failed: 0
+    fixes_applied: 0
+    tests:
+      # Section 1: Individual reset targets
+      - name: "cobbler:reset only removes .cobbler/"
+        section: 1
+        result: PASS
+        started: "2026-02-14T18:29:27-05:00"
+        duration_sec: 2
+
+      - name: "beads:reset only touches .beads/"
+        section: 1
+        result: PASS
+        started: "2026-02-14T18:29:43-05:00"
+        duration_sec: 7
+
+      - name: "beads:reset does not resurrect issues"
+        section: 1
+        result: PASS
+        started: "2026-02-14T18:30:07-05:00"
+        duration_sec: 8
+
+      - name: "generator:reset only touches branches and Go sources"
+        section: 1
+        result: PASS
+        started: "2026-02-14T18:30:38-05:00"
+        duration_sec: 1
+
+      # Section 2: Top-level orchestrators
+      - name: "init is idempotent"
+        section: 2
+        result: PASS
+        started: "2026-02-14T18:30:52-05:00"
+        duration_sec: 2
+
+      - name: "init creates beads from scratch"
+        section: 2
+        result: PASS
+        started: "2026-02-14T18:31:06-05:00"
+        duration_sec: 1
+
+      - name: "reset wipes all artifact types"
+        section: 2
+        result: PASS
+        started: "2026-02-14T18:31:29-05:00"
+        duration_sec: 8
+
+      - name: "reset calls cobbler, generator, beads in order"
+        section: 2
+        result: PASS
+        started: "2026-02-14T18:32:05-05:00"
+        duration_sec: 8
+
+      # Section 3: Edge cases
+      - name: "cobbler:reset when .cobbler/ does not exist"
+        section: 3
+        result: PASS
+        started: "2026-02-14T18:32:20-05:00"
+        duration_sec: 1
+
+      - name: "beads:reset when .beads/ does not exist"
+        section: 3
+        result: PASS
+        started: "2026-02-14T18:32:24-05:00"
+        duration_sec: 1
+
+      - name: "generator:reset when already on main with no branches"
+        section: 3
+        result: PASS
+        started: "2026-02-14T18:32:30-05:00"
+        duration_sec: 1
+
+      - name: "reset from fully clean state"
+        section: 3
+        result: PASS
+        started: "2026-02-14T18:32:33-05:00"
+        duration_sec: 2
+
+      # Section 4: Build and test targets
+      - name: "build compiles binary"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:32:48-05:00"
+        duration_sec: 1
+
+      - name: "lint passes on clean codebase"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:32:52-05:00"
+        duration_sec: 1
+
+      - name: "test:unit runs without test files"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:32:57-05:00"
+        duration_sec: 1
+
+      - name: "test:integration skips when tests/ directory is missing"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:33:03-05:00"
+        duration_sec: 1
+
+      - name: "test:all succeeds with no test files"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:33:07-05:00"
+        duration_sec: 1
+
+      - name: "install copies binary to GOPATH/bin"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:33:11-05:00"
+        duration_sec: 1
+
+      - name: "clean removes build artifacts"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:33:15-05:00"
+        duration_sec: 1
+
+      - name: "stats outputs JSON with expected fields"
+        section: 4
+        result: PASS
+        started: "2026-02-14T18:33:20-05:00"
+        duration_sec: 1
+
+      # Section 6: Generator lifecycle
+      - name: "start/stop: creates tags and returns to main"
+        section: 6
+        result: PASS
+        started: "2026-02-14T18:33:57-05:00"
+        duration_sec: 1
+
+      - name: "start/stop: generator:list shows merged generation"
+        section: 6
+        result: PASS
+        started: "2026-02-14T18:34:22-05:00"
+        duration_sec: 2
+
+      - name: "start/stop: version file updated on stop"
+        section: 6
+        result: PASS
+        started: "2026-02-14T18:34:50-05:00"
+        duration_sec: 1
