@@ -198,7 +198,7 @@ A list of related documents or external references.
 references:
   - prd001-cupboard-core
   - prd002-sqlite-backend
-  - docs/ARCHITECTURE.md
+  - docs/ARCHITECTURE.yaml
 ```
 
 ## Numbering Rules

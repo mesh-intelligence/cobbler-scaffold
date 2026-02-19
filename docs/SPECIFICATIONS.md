@@ -4,7 +4,7 @@
 
 ## Overview
 
-We build a Go library that automates AI-driven code generation through a two-phase cobbler workflow: measure proposes tasks, stitch executes them in isolated git worktrees. This document indexes every PRD, use case, and test suite in the project and shows how they trace to each other. For goals and boundaries see [VISION.md](VISION.md). For components and interfaces see [ARCHITECTURE.md](ARCHITECTURE.md).
+We build a Go library that automates AI-driven code generation through a two-phase cobbler workflow: measure proposes tasks, stitch executes them in isolated git worktrees. This document indexes every PRD, use case, and test suite in the project and shows how they trace to each other. For goals and boundaries see [VISION.yaml](VISION.yaml). For components and interfaces see [ARCHITECTURE.yaml](ARCHITECTURE.yaml).
 
 ## Roadmap Summary
 

@@ -1,0 +1,357 @@
+id: architecture-mage-claude-orchestrator
+title: Mage Claude Orchestrator Architecture
+
+overview:
+  summary: |
+    Mage Claude Orchestrator is a Go library that automates AI-driven code generation through
+    a two-phase loop: measure (propose tasks) and stitch (execute tasks in isolated worktrees).
+    Consuming projects import the library, configure it with project-specific paths and templates,
+    and expose its methods as Mage targets.
+
+    The system operates as build tooling, not a standalone application. An Orchestrator struct
+    holds a Config and provides methods that Mage calls as targets. These methods coordinate
+    four subsystems: git branch management, Claude invocation (containerized via podman),
+    issue tracking (beads), and metrics collection.
+
+  lifecycle: |
+    Generations are the primary unit of work. A generation starts from a tagged main state,
+    creates a branch, runs measure-stitch cycles, and merges the result back to main.
+
+    States: created (branch exists, sources reset) -> running (cycles in progress) ->
+    finished (tagged, ready to merge) -> merged (on main, branch deleted). An alternative
+    terminal state is abandoned (generation was never merged).
+
+    The generation branch name follows the pattern {GenPrefix}{timestamp}, where the timestamp
+    is formatted as 2006-01-02-15-04-05. Tags mark lifecycle events: {branch}-start,
+    {branch}-finished, {branch}-merged, {branch}-abandoned.
+
+  coordination_pattern: |
+    The cobbler workflow has two phases that run in sequence within each cycle.
+
+    Measure reads the project state (documentation, existing issues) and invokes Claude with
+    a prompt template. Claude proposes tasks as a JSON array. We import these tasks into beads
+    with dependency wiring.
+
+    Stitch picks ready tasks from beads one at a time. For each task: create a git worktree
+    on a task branch, invoke Claude with the task description, merge the task branch back,
+    record metrics, close the task. Task branches use the pattern task/{baseBranch}-{issueID}.
+
+    Each stitch task runs in a separate git worktree. This prevents concurrent tasks from
+    interfering with each other and keeps the generation branch clean. The worktree lives in
+    a temp directory ($TMPDIR/{repoName}-worktrees/{issueID}). After Claude completes, we
+    merge the task branch into the generation branch and remove the worktree.
+
+    Recovery handles interrupted runs. On resume, we scan for stale task branches, remove
+    them, reset their issues to ready, and continue.
+
+interfaces:
+  - name: Orchestrator and Config
+    summary: |
+      The Orchestrator is the entry point. Consuming projects place a configuration.yaml at
+      the repository root and call NewFromFile(), or construct a Config in Go and pass it to
+      New(). Config holds all orchestrator settings. The YAML file is the sole source of
+      truth for all options, making every generation reproducible.
+    data_structures:
+      - "Orchestrator: holds Config, provides New() and NewFromFile() constructors"
+      - "Config: all orchestrator settings with YAML tags (see prd001-orchestrator-core for full field spec)"
+      - "MeasurePromptData: template data for measure prompt (ExistingIssues, Limit, OutputPath, UserInput, LinesMin, LinesMax)"
+      - "StitchPromptData: template data for stitch prompt (Title, ID, IssueType, Description)"
+      - "InvocationRecord: metrics per Claude invocation (Caller, StartedAt, DurationS, Tokens, LOCBefore, LOCAfter, Diff)"
+    operations:
+      - "New(cfg Config) *Orchestrator: construct with explicit config"
+      - "NewFromFile(path string) (*Orchestrator, error): construct from configuration.yaml"
+      - "GeneratorStart(): tag main, create generation branch, reset sources (prd002)"
+      - "GeneratorRun(): run measure+stitch cycles until all issues are closed (prd002)"
+      - "GeneratorResume(): recover and continue interrupted run (prd002)"
+      - "GeneratorStop(): merge generation into main, tag, clean up (prd002)"
+      - "GeneratorReset(): destroy all generations, return to clean main (prd002)"
+      - "GeneratorList(): show active and past generations (prd002)"
+      - "GeneratorSwitch(): switch between generation branches (prd002)"
+      - "Measure(): propose tasks via Claude (prd003)"
+      - "Stitch(): execute ready tasks in worktrees (prd003)"
+      - "Stats(): print LOC and documentation metrics (prd005)"
+      - "Init(): initialize beads (prd001)"
+      - "FullReset(): reset cobbler, generator, and beads (prd001)"
+      - "CobblerReset(): remove scratch directory (prd003)"
+      - "BeadsInit(): initialize beads database (prd001)"
+      - "BeadsReset(): reset beads database (prd001)"
+
+  - name: Prompt Templates
+    summary: |
+      Prompts are Go text/template strings embedded from pkg/orchestrator/prompts/measure.tmpl
+      and pkg/orchestrator/prompts/stitch.tmpl. Consuming projects can override them via
+      Config.MeasurePrompt and Config.StitchPrompt.
+    data_structures:
+      - "MeasurePromptData: ExistingIssues (JSON string), Limit (int), OutputPath (string), UserInput (string), LinesMin (int), LinesMax (int)"
+      - "StitchPromptData: Title, ID, IssueType, Description (all strings)"
+
+components:
+  - name: Orchestrator
+    responsibility: |
+      Entry point. Holds Config, provides New() and NewFromFile() constructors, manages
+      logging with optional generation tagging. All other components are methods on this
+      struct or package-level functions.
+    capabilities:
+      - Construct from Config or configuration.yaml file
+      - Wire all subsystems through method dispatch
+    references:
+      - prd001-orchestrator-core
+
+  - name: Generator
+    responsibility: |
+      Manages the generation lifecycle. Creates generation branches, runs cycles, merges
+      results to main, handles resume from interrupted runs. Uses git tags to mark lifecycle
+      events. Resets Go sources and re-seeds template files on start and reset.
+    capabilities:
+      - Start, run, resume, stop, reset, list, switch generation branches
+      - Tag lifecycle events on git
+      - Re-seed template files at start and reset
+    references:
+      - prd002-generation-lifecycle
+
+  - name: Cobbler - Measure
+    responsibility: |
+      Builds the measure prompt from existing issues and project state, invokes Claude,
+      parses the JSON output, and imports proposed issues into beads with dependency wiring.
+      Records invocation metrics.
+    capabilities:
+      - Build measure prompt from MeasurePromptData
+      - Parse Claude JSON output into task list
+      - Import tasks into beads with dependency wiring
+    references:
+      - prd003-cobbler-workflows
+
+  - name: Cobbler - Stitch
+    responsibility: |
+      Picks ready tasks from beads, creates worktrees, invokes Claude, merges branches,
+      records metrics, and closes tasks. Handles recovery of stale tasks from interrupted runs.
+    capabilities:
+      - Create git worktree per task on a dedicated branch
+      - Invoke Claude in worktree context
+      - Merge task branch and record metrics
+      - Recover stale tasks on resume
+    references:
+      - prd003-cobbler-workflows
+
+  - name: Cobbler Common
+    responsibility: |
+      Claude invocation (runClaude), token parsing, LOC capture, invocation recording,
+      configuration logging, and worktree path management.
+    capabilities:
+      - Wrap podman run for Claude execution with same-path mounting
+      - Capture and parse token usage from Claude output
+      - Snapshot LOC before and after Claude
+    references:
+      - prd003-cobbler-workflows
+      - prd005-metrics-collection
+
+  - name: Commands
+    responsibility: |
+      Wrapper functions for external tools. Over 50 functions wrapping git, beads (bd),
+      and Go CLI commands. Centralizes binary names as constants and provides structured
+      access to command output.
+    capabilities:
+      - Git operations (branch, worktree, tag, merge, diff)
+      - Beads operations (ready, show, update, close, comments)
+      - Go toolchain operations (build, vet)
+    references:
+      - prd001-orchestrator-core
+
+  - name: Stats
+    responsibility: |
+      Collects Go LOC counts (production and test) and documentation word counts. Uses the
+      configured GoSourceDirs and SpecGlobs. Output feeds invocation records and the mage
+      stats target.
+    capabilities:
+      - Count Go LOC by production and test files
+      - Count documentation words by glob pattern
+    references:
+      - prd005-metrics-collection
+
+  - name: Config
+    responsibility: |
+      Config struct with YAML tags, LoadConfig() for reading configuration.yaml, SeedData
+      template data, Silence() and EffectiveTokenFile() helpers, and applyDefaults() for
+      zero-value fields.
+    capabilities:
+      - Load and validate configuration.yaml
+      - Apply defaults to zero-value fields
+      - Resolve SeedFiles and prompt paths to content
+    references:
+      - prd001-orchestrator-core
+
+design_decisions:
+  - id: 1
+    title: Library with YAML configuration
+    decision: |
+      We build a library that consuming projects import, configured via a configuration.yaml
+      file at the repository root. Consuming projects call NewFromFile() or construct a Config
+      in Go and pass it to New(). The Mage build system provides the CLI interface.
+    benefits:
+      - configuration.yaml records exactly what options were used, making generations reproducible
+      - Consuming projects wire the library into their own magefiles
+      - No duplicate flag parsing between the library and consumers
+    alternatives_rejected:
+      - "Standalone CLI: duplicates configuration concerns; flag values are not recorded so runs are not reproducible"
+
+  - id: 2
+    title: Git worktree isolation
+    decision: |
+      Each stitch task runs in a separate git worktree on its own branch. Worktrees are
+      temporary and cleaned up after merge.
+    benefits:
+      - Concurrent tasks do not interfere with each other
+      - Generation branch stays clean; failed tasks leave no partial commits
+    alternatives_rejected:
+      - "Running Claude on the generation branch directly: risks partial commits and merge conflicts between tasks"
+
+  - id: 3
+    title: Two-phase cobbler loop
+    decision: |
+      We separate task proposal (measure) from task execution (stitch), running them in
+      sequence within each cycle.
+    benefits:
+      - Measure sees full project state before proposing work
+      - Tasks can be reviewed between measure and stitch
+      - Stitch executes tasks independently of each other
+    alternatives_rejected:
+      - "Single-phase approach: Claude both proposes and executes, losing the ability to review before execution"
+
+  - id: 4
+    title: Container-isolated Claude execution
+    decision: |
+      We run Claude inside a podman container. The orchestrator wraps every invocation with
+      podman run, mounting the working directory at the same path inside the container. A
+      pre-flight check verifies that podman is installed, the configured image is available,
+      and containers can start before any workflow begins.
+    benefits:
+      - Isolates Claude from the host environment
+      - Makes builds reproducible across machines
+      - Absolute paths in prompts resolve correctly via same-path mounting
+    alternatives_rejected:
+      - "Running Claude as bare binary on host: simpler but provides no isolation, and environment differences are harder to debug"
+
+  - id: 5
+    title: Beads for issue tracking
+    decision: |
+      We use the beads git-backed issue tracker because it stores issues as JSONL files
+      tracked by git. Task state travels with the generation branch and is recoverable
+      from any commit.
+    benefits:
+      - No network access required
+      - Task state is part of the git history
+      - Recovery is possible from any commit
+    alternatives_rejected:
+      - "External issue trackers (GitHub Issues, Jira): require network access and do not travel with the branch"
+
+  - id: 6
+    title: Embedded prompt templates with override
+    decision: |
+      Default prompts are embedded in the binary via go:embed. Consuming projects can
+      override them through Config.MeasurePrompt and Config.StitchPrompt.
+    benefits:
+      - Zero-configuration defaults for new consumers
+      - Full customizability per project
+      - No external file path management required for default behavior
+    alternatives_rejected:
+      - "External prompt files only: require file path management and increase deployment complexity"
+
+  - id: 7
+    title: Recovery on resume
+    decision: |
+      Generator resume scans for stale task branches, orphaned in-progress issues, and
+      leftover worktrees. It cleans all of them up and resets affected tasks to ready
+      before continuing the run.
+    benefits:
+      - Interrupted runs are recoverable without manual intervention
+      - No dangling branches or orphaned issues after recovery
+    alternatives_rejected:
+      - "Requiring manual cleanup after interruption: error-prone and creates friction"
+
+technology_choices:
+  - component: Language
+    technology: Go 1.25
+    purpose: Library and consuming projects use Go
+  - component: Build system
+    technology: Magefile (magefile/mage)
+    purpose: Orchestrator methods exposed as Mage targets
+  - component: Version control
+    technology: git (worktrees, tags, branches)
+    purpose: Isolation, lifecycle tracking, and merge
+  - component: Issue tracking
+    technology: Beads (bd CLI)
+    purpose: Git-backed task management via JSONL
+  - component: AI execution
+    technology: Claude Code (CLI)
+    purpose: Code generation and task execution
+  - component: Container runtime
+    technology: Podman
+    purpose: Isolates Claude execution in containers
+  - component: Prompt templating
+    technology: Go text/template
+    purpose: Parameterized prompts with data injection
+  - component: YAML parsing
+    technology: gopkg.in/yaml.v3
+    purpose: Configuration file parsing
+
+project_structure:
+  - path: go.mod
+    role: Module definition (gopkg.in/yaml.v3)
+  - path: pkg/orchestrator/
+    role: Library package; all production code
+  - path: pkg/orchestrator/orchestrator.go
+    role: Orchestrator struct, New(), NewFromFile(), logging
+  - path: pkg/orchestrator/config.go
+    role: Config struct, LoadConfig(), YAML parsing, defaults
+  - path: pkg/orchestrator/cobbler.go
+    role: runClaude, token parsing, LOC capture, metrics
+  - path: pkg/orchestrator/measure.go
+    role: Measure phase — prompt, Claude, import
+  - path: pkg/orchestrator/stitch.go
+    role: Stitch phase — worktree, Claude, merge
+  - path: pkg/orchestrator/generator.go
+    role: Generation lifecycle — start/run/resume/stop/reset
+  - path: pkg/orchestrator/commands.go
+    role: Git, beads, Go command wrappers
+  - path: pkg/orchestrator/beads.go
+    role: Beads initialization and reset
+  - path: pkg/orchestrator/stats.go
+    role: LOC and documentation metrics
+  - path: pkg/orchestrator/prompts/
+    role: Embedded prompt templates (measure.tmpl, stitch.tmpl)
+  - path: vscode-extension/
+    role: VS Code status dashboard (TypeScript)
+  - path: docs/
+    role: Documentation and specifications
+
+implementation_status:
+  current_focus: Active use — all components implemented and operational
+  progress:
+    - done: Generation lifecycle (start, run, resume, stop, reset, list, switch)
+    - done: Measure and stitch workflows
+    - done: Metrics collection and invocation records
+    - done: Recovery from interrupted runs
+    - done: Container-isolated Claude execution via podman
+    - done: Embedded prompt templates with override
+
+related_documents:
+  - doc: docs/VISION.yaml
+    purpose: What we build and why; success criteria and boundaries
+  - doc: docs/road-map.yaml
+    purpose: Release schedule and use case status
+  - doc: docs/specs/product-requirements/prd001-orchestrator-core.yaml
+    purpose: Config, Orchestrator struct, YAML loading, initialization
+  - doc: docs/specs/product-requirements/prd002-generation-lifecycle.yaml
+    purpose: Generation start, run, resume, stop, reset, list, switch
+  - doc: docs/specs/product-requirements/prd003-cobbler-workflows.yaml
+    purpose: Measure and stitch phases, prompt templates, task execution
+  - doc: docs/specs/product-requirements/prd005-metrics-collection.yaml
+    purpose: Stats, invocation records, LOC snapshots
+  - doc: docs/engineering/eng01-generation-workflow.md
+    purpose: Generation conventions and task branch naming
+  - doc: docs/engineering/eng02-prompt-templates.md
+    purpose: Prompt template conventions and customization
+
+figures:
+  - path: docs/ARCHITECTURE-diagrams.md
+    caption: Figure 1 System context showing orchestrator components and external tools

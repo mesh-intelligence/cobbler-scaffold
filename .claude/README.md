@@ -51,7 +51,7 @@ Context-specific rules that govern how the agent works:
 ### commands/
 Workflow templates the agent can follow:
 
-- **bootstrap.md**: Create initial VISION.md and ARCHITECTURE.md for new projects
+- **bootstrap.md**: Create initial VISION.yaml and ARCHITECTURE.yaml for new projects
 - **do-work.md**: Router command to choose between docs and code workflows
 - **do-work-docs.md**: Workflow for documentation tasks (PRDs, use cases, etc.)
 - **do-work-code.md**: Workflow for implementation tasks

@@ -4,12 +4,12 @@
 
 Use this command when the work is **documentation** (markdown in `docs/`): PRDs, use cases, invention disclosures, ARCHITECTURE updates, or other docs. Follow the **crumb-format** rule for output location and format; use the format rule named in the issue (prd-format, use-case-format, patent-disclosure-format, documentation-standards).
 
-Read VISION.md and ARCHITECTURE.md for context. For PRDs also scan existing `docs/specs/product-requirements/`; for use cases `docs/specs/use-cases/`; for invention disclosures `docs/invention-disclosures/`.
+Read VISION.yaml and ARCHITECTURE.yaml for context. For PRDs also scan existing `docs/specs/product-requirements/`; for use cases `docs/specs/use-cases/`; for invention disclosures `docs/invention-disclosures/`.
 
 ## 1. Select a documentation task
 
 1. Run `bd ready` to see available work.
-2. **Pick a documentation issue**: one whose description specifies a **documentation** deliverable (output path under `docs/`, e.g. `docs/specs/product-requirements/prd*.yaml`, `docs/specs/use-cases/rel*-uc*-*.yaml`, `docs/invention-disclosures/`, or `docs/ARCHITECTURE.md`). If the issue lists "File location", "PRD location", "Output path", or "Required sections" from a doc format rule, it is a documentation task.
+2. **Pick a documentation issue**: one whose description specifies a **documentation** deliverable (output path under `docs/`, e.g. `docs/specs/product-requirements/prd*.yaml`, `docs/specs/use-cases/rel*-uc*-*.yaml`, `docs/invention-disclosures/`, or `docs/ARCHITECTURE.yaml`). If the issue lists "File location", "PRD location", "Output path", or "Required sections" from a doc format rule, it is a documentation task.
 3. Run `bd update <issue-id> --status in_progress` to claim it.
 
 ## 2. Before writing

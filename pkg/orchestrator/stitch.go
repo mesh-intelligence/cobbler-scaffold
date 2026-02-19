@@ -18,6 +18,9 @@ import (
 //go:embed prompts/stitch.tmpl
 var defaultStitchPromptTmpl string
 
+//go:embed constitutions/execution.yaml
+var executionConstitution string
+
 // Stitch picks ready tasks from beads and invokes Claude to execute them.
 // Reads all options from Config.
 func (o *Orchestrator) Stitch() error {
@@ -395,11 +398,11 @@ func createWorktree(task stitchTask) error {
 
 // StitchPromptData is the template data for the stitch prompt.
 type StitchPromptData struct {
-	Title        string
-	ID           string
-	IssueType    string
-	Description  string
-	ProjectRules string
+	Title                 string
+	ID                    string
+	IssueType             string
+	Description           string
+	ExecutionConstitution string
 }
 
 func (o *Orchestrator) buildStitchPrompt(task stitchTask) string {
@@ -409,11 +412,11 @@ func (o *Orchestrator) buildStitchPrompt(task stitchTask) string {
 	}
 	tmpl := template.Must(template.New("stitch").Parse(tmplStr))
 	data := StitchPromptData{
-		Title:        task.title,
-		ID:           task.id,
-		IssueType:    task.issueType,
-		Description:  task.description,
-		ProjectRules: collectProjectRules(task.worktreeDir),
+		Title:                 task.title,
+		ID:                    task.id,
+		IssueType:             task.issueType,
+		Description:           task.description,
+		ExecutionConstitution: executionConstitution,
 	}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {

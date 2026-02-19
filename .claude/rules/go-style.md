@@ -112,7 +112,7 @@ When adding a new external command or path, define the constant first, then use 
 
 Treat each package directory as a library. Other parts of the codebase import a library through its public API and know nothing about its internals. A library hides its data structures, helper functions, and implementation choices behind the package boundary. If a caller needs to reach into a library's private types, the library's API is incomplete.
 
-Align package structure to PRD component structure. Each major component described in a PRD or in ARCHITECTURE.md maps to one package (or a small cluster of packages). Read the PRDs to understand component boundaries before creating new packages. When a PRD defines an interface between two components, that interface lives in `pkg/` and each component implements it in its own `internal/` package.
+Align package structure to PRD component structure. Each major component described in a PRD or in ARCHITECTURE.yaml maps to one package (or a small cluster of packages). Read the PRDs to understand component boundaries before creating new packages. When a PRD defines an interface between two components, that interface lives in `pkg/` and each component implements it in its own `internal/` package.
 
 Define interfaces between major components. The `pkg/` directory holds shared types and interface contracts. The `internal/` directory holds implementations that satisfy those contracts. A package in `internal/storage/` should never import from `internal/cli/`; they communicate through interfaces defined in `pkg/`.
 

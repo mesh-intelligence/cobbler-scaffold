@@ -116,4 +116,4 @@ references:
   - prd002-generation-lifecycle
   - prd003-cobbler-workflows
   - prd005-metrics-collection
-  - docs/ARCHITECTURE.md
+  - docs/ARCHITECTURE.yaml

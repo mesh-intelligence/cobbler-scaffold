@@ -1,60 +1,152 @@
-<\!-- Copyright (c) 2026 Petar Djukic. All rights reserved. SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Petar Djukic. All rights reserved. SPDX-License-Identifier: MIT -->
 
 # Vision Document Format
 
 A vision document states **what the project is**, **why it exists**, **how success is measured**, and **what it is not**. It orients stakeholders, new contributors, and downstream docs (ARCHITECTURE, PRDs). It is not a PRD; it does not list numbered requirements. It sets direction and boundaries.
 
-## Required Sections
+## File and Naming
 
-1. **Executive Summary** – One or two short paragraphs. What the project is (e.g. "The Task Coordinator is a task board where agents pick their own work"). What it is not in one line (e.g. "We are not a traditional workflow engine"). Elevator pitch only.
+- **Location**: `docs/VISION.yaml`
+- **Format**: YAML
 
-2. **Introduction** – Context and problem. Use subsections as needed (e.g. "Research Context", "The Problem", "What This Does"). Include:
-   - Organizational or research context (why this exists in this org).
-   - The problem being solved and why current solutions fall short.
-   - What this project does differently (core approach in a few sentences).
-   - Optional: definitions (e.g. "Distributed vs decentralized coordination") when terms are ambiguous.
+## Required Fields
 
-3. **Why [Organization / Team]** – Why this org or team is doing it. Competitive advantage, fit with strategy, standards work, domain expertise, integration with existing products. One section; tables allowed for relationships to other initiatives.
+Every vision document has these top-level fields in this order.
 
-4. **Planning and Implementation** – How success is measured and how work is phased.
-   - **Success Criteria**: Dimensions (e.g. coordination efficiency, agent adaptation, system overhead). Optional: table of measurable outcomes (metrics and targets).
-   - **What "Done" Looks Like**: One or two paragraphs describing the desired end state.
-   - **Implementation Phases**: Table (phase name, focus, deliverables).
-   - **Risks and Mitigations**: Table (risk, impact, likelihood, mitigation).
+```yaml
+id: vision-[project-name]
+title: Human-readable title
 
-5. **What This Is NOT** – Explicit boundaries. Short statements: "We are not X. We are not Y." Clarify how this differs from workflow engines, agentic frameworks, job queues, policy engines, GitOps, LLM platforms, etc. Use comparison tables where helpful.
+executive_summary: |
+  One or two short paragraphs. What the project is. What it is not in one line.
 
-6. **References** – Optional. List or link to external refs; or "See ARCHITECTURE, PRDs" if refs live elsewhere.
+problem: |
+  Context and problem. Why this exists, why current solutions fall short,
+  what this project does differently.
 
-## Optional Sections
+what_this_does: |
+  How the system works. The core approach in concrete terms.
 
-- **Frontmatter** – YAML at top of file (e.g. title, subtitle, date, author, source) for tooling or publishing. Not required for the rule.
-- **Figures** – Diagrams (e.g. PlantUML) per documentation-standards: define inline using fenced code blocks; do not create separate `.puml` files. Use named figure captions.
+why_we_build_this: |
+  Why this org or team is doing it. Competitive advantage, fit with strategy,
+  domain expertise, integration with existing products.
+
+related_projects:
+  - project: Project Name
+    role: One-sentence description of the relationship
+
+success_criteria:
+  dimension_name: |
+    What success looks like along this dimension.
+
+implementation_phases:
+  - phase: "01.0"
+    focus: Phase focus area
+    deliverables: Key outputs of this phase
+
+risks:
+  - risk: Short risk description
+    impact: What breaks if this happens
+    likelihood: High / Medium / Low
+    mitigation: How we address it
+
+not:
+  - We are not building X.
+  - We are not building Y.
+```
+
+### id
+
+The vision document identifier. Lowercase, hyphenated.
+
+```yaml
+id: vision-mage-claude-orchestrator
+```
+
+### title
+
+A short human-readable name.
+
+```yaml
+title: Mage Claude Orchestrator Vision
+```
+
+### executive_summary
+
+One or two short paragraphs. State what the project is and what it is not. Elevator pitch only.
+
+### problem
+
+Context and problem. Include organizational or research context, why this exists, why current solutions fall short, and what this project does differently.
+
+### what_this_does
+
+How the system works. The core approach in concrete terms.
+
+### why_we_build_this
+
+Why this org or team is doing it. Include competitive advantage, fit with strategy, and relationship to existing products. Use the `related_projects` field for structured relationships.
+
+### related_projects
+
+A list of related projects. Each entry contains `project` (name) and `role` (one-sentence description of the relationship).
+
+### success_criteria
+
+A map of named success dimensions. Each key is a dimension name (snake_case) and each value is a prose description of what success looks like.
+
+### implementation_phases
+
+An ordered list of phases. Each entry contains `phase` (version string), `focus` (theme), and `deliverables` (key outputs).
+
+### not
+
+A list of explicit boundaries. Each entry is a complete sentence starting with "We are not".
+
+### risks
+
+A list of risks. Each entry contains `risk`, `impact`, `likelihood`, and `mitigation`.
+
+## Optional Fields
+
+### references
+
+External references or links to related documentation.
+
+```yaml
+references:
+  - ARCHITECTURE.yaml
+  - External reference
+```
 
 ## Writing Guidelines
 
 - **Audience**: Stakeholders, new team members, and downstream doc authors. Avoid unexplained jargon; define domain-specific terms when first used.
-- **Tone**: Use "we" in active voice (e.g. "We manage tasks as first-class entities"). Follow documentation-standards: concise, active voice, no forbidden terms.
+- **Tone**: Use "we" in active voice. Follow documentation-standards: concise, active voice, no forbidden terms.
 - **Scope**: Vision sets direction and boundaries. Do not duplicate PRD-level requirements; point to PRDs for detailed requirements and acceptance criteria.
-- **Location**: Markdown in `docs/VISION.md` (or project root `VISION.md` if preferred).
+- **Location**: `docs/VISION.yaml`.
 
 ## Completeness Checklist
 
-- [ ] Executive Summary states what the project is and what it is not in 1–2 paragraphs.
-- [ ] Introduction covers context, problem, and what this does (with subsections as needed).
-- [ ] "Why [Org]" explains why this org/team is doing it.
-- [ ] Planning and Implementation includes success criteria (and optionally metrics table), "What Done Looks Like", phases table, and risks table.
-- [ ] "What This Is NOT" clearly lists boundaries and comparisons.
-- [ ] Style follows documentation-standards (no forbidden terms, tables named, figures per standard).
-- [ ] File saved as `VISION.md` in `docs/` (or agreed location).
+- [ ] id matches the project name
+- [ ] executive_summary states what the project is and what it is not
+- [ ] problem covers context, why current solutions fall short, and what this does differently
+- [ ] what_this_does describes the core approach concretely
+- [ ] why_we_build_this explains the rationale
+- [ ] success_criteria covers meaningful dimensions
+- [ ] implementation_phases lists phases with focus and deliverables
+- [ ] risks lists known risks with impact, likelihood, and mitigation
+- [ ] not lists explicit boundaries
+- [ ] Style follows documentation-standards (no forbidden terms)
+- [ ] File saved as `VISION.yaml` in `docs/`
 
 ## Relationship to Other Docs
 
-- **VISION** – What we are, why we exist, what done looks like, what we are not.
-- **ARCHITECTURE** – Components, interfaces, protocols. How the system is built.
-- **PRDs** – Numbered requirements, acceptance criteria. What the system must do.
-- **Use cases** – Tracer bullets and demos. How we validate the path.
-- **Test suites** – Test cases with inputs and expected outputs. How we verify the path.
-- **Engineering guidelines** – Conventions and practices. How we work with the system.
+- **VISION** — What we are, why we exist, what done looks like, what we are not.
+- **ARCHITECTURE** — Components, interfaces, protocols. How the system is built.
+- **PRDs** — Numbered requirements, acceptance criteria. What the system must do.
+- **Use cases** — Tracer bullets and demos. How we validate the path.
+- **Test suites** — Test cases with inputs and expected outputs. How we verify the path.
+- **Engineering guidelines** — Conventions and practices. How we work with the system.
 
 Code and PRDs should be traceable to VISION (goals, boundaries) and ARCHITECTURE (design).

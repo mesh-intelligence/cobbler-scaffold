@@ -185,7 +185,7 @@ func WriteDefaultConfig(path string) error {
 		return fmt.Errorf("marshalling default config: %w", err)
 	}
 
-	header := "# Orchestrator configuration — edit fields below.\n# See docs/ARCHITECTURE.md for field descriptions.\n\n"
+	header := "# Orchestrator configuration — edit fields below.\n# See docs/ARCHITECTURE.yaml for field descriptions.\n\n"
 	return os.WriteFile(path, append([]byte(header), data...), 0o644)
 }
 

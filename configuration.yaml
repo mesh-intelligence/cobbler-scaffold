@@ -1,10 +1,9 @@
 # Orchestrator configuration for this repository.
-# This repo is a library — no binary or main package.
 
 module_path: github.com/mesh-intelligence/mage-claude-orchestrator
-binary_name: ""
+binary_name: orchestrator
 binary_dir: bin
-main_package: ""
+main_package: ./cmd/orchestrator
 go_source_dirs:
   - pkg/
 magefiles_dir: magefiles

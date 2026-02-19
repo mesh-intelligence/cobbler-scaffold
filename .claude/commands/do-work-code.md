@@ -4,7 +4,7 @@
 
 Use this command when the work is **code** (implementation): packages, internal logic, cmd, workers, tests. Follow the **code-prd-architecture-linking** rule (`.claude/rules/code-prd-architecture-linking.md`): code must correspond to existing PRDs and architecture; commits must mention PRDs; add PRD references in code where appropriate (e.g. top of file).
 
-Read VISION.md and ARCHITECTURE.md for context.
+Read VISION.yaml and ARCHITECTURE.yaml for context.
 
 ## 1. Select a code task
 
@@ -14,7 +14,7 @@ Read VISION.md and ARCHITECTURE.md for context.
 
 ## 2. Before implementing
 
-1. **Identify related PRDs and docs** from the issue (deliverable path, component, requirements). See `docs/specs/product-requirements/prd*.yaml` and `docs/ARCHITECTURE.md`.
+1. **Identify related PRDs and docs** from the issue (deliverable path, component, requirements). See `docs/specs/product-requirements/prd*.yaml` and `docs/ARCHITECTURE.yaml`.
 2. **Read** the relevant sections so behaviour, data shapes, and contracts are clear.
 3. Read the issue description (Requirements, Design Decisions, Acceptance Criteria) in full.
 4. **Read existing code** that you will modify or extend:

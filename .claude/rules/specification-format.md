@@ -11,7 +11,7 @@ A specifications document is a human-readable summary that ties together the pro
 
 ## Required Sections
 
-1. **Overview** -- One or two paragraphs stating what the system does and what this document covers. Reference VISION.md for goals and ARCHITECTURE.md for design.
+1. **Overview** -- One or two paragraphs stating what the system does and what this document covers. Reference VISION.yaml for goals and ARCHITECTURE.yaml for design.
 
 2. **Roadmap Summary** -- A table summarizing each release from `docs/road-map.yaml`. Include release version, name, status (e.g. done, in progress, not started), and the number of use cases in each state.
 
@@ -146,7 +146,7 @@ When regenerating, read all files in `docs/specs/product-requirements/`, `docs/s
 
 ## Completeness Checklist
 
-- [ ] Overview references VISION.md and ARCHITECTURE.md
+- [ ] Overview references VISION.yaml and ARCHITECTURE.yaml
 - [ ] Roadmap Summary table covers every release in road-map.yaml
 - [ ] PRD Index lists every file in docs/specs/product-requirements/
 - [ ] Use Case Index lists every file in docs/specs/use-cases/

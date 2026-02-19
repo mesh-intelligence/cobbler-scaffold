@@ -1,103 +1,131 @@
-<\!-- Copyright (c) 2026 Petar Djukic. All rights reserved. SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Petar Djukic. All rights reserved. SPDX-License-Identifier: MIT -->
 
 # Issue Format
 
-Beads issues fall into two deliverable types: **documentation** (markdown in `docs/`) and **code** (implementation). The issue description must make the type and output location explicit so agents know what to produce and where.
+Cupboard issues fall into two deliverable types: **documentation** (files under `docs/`) and **code** (implementation). Issue descriptions are written in YAML. The description must make the deliverable type and output location explicit so agents know what to produce and where.
 
 ## Common Structure (All Issues)
 
-Every issue description should include:
+Every issue description is a YAML document with these fields:
 
-1. **Required Reading** – Files the agent must read before starting work. List PRDs, ARCHITECTURE sections, existing code, or other docs that provide context. This prevents the agent from working without understanding the design.
-2. **Files to Create/Modify** – Explicit list of files the issue will produce or change. For documentation: the output path. For code: the packages or files to create/edit.
-3. **Requirements** – What needs to be built or written (functional requirements, scope)
-4. **Design Decisions** – Technical or structural choices to follow (optional but recommended)
-5. **Acceptance Criteria** – How we know it is done (checkable outcomes, tests, or completeness checklist)
+```yaml
+deliverable_type: documentation  # or: code
+format_rule: prd-format           # the rule file to follow (documentation issues only)
+
+required_reading:
+  - docs/ARCHITECTURE.yaml (components section)
+  - docs/specs/product-requirements/prd001-feature.yaml
+
+files:
+  - path: docs/specs/product-requirements/prd-feature-name.yaml
+    action: create
+
+requirements:
+  - What needs to be built or written
+
+design_decisions:
+  - Technical or structural choices to follow
+
+acceptance_criteria:
+  - Checkable outcome one
+  - Checkable outcome two
+```
+
+Table 1 Common issue fields
+
+| Field | Required | Description |
+| ----- | -------- | ----------- |
+| deliverable_type | yes | `documentation` or `code` |
+| format_rule | doc issues only | Rule file that governs the output format |
+| required_reading | yes | Files the agent must read before starting |
+| files | yes | Files to create or modify with action (`create` or `modify`) |
+| requirements | yes | What needs to be built or written |
+| design_decisions | no | Architecture, patterns, or constraints to follow |
+| acceptance_criteria | yes | Checkable outcomes |
 
 For epics, the description can be higher level; child tasks carry the detailed structure.
 
 ## Documentation Issues
 
-Documentation issues produce markdown (and optionally diagrams) under `docs/`. The issue must specify **output location** and **which format rule** applies.
+Documentation issues produce files under `docs/`. The issue must specify the output location and which format rule applies.
 
 ### Output Location and Format Rule
 
+Table 2 Documentation deliverable types
+
 | Deliverable type | Output location | Format rule | When to use |
 | ----------------- | ---------------- | ----------- | ------------ |
-| **ARCHITECTURE / docs** | `docs/ARCHITECTURE.md` or specific doc | documentation-standards | Updating system overview, components, diagrams, design decisions |
-| **PRD** | `docs/specs/product-requirements/prd[NNN]-[feature-name].yaml` | prd-format | New or updated product requirements; numbered requirements, Problem/Goals/Non-Goals |
-| **Use case** | `docs/specs/use-cases/rel[NN].[N]-uc[NNN]-[short-name].yaml` | use-case-format | Tracer-bullet flows, actor/trigger, demo criteria; must include test suite |
+| **ARCHITECTURE** | `docs/ARCHITECTURE.yaml` | architecture-format | Updating system overview, components, design decisions |
+| **PRD** | `docs/specs/product-requirements/prd[NNN]-[feature-name].yaml` | prd-format | New or updated product requirements |
+| **Use case** | `docs/specs/use-cases/rel[NN].[N]-uc[NNN]-[short-name].yaml` | use-case-format | Tracer-bullet flows, actor/trigger, demo criteria |
 | **Test suite** | `docs/specs/test-suites/test-[use-case-id].yaml` | test-case-format | Test cases with inputs and expected outputs |
 | **Engineering guideline** | `docs/engineering/eng[NN]-[short-name].md` | engineering-guideline-format | Conventions and practices |
-| **Specification** | `docs/SPECIFICATIONS.md` | specification-format | Summary of PRDs, use cases, test suites, roadmap with traceability diagram |
+| **Specification** | `docs/SPECIFICATIONS.md` | specification-format | Summary of PRDs, use cases, test suites, roadmap |
 
-### What to Put in the Issue
+### Example (PRD issue)
 
-- **File or directory path** – e.g. `docs/specs/product-requirements/prd-feature-name.yaml`, `docs/specs/use-cases/rel01.0-uc001-scenario-name.yaml`
-- **Required sections** – List the sections from the format rule (e.g. for PRD: Problem, Goals, Requirements, Non-Goals, Acceptance Criteria)
-- **Scope or content hints** – Bullet points or short paragraphs for Problem, Goals, main requirements, and non-goals so the agent does not have to infer them
-- **Reference to format rule** – e.g. "Follow .claude/rules/prd-format.md" or "per prd-format rule"
-- **Acceptance criteria** – Include checklist items such as "All required sections present", "File saved at [path]", "Requirements numbered and specific"
+```yaml
+deliverable_type: documentation
+format_rule: prd-format
 
-Example (PRD issue):
+required_reading:
+  - docs/ARCHITECTURE.yaml (components section)
+  - docs/specs/product-requirements/prd001-cupboard-core.yaml
 
-```markdown
-## Required Reading
-- docs/ARCHITECTURE.md § System Components
-- docs/specs/product-requirements/prd001-cupboard-core.yaml (interface contract)
+files:
+  - path: docs/specs/product-requirements/prd-feature-name.yaml
+    action: create
 
-## Files to Create/Modify
-- docs/specs/product-requirements/prd-feature-name.yaml (create)
+required_sections:
+  - "Problem: explain the problem and why it matters"
+  - "Goals: G1 ..., G2 ..."
+  - "Requirements: R1.1 ..., R1.2 ..."
+  - "Non-Goals: what is out of scope"
+  - "Acceptance Criteria: checkable outcomes"
 
-## Required Sections (per prd-format rule)
-1. Problem - ...
-2. Goals - ...
-3. Requirements - R1: ..., R2: ...
-4. Non-Goals - ...
-5. Acceptance Criteria - ...
-
-## Acceptance Criteria
-- [ ] All required sections present
-- [ ] File saved as prd-feature-name.yaml
+acceptance_criteria:
+  - All required sections present
+  - File saved as prd-feature-name.yaml
+  - Requirements numbered and specific
 ```
 
 ## Code Issues
 
-Code issues produce or change implementation (e.g. Go, Python, config, tests) outside of `docs/`. The issue must specify:
+Code issues produce or change implementation (Go, config, tests) outside of `docs/`. Do not include PRD-style Problem/Goals/Non-Goals in code issues.
 
-- **Required Reading** – PRDs, ARCHITECTURE sections, or existing code the agent must read first
-- **Files to Create/Modify** – Packages or files to create/edit (e.g. `internal/crumbs/crumbs.go`, `pkg/types/crumb.go`)
-- **Requirements** – Features, behaviors, or changes to implement
-- **Design Decisions** – Architecture, patterns, or constraints
-- **Acceptance Criteria** – How to verify: tests, CLI behavior, observable outcomes
+### Example (code issue)
 
-Do not put PRD-style "Problem/Goals/Non-Goals" in code issues; use the structure above.
+```yaml
+deliverable_type: code
 
-Example (code issue):
+required_reading:
+  - docs/specs/product-requirements/prd003-crumbs-interface.yaml
+  - pkg/types/cupboard.go
 
-```markdown
-## Required Reading
-- docs/specs/product-requirements/prd003-crumbs-interface.yaml (CrumbTable contract)
-- pkg/types/cupboard.go (existing interface)
+files:
+  - path: pkg/types/crumb.go
+    action: create
+    note: Crumb struct, Filter type
+  - path: internal/sqlite/crumbs.go
+    action: create
+    note: CrumbTable implementation
+  - path: internal/sqlite/crumbs_test.go
+    action: create
+    note: tests
 
-## Files to Create/Modify
-- pkg/types/crumb.go (create) - Crumb struct, Filter type
-- internal/sqlite/crumbs.go (create) - CrumbTable implementation
-- internal/sqlite/crumbs_test.go (create) - tests
+requirements:
+  - Implement CrumbTable interface per prd003-crumbs-interface
+  - Add, Get, Archive, Purge, Fetch operations
+  - Property operations (Set/Get/Clear)
 
-## Requirements
-- Implement CrumbTable interface per prd003-crumbs-interface
-- Add, Get, Archive, Purge, Fetch operations
-- Property operations (Set/Get/Clear)
+design_decisions:
+  - Use table accessor pattern from prd001-cupboard-core
+  - Filter as map[string]any per PRD
 
-## Design Decisions
-- Use table accessor pattern from prd001-cupboard-core
-- Filter as map[string]any per PRD
-
-## Acceptance Criteria
-- [ ] All CrumbTable operations implemented
-- [ ] Tests pass for each operation
-- [ ] Errors match PRD error types
+acceptance_criteria:
+  - All CrumbTable operations implemented
+  - Tests pass for each operation
+  - Errors match PRD error types
 ```
 
 ### Go Layout (Recommended)
@@ -110,20 +138,23 @@ When proposing or implementing code issues, keep implementation in **internal/**
 
 ## Quick Reference
 
-| Issue type | Output | Key sections in issue |
-| ---------- | ------ | ---------------------- |
-| Documentation (ARCHITECTURE, general docs) | `docs/*.md` | Required Reading, Files to Create/Modify, Requirements, Acceptance Criteria; follow documentation-standards |
-| Documentation (PRD) | `docs/specs/product-requirements/prd*.yaml` | Required Reading, Files to Create/Modify, Required sections (Problem, Goals, Requirements, Non-Goals, Acceptance Criteria), Acceptance Criteria; follow prd-format |
-| Documentation (use case) | `docs/specs/use-cases/rel*-uc*-*.yaml` | Required Reading, Files to Create/Modify, Summary, Actor/trigger, Flow, Success criteria; follow use-case-format |
-| Documentation (test suite) | `docs/specs/test-suites/test*.yaml` | Required Reading, Files to Create/Modify, traces, preconditions, test_cases with inputs/expected; follow test-case-format |
-| Documentation (engineering guideline) | `docs/engineering/eng*.md` | Required Reading, Files to Create/Modify, Introduction, Body; follow engineering-guideline-format |
-| Documentation (specification) | `docs/SPECIFICATIONS.md` | Required Reading, Files to Create/Modify, Overview, Roadmap Summary, PRD/Use Case/Test Suite indexes, PRD-to-Use-Case Mapping, Traceability Diagram, Coverage Gaps; follow specification-format |
-| Code | `pkg/`, `internal/`, `cmd/` | Required Reading, Files to Create/Modify, Requirements, Design Decisions, Acceptance Criteria (tests/behavior); see Go layout above |
+Table 3 Issue type quick reference
+
+| Issue type | Output | Key fields |
+| ---------- | ------ | ---------- |
+| Documentation (ARCHITECTURE) | `docs/ARCHITECTURE.yaml` | required_reading, files, requirements, acceptance_criteria; format_rule: architecture-format |
+| Documentation (PRD) | `docs/specs/product-requirements/prd*.yaml` | required_reading, files, required_sections, acceptance_criteria; format_rule: prd-format |
+| Documentation (use case) | `docs/specs/use-cases/rel*-uc*-*.yaml` | required_reading, files, required_sections, acceptance_criteria; format_rule: use-case-format |
+| Documentation (test suite) | `docs/specs/test-suites/test*.yaml` | required_reading, files, required_sections, acceptance_criteria; format_rule: test-case-format |
+| Documentation (engineering guideline) | `docs/engineering/eng*.md` | required_reading, files, requirements, acceptance_criteria; format_rule: engineering-guideline-format |
+| Documentation (specification) | `docs/SPECIFICATIONS.md` | required_reading, files, requirements, acceptance_criteria; format_rule: specification-format |
+| Code | `pkg/`, `internal/`, `cmd/` | required_reading, files, requirements, design_decisions, acceptance_criteria |
 
 ## When Creating or Editing Issues
 
-1. Set **deliverable type**: documentation vs code.
-2. List **Required Reading**: PRDs, ARCHITECTURE sections, or code the agent must read before starting.
-3. List **Files to Create/Modify**: explicit paths for all outputs.
-4. If documentation: set **format rule** (PRD, use case, ARCHITECTURE) and **required sections**.
-5. Include **Requirements** and **Acceptance Criteria** in every issue.
+1. Set **deliverable_type**: `documentation` or `code`.
+2. Set **format_rule** for documentation issues (the rule file that governs the output).
+3. List **required_reading**: files the agent must read before starting.
+4. List **files**: explicit paths and actions (`create` or `modify`) for all outputs.
+5. For documentation issues: list **required_sections** from the format rule.
+6. Include **requirements** and **acceptance_criteria** in every issue.

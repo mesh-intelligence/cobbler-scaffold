@@ -18,8 +18,10 @@ Based on my answers, create epics and issues using the bead system:
 Create a main epic that captures the overall project vision and scope.
 
 ## Child Issues
+
 Break down the work into specific issues for:
-- **Documentation**: VISION.md, ARCHITECTURE.md, PRDs
+
+- **Documentation**: VISION.yaml, ARCHITECTURE.yaml, PRDs
 - **Core Implementation**: Major components and features
 - **Infrastructure**: Build, test, deployment setup
 - **Integration**: Component wiring and data flow

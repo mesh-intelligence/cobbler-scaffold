@@ -13,15 +13,28 @@ import (
 	"path/filepath"
 	"text/template"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed prompts/measure.tmpl
 var defaultMeasurePromptTmpl string
 
+//go:embed constitutions/planning.yaml
+var planningConstitution string
+
 // Measure assesses project state and proposes new tasks via Claude.
 // Reads all options from Config.
 func (o *Orchestrator) Measure() error {
 	return o.RunMeasure()
+}
+
+// MeasurePrompt prints the measure prompt that would be sent to Claude to stdout.
+// This is useful for inspecting or debugging the prompt without invoking Claude.
+func (o *Orchestrator) MeasurePrompt() error {
+	prompt := o.buildMeasurePrompt("", "", o.cfg.MaxMeasureIssues, "measure-out.yaml")
+	fmt.Print(prompt)
+	return nil
 }
 
 // RunMeasure runs the measure workflow using Config settings.
@@ -55,12 +68,12 @@ func (o *Orchestrator) RunMeasure() error {
 
 	_ = os.MkdirAll(o.cfg.CobblerDir, 0o755)
 	timestamp := time.Now().Format("20060102-150405")
-	outputFile := filepath.Join(o.cfg.CobblerDir, fmt.Sprintf("proposed-issues-%s.json", timestamp))
+	outputFile := filepath.Join(o.cfg.CobblerDir, fmt.Sprintf("measure-%s.yaml", timestamp))
 
-	// Clean up old proposed-issues files.
-	matches, _ := filepath.Glob(o.cfg.CobblerDir + "proposed-issues-*.json")
+	// Clean up old measure temp files.
+	matches, _ := filepath.Glob(o.cfg.CobblerDir + "measure-*.yaml")
 	if len(matches) > 0 {
-		logf("measure: cleaning %d old proposed-issues file(s)", len(matches))
+		logf("measure: cleaning %d old measure temp file(s)", len(matches))
 	}
 	for _, f := range matches {
 		os.Remove(f)
@@ -137,7 +150,7 @@ func (o *Orchestrator) RunMeasure() error {
 	if len(createdIDs) == 0 {
 		logf("measure: no issues imported, keeping %s for inspection", outputFile)
 	} else {
-		logf("measure: removing %s (import successful)", outputFile)
+		logf("measure: removing temp file %s (content appended to measure.yaml)", outputFile)
 		os.Remove(outputFile)
 	}
 
@@ -273,13 +286,26 @@ func countJSONArray(jsonStr string) int {
 
 // MeasurePromptData is the template data for the measure prompt.
 type MeasurePromptData struct {
-	ExistingIssues string
-	Limit          int
-	OutputPath     string
-	UserInput      string
-	LinesMin       int
-	LinesMax       int
-	ProjectRules   string
+	ExistingIssues        string
+	Limit                 int
+	OutputPath            string
+	UserInput             string
+	LinesMin              int
+	LinesMax              int
+	PlanningConstitution  string
+	Vision                string
+	Architecture          string
+}
+
+// readFileOrEmpty reads a file and returns its contents as a string.
+// Returns an empty string if the file does not exist or cannot be read.
+func readFileOrEmpty(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		logf("readFileOrEmpty: %s not found: %v", path, err)
+		return ""
+	}
+	return string(data)
 }
 
 func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limit int, outputPath string) string {
@@ -291,13 +317,15 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 	tmpl := template.Must(template.New("measure").Parse(tmplStr))
 
 	data := MeasurePromptData{
-		ExistingIssues: existingIssues,
-		Limit:          limit,
-		OutputPath:     outputPath,
-		UserInput:      userInput,
-		LinesMin:       o.cfg.EstimatedLinesMin,
-		LinesMax:       o.cfg.EstimatedLinesMax,
-		ProjectRules:   collectProjectRules("."),
+		ExistingIssues:       existingIssues,
+		Limit:                limit,
+		OutputPath:           outputPath,
+		UserInput:            userInput,
+		LinesMin:             o.cfg.EstimatedLinesMin,
+		LinesMax:             o.cfg.EstimatedLinesMax,
+		PlanningConstitution: planningConstitution,
+		Vision:               readFileOrEmpty("docs/VISION.yaml"),
+		Architecture:         readFileOrEmpty("docs/ARCHITECTURE.yaml"),
 	}
 
 	logf("buildMeasurePrompt: existingIssues=%d limit=%d userInput=%v",
@@ -310,24 +338,24 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 }
 
 type proposedIssue struct {
-	Index       int    `json:"index"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Dependency  int    `json:"dependency"`
+	Index       int    `yaml:"index"`
+	Title       string `yaml:"title"`
+	Description string `yaml:"description"`
+	Dependency  int    `yaml:"dependency"`
 }
 
-func (o *Orchestrator) importIssues(jsonFile string) ([]string, error) {
-	logf("importIssues: reading %s", jsonFile)
-	data, err := os.ReadFile(jsonFile)
+func (o *Orchestrator) importIssues(yamlFile string) ([]string, error) {
+	logf("importIssues: reading %s", yamlFile)
+	data, err := os.ReadFile(yamlFile)
 	if err != nil {
-		return nil, fmt.Errorf("reading JSON file: %w", err)
+		return nil, fmt.Errorf("reading YAML file: %w", err)
 	}
 	logf("importIssues: read %d bytes", len(data))
 
 	var issues []proposedIssue
-	if err := json.Unmarshal(data, &issues); err != nil {
-		logf("importIssues: JSON parse error: %v", err)
-		return nil, fmt.Errorf("parsing JSON: %w", err)
+	if err := yaml.Unmarshal(data, &issues); err != nil {
+		logf("importIssues: YAML parse error: %v", err)
+		return nil, fmt.Errorf("parsing YAML: %w", err)
 	}
 
 	logf("importIssues: parsed %d proposed issue(s)", len(issues))
@@ -385,5 +413,34 @@ func (o *Orchestrator) importIssues(jsonFile string) ([]string, error) {
 	}
 	logf("importIssues: %d of %d issue(s) imported", len(ids), len(issues))
 
+	// Append new issues to the persistent measure list.
+	appendMeasureLog(o.cfg.CobblerDir, issues)
+
 	return ids, nil
+}
+
+// appendMeasureLog merges newIssues into the persistent measure.yaml list.
+// measure.yaml is a single growing YAML list of all issues proposed across runs.
+func appendMeasureLog(cobblerDir string, newIssues []proposedIssue) {
+	logPath := filepath.Join(cobblerDir, "measure.yaml")
+
+	var existing []proposedIssue
+	if data, err := os.ReadFile(logPath); err == nil {
+		if err := yaml.Unmarshal(data, &existing); err != nil {
+			logf("appendMeasureLog: could not parse existing list, starting fresh: %v", err)
+			existing = nil
+		}
+	}
+
+	combined := append(existing, newIssues...)
+	out, err := yaml.Marshal(combined)
+	if err != nil {
+		logf("appendMeasureLog: marshal failed: %v", err)
+		return
+	}
+	if err := os.WriteFile(logPath, out, 0o644); err != nil {
+		logf("appendMeasureLog: write failed: %v", err)
+		return
+	}
+	logf("appendMeasureLog: %d total issues in %s", len(combined), logPath)
 }

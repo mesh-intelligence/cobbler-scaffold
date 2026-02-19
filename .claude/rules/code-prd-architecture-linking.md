@@ -8,11 +8,11 @@ When implementing code (e.g. via the **do-work** command), code must correspond 
 
 1. **Identify related docs** from the issue, component, or area you are changing:
    - **PRDs**: `docs/specs/product-requirements/prd*.yaml`
-   - **Architecture**: `docs/ARCHITECTURE.md` (components, interfaces, protocols)
+   - **Architecture**: `docs/ARCHITECTURE.yaml` (components, interfaces, protocols)
    - **Use cases**: `docs/specs/use-cases/rel*-uc*-*.yaml`
    - **Test suites**: `docs/specs/test-suites/test*.yaml`
    - **Engineering guidelines**: `docs/engineering/eng*.md`
-   - **Vision** (if relevant): `docs/VISION.md`
+   - **Vision** (if relevant): `docs/VISION.yaml`
 2. **Read** the relevant sections of those docs so behaviour, data shapes, and contracts are clear.
 3. **Implement** so that the code conforms to the requirements and design described there.
 
@@ -40,7 +40,7 @@ Example (Go):
 ```go
 // Package mypackage implements the core functionality.
 // Implements: prd-feature-name (operations listed in PRD);
-//             docs/ARCHITECTURE § Component Name.
+//             docs/ARCHITECTURE.yaml § components.ComponentName.
 package mypackage
 ```
 
@@ -48,7 +48,7 @@ Example (top of file):
 
 ```go
 // Server implements the HTTP API.
-// Implements: prd-api-interface (operation set). See docs/ARCHITECTURE § System Components.
+// Implements: prd-api-interface (operation set). See docs/ARCHITECTURE.yaml components.SystemComponents.
 ```
 
 ## Do-Work Flow (Summary)
@@ -67,11 +67,11 @@ When **do-work** is invoked:
 
 | Doc | Path | Use |
 |-----|------|-----|
-| Architecture | `docs/ARCHITECTURE.md` | Components, interfaces, protocols |
+| Architecture | `docs/ARCHITECTURE.yaml` | Components, interfaces, protocols |
 | PRDs | `docs/specs/product-requirements/prd*.yaml` | Requirements, operations, data structures |
 | Use cases | `docs/specs/use-cases/rel*-uc*-*.yaml` | Tracer-bullet flows, demo criteria |
 | Test suites | `docs/specs/test-suites/test*.yaml` | Test cases with inputs and expected outputs |
 | Engineering guidelines | `docs/engineering/eng*.md` | Conventions and practices |
-| Vision | `docs/VISION.md` | Goals and context |
+| Vision | `docs/VISION.yaml` | Goals and context |
 
 Code that does not map to at least one PRD or architecture section is out of scope for do-work unless the issue explicitly adds new behaviour and you first propose or update the relevant doc.
