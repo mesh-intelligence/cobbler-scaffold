@@ -28,7 +28,7 @@ flow:
 
 touchpoints:
   - T1: "Config (workflow fields): prd001-orchestrator-core R1, prd003-cobbler-workflows R1, R3"
-  - T2: "Worktree management: task branch naming per prd003 R3.8"
+  - T2: "Worktree management: task branch naming per prd003-cobbler-workflows R3.8"
   - T3: "Claude invocation: prd003-cobbler-workflows R6"
   - T4: "Recovery: prd003-cobbler-workflows R4"
   - T5: "InvocationRecord: prd005-metrics-collection R1"
