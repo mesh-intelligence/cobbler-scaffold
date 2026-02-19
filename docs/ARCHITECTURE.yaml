@@ -170,6 +170,20 @@ components:
     references:
       - prd005-metrics-collection
 
+  - name: Analyze
+    responsibility: |
+      Cross-artifact consistency checking. Validates that PRDs, use cases, and test suites
+      are properly linked and complete. Reports orphaned PRDs, missing test suites, broken
+      touchpoints, and use cases not in the roadmap.
+    capabilities:
+      - Load and index all PRDs, use cases, test suites, and roadmap entries
+      - Check PRD-to-use-case traceability via touchpoints
+      - Check use-case-to-test-suite linkage
+      - Identify orphaned artifacts and broken references
+      - Generate detailed consistency report
+    references:
+      - Similar to spec-kit analyze functionality
+
   - name: Config
     responsibility: |
       Config struct with YAML tags, LoadConfig() for reading configuration.yaml, SeedData
