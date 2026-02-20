@@ -50,7 +50,7 @@ Read VISION.yaml and ARCHITECTURE.yaml for context. For PRDs scan existing `docs
 1. Produce the deliverable at the **exact output path** given in the issue
 2. Include all **required fields** from the format rule (see design.yaml document_types)
 3. Follow **documentation standards** from design.yaml (concise, active voice, no forbidden terms)
-4. For diagrams: define PlantUML inline in markdown using fenced code blocks. Do not create separate `.puml` files
+4. For diagrams: define Mermaid inline in markdown using fenced code blocks. Do not create separate image files
 5. Verify the issue **Acceptance Criteria**
 
 ## 4. After writing

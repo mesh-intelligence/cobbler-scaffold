@@ -16,7 +16,7 @@ Order matters. A reader who scans only the first three sections should understan
 
 2. **Architectural thesis** -- The "why" in 2-4 sentences. What engineering problem does the approach solve? Methodology (e.g., spec-driven development, differential testing) is introduced here as the solution to a stated problem, not as a label.
 
-3. **System diagram** -- PlantUML showing component relationships, the development pipeline, or the data flow. Architecture diagrams signal systems thinking more effectively than any paragraph. Use fenced code blocks with `plantuml` language tag. Do not use Mermaid.
+3. **System diagram** -- Mermaid showing component relationships, the development pipeline, or the data flow. Architecture diagrams signal systems thinking more effectively than any paragraph. Use fenced code blocks with `mermaid` language tag. Do not use PlantUML (GitHub does not render it).
 
 4. **Project scope and status** -- What is the target, what is built, what is planned. Use concrete numbers (e.g., "12 of 123 utilities specified"). Scope demonstrates ambition; status demonstrates execution.
 

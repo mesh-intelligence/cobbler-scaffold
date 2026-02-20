@@ -160,52 +160,47 @@ prd_to_use_case_mapping:
     coverage: R4
 
 traceability_diagram: |
-  @startuml
-  !theme plain
-  skinparam backgroundColor white
+  graph LR
+      subgraph PRDs
+          prd1["prd001\norchestrator-core"]
+          prd2["prd002\ngeneration-lifecycle"]
+          prd3["prd003\ncobbler-workflows"]
+          prd5["prd005\nmetrics-collection"]
+          prd6["prd006\nvscode-extension"]
+      end
 
-  package "PRDs" {
-    [prd001\norchestrator-core] as prd1
-    [prd002\ngeneration-lifecycle] as prd2
-    [prd003\ncobbler-workflows] as prd3
-    [prd005\nmetrics-collection] as prd5
-    [prd006\nvscode-extension] as prd6
-  }
+      subgraph UseCases["Use Cases"]
+          uc1["rel01.0-uc001\ninitialization"]
+          uc2["rel01.0-uc002\ngeneration-lifecycle"]
+          uc3["rel01.0-uc003\nmeasure-workflow"]
+          uc4["rel01.0-uc004\nstitch-workflow"]
+          uc5["rel01.0-uc005\nresume-recovery"]
+      end
 
-  package "Use Cases" {
-    [rel01.0-uc001\ninitialization] as uc1
-    [rel01.0-uc002\ngeneration-lifecycle] as uc2
-    [rel01.0-uc003\nmeasure-workflow] as uc3
-    [rel01.0-uc004\nstitch-workflow] as uc4
-    [rel01.0-uc005\nresume-recovery] as uc5
-  }
+      subgraph TestSuites["Test Suites"]
+          ts1["test-uc001\ninitialization"]
+          ts2["test-uc002\ngeneration-lifecycle"]
+          ts3["test-uc003\nmeasure-workflow"]
+          ts4["test-uc004\nstitch-workflow"]
+          ts5["test-uc005\nresume-recovery"]
+      end
 
-  package "Test Suites" {
-    [test-uc001\ninitialization] as ts1
-    [test-uc002\ngeneration-lifecycle] as ts2
-    [test-uc003\nmeasure-workflow] as ts3
-    [test-uc004\nstitch-workflow] as ts4
-    [test-uc005\nresume-recovery] as ts5
-  }
+      uc1 --> prd1
+      uc2 --> prd2
+      uc3 --> prd1
+      uc3 --> prd3
+      uc3 --> prd5
+      uc4 --> prd1
+      uc4 --> prd3
+      uc4 --> prd5
+      uc5 --> prd2
+      uc5 --> prd3
 
-  uc1 --> prd1
-  uc2 --> prd2
-  uc3 --> prd1
-  uc3 --> prd3
-  uc3 --> prd5
-  uc4 --> prd1
-  uc4 --> prd3
-  uc4 --> prd5
-  uc5 --> prd2
-  uc5 --> prd3
-
-  ts1 --> uc1
-  ts2 --> uc2
-  ts3 --> uc3
-  ts4 --> uc4
-  ts5 --> uc5
-
-  @enduml
+      ts1 --> uc1
+      ts2 --> uc2
+      ts3 --> uc3
+      ts4 --> uc4
+      ts5 --> uc5
 
 coverage_gaps: |
   We identify the following gaps in specification coverage:

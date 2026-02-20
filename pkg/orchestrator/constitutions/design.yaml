@@ -71,13 +71,12 @@ documentation_standards:
       domain-specific abbreviations on first use.
 
   figures_and_diagrams: |
-    All diagrams MUST be written in PlantUML and defined inline in markdown
-    using fenced code blocks. Do not create separate .puml files or PNG images.
+    All diagrams MUST be written in Mermaid and defined inline in markdown
+    using fenced code blocks. Do not create separate image files.
     Use centered table format for captioning:
-    ```plantuml
-    @startuml
-    ... diagram source ...
-    @enduml
+    ```mermaid
+    graph TD
+        ... diagram source ...
     ```
 
 document_types:
@@ -205,7 +204,7 @@ document_types:
       - prd_to_use_case_mapping (list: use_case, prd, why_required, coverage)
       - coverage_gaps (list or multi-line text)
     optional_fields:
-      - traceability_diagram (PlantUML as multi-line string)
+      - traceability_diagram (Mermaid as multi-line string)
       - references
     purpose: |
       Human-readable summary tying together PRDs, use cases, test suites, and
@@ -233,7 +232,7 @@ writing_guidelines:
   tone: "Use 'we' in active voice. Follow documentation-standards: concise, active voice, no forbidden terms."
   scope: Describe structure and contracts; do not duplicate. Point to upstream docs for detail.
   tables: Name all tables per documentation-standards.
-  figures: Per documentation-standards. Define PlantUML inline; do not create separate .puml files.
+  figures: Per documentation-standards. Define Mermaid inline; do not create separate image files.
 
 traceability_model:
   vision: Goals and boundaries

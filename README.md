@@ -16,42 +16,37 @@ This repository implements the workflow as a Mage library to accumulate operatio
 
 ## System
 
-```plantuml
-@startuml
-!theme plain
-skinparam backgroundColor white
+```mermaid
+graph TD
+    subgraph CP["Consuming Project"]
+        Magefile["Magefile\n<i>mage targets</i>"]
+    end
 
-package "Consuming Project" {
-  [Magefile] <<mage targets>>
-}
+    subgraph ORCH["orchestrator"]
+        Orchestrator["Orchestrator\n<i>main struct</i>"]
+        Generator["Generator\n<i>lifecycle</i>"]
+        Cobbler["Cobbler\n<i>measure + stitch</i>"]
+        Commands["Commands\n<i>git, beads, go wrappers</i>"]
+        Stats["Stats\n<i>metrics</i>"]
+    end
 
-package "orchestrator" {
-  [Orchestrator] <<main struct>>
-  [Generator] <<lifecycle>>
-  [Cobbler] <<measure + stitch>>
-  [Commands] <<git, beads, go wrappers>>
-  [Stats] <<metrics>>
-}
+    subgraph EXT["External Tools"]
+        Git
+        ClaudeCode["Claude Code"]
+        Beads["Beads (bd)"]
+        GoToolchain["Go Toolchain"]
+    end
 
-package "External Tools" {
-  [Git]
-  [Claude Code]
-  [Beads (bd)]
-  [Go Toolchain]
-}
-
-[Magefile] --> [Orchestrator]
-[Orchestrator] --> [Generator]
-[Orchestrator] --> [Cobbler]
-[Orchestrator] --> [Stats]
-[Generator] --> [Commands]
-[Cobbler] --> [Commands]
-[Cobbler] --> [Claude Code]
-[Commands] --> [Git]
-[Commands] --> [Beads (bd)]
-[Commands] --> [Go Toolchain]
-
-@enduml
+    Magefile --> Orchestrator
+    Orchestrator --> Generator
+    Orchestrator --> Cobbler
+    Orchestrator --> Stats
+    Generator --> Commands
+    Cobbler --> Commands
+    Cobbler --> ClaudeCode
+    Commands --> Git
+    Commands --> Beads
+    Commands --> GoToolchain
 ```
 
 *Figure 1 — System context. See [docs/ARCHITECTURE-diagrams.md](docs/ARCHITECTURE-diagrams.md) for additional diagrams.*
@@ -85,7 +80,7 @@ The specification tree is the source of truth for requirements and design decisi
 | --- | --- | --- |
 | Vision | [docs/VISION.yaml](docs/VISION.yaml) | Goals, boundaries, personas, release definitions |
 | Architecture | [docs/ARCHITECTURE.yaml](docs/ARCHITECTURE.yaml) | Components, interfaces, protocols, data flows |
-| Diagrams | [docs/ARCHITECTURE-diagrams.md](docs/ARCHITECTURE-diagrams.md) | PlantUML companion to ARCHITECTURE.yaml |
+| Diagrams | [docs/ARCHITECTURE-diagrams.md](docs/ARCHITECTURE-diagrams.md) | Mermaid companion to ARCHITECTURE.yaml |
 | Specifications index | [docs/SPECIFICATIONS.yaml](docs/SPECIFICATIONS.yaml) | PRD, use case, and test suite index with traceability |
 | Road map | [docs/road-map.yaml](docs/road-map.yaml) | Releases and the use cases each delivers |
 | PRDs | [docs/specs/product-requirements/](docs/specs/product-requirements/) | Per-feature requirements; each requirement carries an R-number |
