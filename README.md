@@ -1,12 +1,14 @@
 # mage-claude-orchestrator
 
-Go library that runs sustained, multi-task Claude Code sessions through a measure-propose / stitch-execute loop, integrating with a consuming project's Magefile build system.
+Mage-based prototype of the cobbler measure-stitch workflow; this repository will evolve into the scaffolding layer for initializing [cobbler](https://github.com/petar-djukic/cobbler)-based projects.
 
 ## Architectural Thesis
 
 AI coding assistants handle individual edits well but break down across sessions that require sequenced tasks, dependency management, and clean commit history. Running Claude directly on a working branch conflates exploration with production commits and leaves recovery from failures to the developer.
 
-This library solves the problem by separating task proposal (measure) from task execution (stitch). Measure invokes Claude with the project's specification tree and produces a dependency-ordered task list in the issue tracker. Stitch executes each task in an isolated git worktree, merges the result to the generation branch, and records metrics. The generation branch accumulates only finished work; the loop runs unattended until the backlog is empty or the cycle budget is exhausted.
+The cobbler workflow solves this by separating task proposal (measure) from task execution (stitch). Measure invokes Claude with the project's specification tree and produces a dependency-ordered task list in the issue tracker. Stitch executes each task in an isolated git worktree, merges the result to the generation branch, and records metrics. The generation branch accumulates only finished work; the loop runs unattended until the backlog is empty or the cycle budget is exhausted.
+
+This repository implements the workflow as a Mage library to validate the design and accumulate operational experience. Once the core is stable, the orchestration logic moves to [cobbler](https://github.com/petar-djukic/cobbler) and this repository becomes the scaffolding layer that initializes cobbler-based projects with constitutions, configuration, and Mage targets.
 
 The design contract for Claude's behavior in each phase is expressed as constitutions — YAML documents injected into the measure and stitch prompts. Constitutions enforce specification-first development: Claude may not write code that does not trace to a PRD, and must close the issue with a traceable commit before ending a task session.
 
