@@ -14,7 +14,7 @@ Find all specification files in the project:
 - `docs/road-map.yaml` (if present)
 - `docs/specs/product-requirements/prd*.yaml`
 - `docs/specs/use-cases/rel*.yaml`
-- `docs/specs/test-suites/test-rel-*.yaml`
+- `docs/specs/test-suites/test-rel*.yaml`
 - `docs/engineering/eng*.yaml`
 
 List every file found. Skip any that do not exist.
