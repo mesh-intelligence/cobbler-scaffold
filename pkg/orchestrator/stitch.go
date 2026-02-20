@@ -411,12 +411,16 @@ func (o *Orchestrator) buildStitchPrompt(task stitchTask) string {
 		tmplStr = defaultStitchPromptTmpl
 	}
 	tmpl := template.Must(template.New("stitch").Parse(tmplStr))
+	executionConst := o.cfg.ExecutionConstitution
+	if executionConst == "" {
+		executionConst = executionConstitution
+	}
 	data := StitchPromptData{
 		Title:                 task.title,
 		ID:                    task.id,
 		IssueType:             task.issueType,
 		Description:           task.description,
-		ExecutionConstitution: executionConstitution,
+		ExecutionConstitution: executionConst,
 	}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {

@@ -316,6 +316,10 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 
 	tmpl := template.Must(template.New("measure").Parse(tmplStr))
 
+	planningConst := o.cfg.PlanningConstitution
+	if planningConst == "" {
+		planningConst = planningConstitution
+	}
 	data := MeasurePromptData{
 		ExistingIssues:       existingIssues,
 		Limit:                limit,
@@ -323,7 +327,7 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 		UserInput:            userInput,
 		LinesMin:             o.cfg.EstimatedLinesMin,
 		LinesMax:             o.cfg.EstimatedLinesMax,
-		PlanningConstitution: planningConstitution,
+		PlanningConstitution: planningConst,
 		Vision:               readFileOrEmpty("docs/VISION.yaml"),
 		Architecture:         readFileOrEmpty("docs/ARCHITECTURE.yaml"),
 	}

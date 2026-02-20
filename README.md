@@ -87,7 +87,10 @@ If a run is interrupted, `mage generator:resume` recovers state and continues. T
 your-project/
 ├── configuration.yaml          # Auto-generated config
 ├── docs/
-│   └── constitutions/design.yaml       # Format rules for specs
+│   └── constitutions/
+│       ├── design.yaml         # Format rules for specs (editable)
+│       ├── planning.yaml       # Measure phase rules (editable)
+│       └── execution.yaml      # Stitch phase rules (editable)
 └── magefiles/
     ├── orchestrator.go         # Mage targets (template from orchestrator repo)
     ├── version.go.tmpl         # Seed template (if main package detected)
@@ -254,6 +257,9 @@ Alternatively, create `configuration.yaml` manually and set the project-specific
 | user_prompt | | Additional context for the measure prompt |
 | measure_prompt | pkg/orchestrator/prompts/measure.tmpl | File path to custom measure prompt template (defaults to embedded template) |
 | stitch_prompt | pkg/orchestrator/prompts/stitch.tmpl | File path to custom stitch prompt template (defaults to embedded template) |
+| planning_constitution | docs/constitutions/planning.yaml | File path to planning constitution; overrides embedded default |
+| execution_constitution | docs/constitutions/execution.yaml | File path to execution constitution; overrides embedded default |
+| design_constitution | docs/constitutions/design.yaml | File path to design constitution; overrides embedded default |
 | estimated_lines_min | 250 | Minimum estimated lines per task (passed to measure template) |
 | estimated_lines_max | 350 | Maximum estimated lines per task (passed to measure template) |
 | podman_image | (required) | Container image for Claude execution |
@@ -281,6 +287,7 @@ Default claude_args: `--dangerously-skip-permissions -p --verbose --output-forma
 | credentials | Extract Claude credentials from macOS Keychain |
 | analyze | Check cross-artifact consistency (orphaned PRDs, missing test suites, broken references) |
 | tag | Create a release tag (v0.YYYYMMDD.N) and build container image |
+| uninstall | Remove orchestrator-managed files (magefiles/orchestrator.go, docs/constitutions/, configuration.yaml) |
 | test:unit | Run go test on all packages |
 | test:integration | Run go test in tests/ directory |
 | test:all | Run unit and integration tests |
@@ -300,6 +307,12 @@ Default claude_args: `--dangerously-skip-permissions -p --verbose --output-forma
 | generator:reset | Destroy generation branches and return to clean main |
 | beads:init | Initialize beads issue tracker |
 | beads:reset | Clear beads issue history |
+
+After `mage tag`, push the commit and tag to the remote:
+
+```bash
+git push release main && git push release main --tags
+```
 
 ## Claude Code Skills
 

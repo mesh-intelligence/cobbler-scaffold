@@ -44,15 +44,24 @@ func (o *Orchestrator) Scaffold(targetDir, orchestratorRoot string) error {
 		return fmt.Errorf("copying orchestrator.go: %w", err)
 	}
 
-	// 1b. Copy design constitution to docs/ so designers have the format rules.
+	// 1b. Copy all three constitutions to docs/constitutions/ so users can
+	//    read and modify them. Config paths point here by default.
 	docsDir := filepath.Join(targetDir, "docs")
-	if err := os.MkdirAll(docsDir, 0o755); err != nil {
-		return fmt.Errorf("creating docs directory: %w", err)
+	constitutionsDir := filepath.Join(docsDir, "constitutions")
+	if err := os.MkdirAll(constitutionsDir, 0o755); err != nil {
+		return fmt.Errorf("creating docs/constitutions directory: %w", err)
 	}
-	constitutionPath := filepath.Join(docsDir, "constitutions", "design.yaml")
-	logf("scaffold: writing design constitution to %s", constitutionPath)
-	if err := os.WriteFile(constitutionPath, []byte(designConstitution), 0o644); err != nil {
-		return fmt.Errorf("writing design constitution: %w", err)
+	constitutionFiles := map[string]string{
+		"design.yaml":    designConstitution,
+		"planning.yaml":  planningConstitution,
+		"execution.yaml": executionConstitution,
+	}
+	for name, content := range constitutionFiles {
+		p := filepath.Join(constitutionsDir, name)
+		logf("scaffold: writing constitution to %s", p)
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", name, err)
+		}
 	}
 
 	// 2. Detect project structure.
@@ -77,6 +86,9 @@ func (o *Orchestrator) Scaffold(targetDir, orchestratorRoot string) error {
 	cfg.BinaryName = binName
 	cfg.MainPackage = mainPkg
 	cfg.GoSourceDirs = srcDirs
+	cfg.PlanningConstitution = "docs/constitutions/planning.yaml"
+	cfg.ExecutionConstitution = "docs/constitutions/execution.yaml"
+	cfg.DesignConstitution = "docs/constitutions/design.yaml"
 
 	// When a main package is detected, create a version.go seed template
 	// so that after generator:reset the project has a minimal compilable
@@ -116,6 +128,65 @@ func (o *Orchestrator) Scaffold(targetDir, orchestratorRoot string) error {
 
 	logf("scaffold: done")
 	return nil
+}
+
+// Uninstall removes the files added by Scaffold from targetDir:
+// magefiles/orchestrator.go, docs/constitutions/, and configuration.yaml.
+// It also removes the orchestrator replace directive from magefiles/go.mod
+// and runs go mod tidy to clean up unused dependencies.
+func (o *Orchestrator) Uninstall(targetDir string) error {
+	logf("uninstall: removing orchestrator files from %s", targetDir)
+
+	// Remove magefiles/orchestrator.go.
+	orchGo := filepath.Join(targetDir, "magefiles", "orchestrator.go")
+	if err := removeIfExists(orchGo); err != nil {
+		return fmt.Errorf("removing orchestrator.go: %w", err)
+	}
+
+	// Remove docs/constitutions/ directory.
+	constitutionsDir := filepath.Join(targetDir, "docs", "constitutions")
+	if err := os.RemoveAll(constitutionsDir); err != nil {
+		return fmt.Errorf("removing docs/constitutions: %w", err)
+	}
+	logf("uninstall: removed %s", constitutionsDir)
+
+	// Remove configuration.yaml.
+	cfgPath := filepath.Join(targetDir, DefaultConfigFile)
+	if err := removeIfExists(cfgPath); err != nil {
+		return fmt.Errorf("removing configuration.yaml: %w", err)
+	}
+
+	// Remove the orchestrator replace directive from magefiles/go.mod.
+	mageDir := filepath.Join(targetDir, "magefiles")
+	goMod := filepath.Join(mageDir, "go.mod")
+	if _, err := os.Stat(goMod); err == nil {
+		dropCmd := exec.Command(binGo, "mod", "edit",
+			"-dropreplace", orchestratorModule)
+		dropCmd.Dir = mageDir
+		if err := dropCmd.Run(); err != nil {
+			logf("uninstall: warning: could not drop replace directive: %v", err)
+		} else {
+			tidyCmd := exec.Command(binGo, "mod", "tidy")
+			tidyCmd.Dir = mageDir
+			tidyCmd.Stdout = os.Stdout
+			tidyCmd.Stderr = os.Stderr
+			if err := tidyCmd.Run(); err != nil {
+				logf("uninstall: warning: go mod tidy failed: %v", err)
+			}
+		}
+	}
+
+	logf("uninstall: done")
+	return nil
+}
+
+// removeIfExists removes path if it exists, logging the action.
+func removeIfExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil
+	}
+	logf("uninstall: removing %s", path)
+	return os.Remove(path)
 }
 
 // clearMageGoFiles removes all .go files from mageDir, preserving

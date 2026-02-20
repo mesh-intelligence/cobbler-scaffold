@@ -81,6 +81,10 @@ func Analyze() error { return newOrch().Analyze() }
 // Tag creates a documentation release tag (v0.YYYYMMDD.N) and builds the container image.
 func Tag() error { return newOrch().Tag() }
 
+// Uninstall removes orchestrator-managed files from the repository:
+// magefiles/orchestrator.go, docs/constitutions/, and configuration.yaml.
+func Uninstall() error { return newOrch().Uninstall(".") }
+
 // --- Test targets ---
 
 // Unit runs go test on all packages.

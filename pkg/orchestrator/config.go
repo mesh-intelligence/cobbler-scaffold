@@ -97,6 +97,21 @@ type CobblerConfig struct {
 	// If empty, the embedded default is used.
 	StitchPrompt string `yaml:"stitch_prompt"`
 
+	// PlanningConstitution is a file path to a custom planning constitution YAML.
+	// During LoadConfig the file is read and its content stored here.
+	// If empty, the embedded default is used.
+	PlanningConstitution string `yaml:"planning_constitution"`
+
+	// ExecutionConstitution is a file path to a custom execution constitution YAML.
+	// During LoadConfig the file is read and its content stored here.
+	// If empty, the embedded default is used.
+	ExecutionConstitution string `yaml:"execution_constitution"`
+
+	// DesignConstitution is a file path to a custom design constitution YAML.
+	// During LoadConfig the file is read and its content stored here.
+	// If empty, the embedded default is used.
+	DesignConstitution string `yaml:"design_constitution"`
+
 	// EstimatedLinesMin is the minimum estimated lines per task (default 250).
 	// Passed to the measure prompt template as LinesMin.
 	EstimatedLinesMin int `yaml:"estimated_lines_min"`
@@ -297,6 +312,29 @@ func LoadConfig(path string) (Config, error) {
 			return Config{}, fmt.Errorf("reading stitch prompt %s: %w", cfg.StitchPrompt, err)
 		}
 		cfg.StitchPrompt = string(content)
+	}
+
+	// Read constitution files from disk.
+	if cfg.PlanningConstitution != "" {
+		content, err := os.ReadFile(cfg.PlanningConstitution)
+		if err != nil {
+			return Config{}, fmt.Errorf("reading planning constitution %s: %w", cfg.PlanningConstitution, err)
+		}
+		cfg.PlanningConstitution = string(content)
+	}
+	if cfg.ExecutionConstitution != "" {
+		content, err := os.ReadFile(cfg.ExecutionConstitution)
+		if err != nil {
+			return Config{}, fmt.Errorf("reading execution constitution %s: %w", cfg.ExecutionConstitution, err)
+		}
+		cfg.ExecutionConstitution = string(content)
+	}
+	if cfg.DesignConstitution != "" {
+		content, err := os.ReadFile(cfg.DesignConstitution)
+		if err != nil {
+			return Config{}, fmt.Errorf("reading design constitution %s: %w", cfg.DesignConstitution, err)
+		}
+		cfg.DesignConstitution = string(content)
 	}
 
 	cfg.applyDefaults()
