@@ -1,6 +1,8 @@
-# mage-claude-orchestrator
+# cobbler-scaffold
 
 Specification constitutions for cobbler-based projects and tooling to validate their correctness; the Mage library implements the measure-stitch workflow to exercise and refine them before the core moves to [cobbler](https://github.com/petar-djukic/cobbler).
+
+Specifications are authored in YAML rather than [spec-kit](https://github.com/github/spec-kit) markdown because Claude reads and generates them autonomously — structured, machine-parseable documents produce more reliable output than prose and are unambiguous in diff.
 
 ## Architectural Thesis
 
