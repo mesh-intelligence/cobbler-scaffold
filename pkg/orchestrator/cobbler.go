@@ -79,11 +79,12 @@ func recordInvocation(issueID string, rec InvocationRecord) {
 // of Claude stream-json events (tool calls, result) via logf(). All bytes
 // pass through to the underlying buffer unchanged.
 type progressWriter struct {
-	buf      *bytes.Buffer
-	start    time.Time
+	buf       *bytes.Buffer
+	start     time.Time
 	lastEvent time.Time
-	partial  []byte
-	turn     int
+	partial   []byte
+	turn      int
+	gotFirst  bool
 }
 
 func newProgressWriter(dst *bytes.Buffer, start time.Time) *progressWriter {
@@ -91,6 +92,10 @@ func newProgressWriter(dst *bytes.Buffer, start time.Time) *progressWriter {
 }
 
 func (pw *progressWriter) Write(p []byte) (int, error) {
+	if !pw.gotFirst {
+		pw.gotFirst = true
+		logf("[%s] first output from container", time.Since(pw.start).Round(time.Second))
+	}
 	n, err := pw.buf.Write(p)
 	if err != nil {
 		return n, err
@@ -139,17 +144,23 @@ func (pw *progressWriter) logLine(line []byte) {
 	switch msg.Type {
 	case "assistant":
 		pw.turn++
-		// Log a brief text snippet from the first text block.
+		// Find first text snippet for log context.
+		snippet := ""
 		for _, b := range msg.Message.Content {
 			if b.Type == "text" && b.Text != "" {
-				snippet := b.Text
+				snippet = b.Text
 				if len(snippet) > 120 {
 					snippet = snippet[:120] + "..."
 				}
 				snippet = strings.ReplaceAll(snippet, "\n", " ")
-				logf("[%s +%s] turn %d: %s", total, step, pw.turn, snippet)
 				break
 			}
+		}
+		// Always log the turn header with timing.
+		if snippet != "" {
+			logf("[%s +%s] turn %d: %s", total, step, pw.turn, snippet)
+		} else {
+			logf("[%s +%s] turn %d", total, step, pw.turn)
 		}
 		// Log each tool call.
 		for _, b := range msg.Message.Content {
@@ -161,6 +172,8 @@ func (pw *progressWriter) logLine(line []byte) {
 		logf("[%s +%s] tools done, waiting for LLM", total, step)
 	case "rate_limit_event":
 		logf("[%s] rate_limit", total)
+	case "system":
+		logf("[%s] claude ready", total)
 	case "result":
 		logf("[%s] done: %d turn(s), tokens(in=%d out=%d)", total, pw.turn,
 			msg.Usage.InputTokens, msg.Usage.OutputTokens)
