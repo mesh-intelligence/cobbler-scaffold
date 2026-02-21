@@ -85,18 +85,18 @@ type ArchDataStructure struct {
 }
 
 type ArchComponent struct {
-	Name           string   `yaml:"name"`
-	Responsibility string   `yaml:"responsibility"`
-	Capabilities   []string `yaml:"capabilities"`
-	References     string   `yaml:"references,omitempty"`
+	Name           string      `yaml:"name"`
+	Responsibility string      `yaml:"responsibility"`
+	Capabilities   []yaml.Node `yaml:"capabilities"`
+	References     string      `yaml:"references,omitempty"`
 }
 
 type ArchDecision struct {
-	ID                   string   `yaml:"id"`
-	Title                string   `yaml:"title"`
-	Decision             string   `yaml:"decision"`
-	Benefits             []string `yaml:"benefits"`
-	AlternativesRejected []string `yaml:"alternatives_rejected"`
+	ID                   string      `yaml:"id"`
+	Title                string      `yaml:"title"`
+	Decision             string      `yaml:"decision"`
+	Benefits             []yaml.Node `yaml:"benefits"`
+	AlternativesRejected []yaml.Node `yaml:"alternatives_rejected"`
 }
 
 type ArchTech struct {
