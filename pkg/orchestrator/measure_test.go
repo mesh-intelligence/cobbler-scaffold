@@ -1002,7 +1002,7 @@ func TestBuildMeasurePrompt_WithExistingIssues(t *testing.T) {
 	t.Parallel()
 	o := New(Config{})
 
-	existingIssues := `[{"number":42,"title":"Existing task","state":"open"}]`
+	existingIssues := `[{"id":"42","title":"Existing task","status":"ready","type":""}]`
 	prompt, err := o.buildMeasurePrompt("", existingIssues, 1)
 	if err != nil {
 		t.Fatalf("buildMeasurePrompt() error = %v", err)
