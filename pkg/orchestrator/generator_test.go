@@ -60,67 +60,6 @@ func chdirTemp(t *testing.T) string {
 	return dir
 }
 
-// --- generationDate (pure, parallelizable) ---
-
-func TestGenerationDate_ValidBranch(t *testing.T) {
-	t.Parallel()
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-	got := o.generationDate("generation-2026-02-12-07-13-55")
-	want := "2026-02-12"
-	if got != want {
-		t.Errorf("generationDate() = %q, want %q", got, want)
-	}
-}
-
-func TestGenerationDate_NoPrefix(t *testing.T) {
-	t.Parallel()
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-	got := o.generationDate("main")
-	if got != "" {
-		t.Errorf("generationDate(main) = %q, want empty", got)
-	}
-}
-
-func TestGenerationDate_ShortRest(t *testing.T) {
-	t.Parallel()
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-	got := o.generationDate("generation-20")
-	if got != "" {
-		t.Errorf("generationDate(short) = %q, want empty", got)
-	}
-}
-
-func TestGenerationDate_CustomPrefix(t *testing.T) {
-	t.Parallel()
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "gen-"}}}
-	got := o.generationDate("gen-2026-03-01-12-00-00")
-	want := "2026-03-01"
-	if got != want {
-		t.Errorf("generationDate() = %q, want %q", got, want)
-	}
-}
-
-// --- generationDateCompact (pure, parallelizable) ---
-
-func TestGenerationDateCompact_Valid(t *testing.T) {
-	t.Parallel()
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-	got := o.generationDateCompact("generation-2026-02-12-07-13-55")
-	want := "20260212"
-	if got != want {
-		t.Errorf("generationDateCompact() = %q, want %q", got, want)
-	}
-}
-
-func TestGenerationDateCompact_Invalid(t *testing.T) {
-	t.Parallel()
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-	got := o.generationDateCompact("main")
-	if got != "" {
-		t.Errorf("generationDateCompact(main) = %q, want empty", got)
-	}
-}
-
 // --- generationName (pure, parallelizable) ---
 
 func TestGenerationName_StripsSuffixes(t *testing.T) {
@@ -702,57 +641,6 @@ func TestListGenerationBranches_WithBranches(t *testing.T) {
 	}
 }
 
-// --- generationRevision (git, NOT parallel) ---
-
-func TestGenerationRevision_SingleGeneration(t *testing.T) {
-	initTestGitRepo(t)
-
-	branch := "generation-2026-02-28-12-00-00"
-	if err := gitCreateBranch(branch, ""); err != nil {
-		t.Fatal(err)
-	}
-
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-	got := o.generationRevision(branch)
-	if got != 0 {
-		t.Errorf("generationRevision() = %d, want 0", got)
-	}
-}
-
-func TestGenerationRevision_MultipleGenerationsSameDay(t *testing.T) {
-	initTestGitRepo(t)
-
-	gitCreateBranch("generation-2026-02-28-10-00-00", "")
-	gitCreateBranch("generation-2026-02-28-12-00-00", "")
-	gitCreateBranch("generation-2026-02-28-14-00-00", "")
-
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-
-	got := o.generationRevision("generation-2026-02-28-10-00-00")
-	if got != 0 {
-		t.Errorf("generationRevision(10-00-00) = %d, want 0", got)
-	}
-
-	got = o.generationRevision("generation-2026-02-28-12-00-00")
-	if got != 1 {
-		t.Errorf("generationRevision(12-00-00) = %d, want 1", got)
-	}
-
-	got = o.generationRevision("generation-2026-02-28-14-00-00")
-	if got != 2 {
-		t.Errorf("generationRevision(14-00-00) = %d, want 2", got)
-	}
-}
-
-func TestGenerationRevision_InvalidBranch(t *testing.T) {
-	t.Parallel()
-	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
-	got := o.generationRevision("main")
-	if got != 0 {
-		t.Errorf("generationRevision(main) = %d, want 0", got)
-	}
-}
-
 // --- GeneratorResume validation (pure validation, parallelizable) ---
 
 func TestGeneratorResume_NotGenerationBranch(t *testing.T) {
@@ -833,6 +721,40 @@ func TestGeneratorStart_PreserveSources(t *testing.T) {
 
 	if _, err := os.Stat(goFile); os.IsNotExist(err) {
 		t.Error("GeneratorStart() deleted Go source file; want file preserved when PreserveSources=true")
+	}
+}
+
+// --- GeneratorStart custom name (git, NOT parallel) ---
+
+func TestGeneratorStart_CustomName(t *testing.T) {
+	initTestGitRepo(t)
+
+	o := &Orchestrator{cfg: Config{
+		Generation: GenerationConfig{
+			Prefix:          "generation-",
+			Name:            "gh-42",
+			PreserveSources: true,
+		},
+		Project: ProjectConfig{MagefilesDir: "magefiles"},
+		Cobbler: CobblerConfig{Dir: ".cobbler/"},
+	}}
+
+	if err := o.GeneratorStart(); err != nil {
+		t.Fatalf("GeneratorStart() error = %v", err)
+	}
+
+	branch, err := gitCurrentBranch("")
+	if err != nil {
+		t.Fatalf("gitCurrentBranch: %v", err)
+	}
+	if branch != "generation-gh-42" {
+		t.Errorf("branch = %q, want %q", branch, "generation-gh-42")
+	}
+
+	// Verify lifecycle tag was created.
+	tags := gitListTags("generation-gh-42-start", "")
+	if len(tags) != 1 {
+		t.Errorf("expected start tag, got %v", tags)
 	}
 }
 

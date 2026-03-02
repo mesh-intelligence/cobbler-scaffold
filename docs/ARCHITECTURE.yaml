@@ -21,8 +21,9 @@ overview:
     finished (tagged, ready to merge) -> merged (on main, branch deleted). An alternative
     terminal state is abandoned (generation was never merged).
 
-    The generation branch name follows the pattern {GenPrefix}{timestamp}, where the timestamp
-    is formatted as 2006-01-02-15-04-05. Tags mark lifecycle events: {branch}-start,
+    The generation branch name follows the pattern {GenPrefix}{suffix}. When generation.name
+    is set, the suffix is the configured name (e.g., "gh-42"); otherwise, it is a timestamp
+    formatted as 2006-01-02-15-04-05. Tags mark lifecycle events: {branch}-start,
     {branch}-finished, {branch}-merged, {branch}-abandoned.
 
   coordination_pattern: |
