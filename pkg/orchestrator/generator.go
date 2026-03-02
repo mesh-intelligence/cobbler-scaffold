@@ -182,7 +182,10 @@ func (o *Orchestrator) GeneratorStart() error {
 		gcStaleGenerationIssues(ghRepo, o.cfg.Generation.Prefix)
 	}
 
-	suffix := o.cfg.Generation.Name
+	suffix := os.Getenv("COBBLER_GEN_NAME")
+	if suffix == "" {
+		suffix = o.cfg.Generation.Name
+	}
 	if suffix == "" {
 		suffix = time.Now().Format("2006-01-02-15-04-05")
 	}

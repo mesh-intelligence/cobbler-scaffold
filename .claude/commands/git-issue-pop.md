@@ -177,13 +177,13 @@ ls .secrets/claude.json  # or the configured token file
    git checkout main
    ```
 
-2. Start a generation from the current branch:
+2. Start a generation from the current branch, naming it after the issue slug:
 
    ```bash
-   mage generator:start
+   COBBLER_GEN_NAME=gh-<number>-<slug> mage generator:start
    ```
 
-   This creates a `generation-YYYY-MM-DD-HH-MM-SS` branch and (unless `preserve_sources`
+   This creates a `generation-gh-<number>-<slug>` branch and (unless `preserve_sources`
    is true) resets Go sources. Note the generation branch name printed in the output.
 
 3. Run autonomous measure+stitch cycles:
@@ -204,7 +204,7 @@ ls .secrets/claude.json  # or the configured token file
 
 5. When `generator:run` reports completion (no open issues), the generation branch holds
    all the work. Proceed to **Phase 5** using the generation branch as the feature branch:
-   set `<slug>` to the generation branch name (e.g. `generation-2026-03-01-10-00-00`)
+   set `<slug>` to the generation branch name (e.g. `generation-gh-<number>-<slug>`)
    and substitute it for `gh-<number>-<slug>` in Phase 5 steps.
 
 ### Tradeoff Summary

@@ -758,6 +758,33 @@ func TestGeneratorStart_CustomName(t *testing.T) {
 	}
 }
 
+func TestGeneratorStart_EnvNameOverridesConfig(t *testing.T) {
+	initTestGitRepo(t)
+	t.Setenv("COBBLER_GEN_NAME", "my-feature")
+
+	o := &Orchestrator{cfg: Config{
+		Generation: GenerationConfig{
+			Prefix:          "generation-",
+			Name:            "config-name",
+			PreserveSources: true,
+		},
+		Project: ProjectConfig{MagefilesDir: "magefiles"},
+		Cobbler: CobblerConfig{Dir: ".cobbler/"},
+	}}
+
+	if err := o.GeneratorStart(); err != nil {
+		t.Fatalf("GeneratorStart() error = %v", err)
+	}
+
+	branch, err := gitCurrentBranch("")
+	if err != nil {
+		t.Fatalf("gitCurrentBranch: %v", err)
+	}
+	if branch != "generation-my-feature" {
+		t.Errorf("branch = %q, want %q", branch, "generation-my-feature")
+	}
+}
+
 // --- GeneratorSwitch validation (git, NOT parallel) ---
 
 func TestGeneratorSwitch_NoBranchConfigured(t *testing.T) {
