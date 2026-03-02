@@ -51,7 +51,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if vr.HasErrors() {
 		t.Errorf("expected no errors for valid code task, got: %v", vr.Errors)
 	}
@@ -89,7 +89,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for code task with 2 requirements (P9 range 5-8)")
 	}
@@ -144,7 +144,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for code task with 9 requirements (P9 range 5-8)")
 	}
@@ -173,7 +173,7 @@ acceptance_criteria:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if vr.HasErrors() {
 		t.Errorf("expected no errors for valid doc task, got: %v", vr.Errors)
 	}
@@ -206,7 +206,7 @@ acceptance_criteria:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for doc task with 5 requirements (P9 range 2-4)")
 	}
@@ -252,7 +252,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for file named after package (P7 violation)")
 	}
@@ -310,7 +310,7 @@ design_decisions:
 
 	// runner.go in pkg/difftest/ is NOT a P7 violation because
 	// the file name does not match the parent directory name.
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	p7Errors := 0
 	for _, e := range vr.Errors {
 		if contains(e, "P7 violation") {
@@ -330,7 +330,7 @@ func TestValidateMeasureOutput_UnparseableDescription(t *testing.T) {
 		Description: `{{{not valid yaml`,
 	}}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if len(vr.Warnings) == 0 {
 		t.Error("expected warning for unparseable description")
 	}
@@ -388,7 +388,7 @@ acceptance_criteria:
 		},
 	}
 
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors from invalid second issue")
 	}
@@ -428,7 +428,7 @@ func TestValidateMeasureOutput_MaxReqs_ZeroIsUnlimited(t *testing.T) {
 		Title:       "Huge task",
 		Description: "deliverable_type: code\nrequirements:\n" + reqs,
 	}}
-	vr := validateMeasureOutput(issues, 0)
+	vr := validateMeasureOutput(issues, 0, nil)
 	for _, e := range vr.Errors {
 		if contains(e, "max is") {
 			t.Errorf("maxReqs=0 should not produce max-requirements error, got: %s", e)
@@ -456,7 +456,7 @@ requirements:
     text: req
 `,
 	}}
-	vr := validateMeasureOutput(issues, 5)
+	vr := validateMeasureOutput(issues, 5, nil)
 	for _, e := range vr.Errors {
 		if contains(e, "max is") {
 			t.Errorf("5 requirements at maxReqs=5 should not error, got: %s", e)
@@ -486,7 +486,7 @@ requirements:
     text: req
 `,
 	}}
-	vr := validateMeasureOutput(issues, 5)
+	vr := validateMeasureOutput(issues, 5, nil)
 	found := false
 	for _, e := range vr.Errors {
 		if contains(e, "max is") {
@@ -525,7 +525,7 @@ requirements:
     text: req
 `,
 	}}
-	vr := validateMeasureOutput(issues, 5)
+	vr := validateMeasureOutput(issues, 5, nil)
 	found := false
 	for _, e := range vr.Errors {
 		if contains(e, "8") && contains(e, "5") && contains(e, "Task Title") {
@@ -538,6 +538,192 @@ requirements:
 	}
 }
 
+
+// --- expandedRequirementCount ---
+
+func TestExpandedRequirementCount_NilSubItemCounts(t *testing.T) {
+	t.Parallel()
+	reqs := []issueDescItem{
+		{ID: "R1", Text: "Implement prd003 R2"},
+		{ID: "R2", Text: "Something else"},
+	}
+	got := expandedRequirementCount(reqs, nil)
+	if got != 2 {
+		t.Errorf("expandedRequirementCount with nil map = %d, want 2", got)
+	}
+}
+
+func TestExpandedRequirementCount_GroupExpansion(t *testing.T) {
+	t.Parallel()
+	subItems := map[string]map[string]int{
+		"prd003": {"R2": 4, "R5": 2},
+	}
+	reqs := []issueDescItem{
+		{ID: "R1", Text: "Implement prd003 R2"},       // expands to 4
+		{ID: "R2", Text: "Handle prd003 R5"},           // expands to 2
+		{ID: "R3", Text: "Something with no PRD ref"},  // counts as 1
+	}
+	got := expandedRequirementCount(reqs, subItems)
+	if got != 7 {
+		t.Errorf("expandedRequirementCount = %d, want 7 (4+2+1)", got)
+	}
+}
+
+func TestExpandedRequirementCount_SubItemRefCountsAsOne(t *testing.T) {
+	t.Parallel()
+	subItems := map[string]map[string]int{
+		"prd003": {"R2": 4},
+	}
+	reqs := []issueDescItem{
+		{ID: "R1", Text: "Implement prd003 R2.3"}, // specific sub-item = 1
+	}
+	got := expandedRequirementCount(reqs, subItems)
+	if got != 1 {
+		t.Errorf("expandedRequirementCount for sub-item ref = %d, want 1", got)
+	}
+}
+
+func TestExpandedRequirementCount_UnknownPRDCountsAsOne(t *testing.T) {
+	t.Parallel()
+	subItems := map[string]map[string]int{
+		"prd003": {"R2": 4},
+	}
+	reqs := []issueDescItem{
+		{ID: "R1", Text: "Implement prd999 R1"}, // unknown PRD
+	}
+	got := expandedRequirementCount(reqs, subItems)
+	if got != 1 {
+		t.Errorf("expandedRequirementCount for unknown PRD = %d, want 1", got)
+	}
+}
+
+func TestExpandedRequirementCount_FuzzyPRDStemMatch(t *testing.T) {
+	t.Parallel()
+	// "prd003-cobbler-workflows" mapped under both full stem and "prd003".
+	subItems := map[string]map[string]int{
+		"prd003-cobbler-workflows": {"R2": 4},
+		"prd003":                   {"R2": 4},
+	}
+	reqs := []issueDescItem{
+		{ID: "R1", Text: "Implement prd003 R2"}, // matches short prefix
+	}
+	got := expandedRequirementCount(reqs, subItems)
+	if got != 4 {
+		t.Errorf("expandedRequirementCount with fuzzy match = %d, want 4", got)
+	}
+}
+
+// --- validateMeasureOutput expanded count warning ---
+
+func TestValidateMeasureOutput_ExpandedCountWarning(t *testing.T) {
+	t.Parallel()
+	subItems := map[string]map[string]int{
+		"prd003": {"R2": 10},
+	}
+	issues := []proposedIssue{{
+		Index: 0,
+		Title: "Expanded task",
+		Description: `deliverable_type: code
+requirements:
+  - id: R1
+    text: Implement prd003 R2
+  - id: R2
+    text: plain req
+  - id: R3
+    text: another req
+  - id: R4
+    text: yet another
+  - id: R5
+    text: last one
+acceptance_criteria:
+  - id: AC1
+    text: ac1
+  - id: AC2
+    text: ac2
+  - id: AC3
+    text: ac3
+  - id: AC4
+    text: ac4
+  - id: AC5
+    text: ac5
+design_decisions:
+  - id: D1
+    text: d1
+  - id: D2
+    text: d2
+  - id: D3
+    text: d3
+`,
+	}}
+	// 5 listed requirements, but expanded count = 10+4 = 14. maxReqs = 8.
+	// Should produce a warning (not an error) about expanded count.
+	vr := validateMeasureOutput(issues, 8, subItems)
+	foundWarning := false
+	for _, w := range vr.Warnings {
+		if contains(w, "expanded sub-item count") {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Errorf("expected expanded count warning, got warnings: %v, errors: %v", vr.Warnings, vr.Errors)
+	}
+	// The expanded count violation must NOT appear in errors.
+	for _, e := range vr.Errors {
+		if contains(e, "expanded") {
+			t.Errorf("expanded count violation should be warning, not error: %s", e)
+		}
+	}
+}
+
+func TestValidateMeasureOutput_NoExpandedWarningWhenUnderLimit(t *testing.T) {
+	t.Parallel()
+	subItems := map[string]map[string]int{
+		"prd003": {"R2": 2},
+	}
+	issues := []proposedIssue{{
+		Index: 0,
+		Title: "Small task",
+		Description: `deliverable_type: code
+requirements:
+  - id: R1
+    text: Implement prd003 R2
+  - id: R2
+    text: plain req
+  - id: R3
+    text: another req
+  - id: R4
+    text: yet another
+  - id: R5
+    text: last one
+acceptance_criteria:
+  - id: AC1
+    text: ac1
+  - id: AC2
+    text: ac2
+  - id: AC3
+    text: ac3
+  - id: AC4
+    text: ac4
+  - id: AC5
+    text: ac5
+design_decisions:
+  - id: D1
+    text: d1
+  - id: D2
+    text: d2
+  - id: D3
+    text: d3
+`,
+	}}
+	// 5 listed, expanded = 2+4 = 6. maxReqs = 8. Under limit.
+	vr := validateMeasureOutput(issues, 8, subItems)
+	for _, w := range vr.Warnings {
+		if contains(w, "expanded") {
+			t.Errorf("should not warn when expanded count under limit, got: %s", w)
+		}
+	}
+}
 
 func TestMeasureReleasesConstraint_WithReleases(t *testing.T) {
 	t.Parallel()

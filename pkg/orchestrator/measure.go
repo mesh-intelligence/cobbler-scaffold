@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -111,6 +113,13 @@ func (o *Orchestrator) RunMeasure() error {
 
 	// Run pre-cycle analysis so the measure prompt sees current project state.
 	o.RunPreCycleAnalysis()
+
+	// Warn about PRD requirement groups whose sub-item count exceeds
+	// max_requirements_per_task. This is advisory — measure continues
+	// regardless so the operator can restructure PRDs later.
+	if o.cfg.Cobbler.MaxRequirementsPerTask > 0 {
+		warnOversizedGroups(o.cfg.Cobbler.MaxRequirementsPerTask)
+	}
 
 	// Route target-repo defects to the target repo (prd003 R11).
 	// Schema errors and constitution drift are bugs in the target project's
@@ -414,8 +423,10 @@ func (o *Orchestrator) importIssuesImpl(yamlFile, repo, generation string, skipE
 		logf("importIssues: [%d] title=%q dep=%d", i, issue.Title, issue.Dependency)
 	}
 
-	// Validate proposed issues against P9/P7 rules.
-	vr := validateMeasureOutput(issues, o.cfg.Cobbler.MaxRequirementsPerTask)
+	// Validate proposed issues against P9/P7 rules. Load PRD sub-item
+	// counts so the validator can expand group references (GH-122).
+	subItemCounts := loadPRDSubItemCounts()
+	vr := validateMeasureOutput(issues, o.cfg.Cobbler.MaxRequirementsPerTask, subItemCounts)
 	if len(vr.Warnings) > 0 {
 		logf("importIssues: %d warning(s)", len(vr.Warnings))
 	}
@@ -484,8 +495,11 @@ func (v validationResult) HasErrors() bool {
 // validateMeasureOutput checks proposed issues against P9 granularity ranges
 // and P7 file naming conventions. Returns structured warnings and errors.
 // All issues are logged regardless of enforcing mode. maxReqs is the
-// operator-configured requirement cap (0 = unlimited).
-func validateMeasureOutput(issues []proposedIssue, maxReqs int) validationResult {
+// operator-configured requirement cap (0 = unlimited). subItemCounts maps
+// PRD stems to group IDs to sub-item counts; when a task requirement
+// references a PRD group, the expanded sub-item count is used instead of 1.
+// Expanded-count violations are logged as warnings (best-effort), not errors.
+func validateMeasureOutput(issues []proposedIssue, maxReqs int, subItemCounts map[string]map[string]int) validationResult {
 	var result validationResult
 	for _, issue := range issues {
 		var desc issueDescription
@@ -500,10 +514,23 @@ func validateMeasureOutput(issues []proposedIssue, maxReqs int) validationResult
 		acCount := len(desc.AcceptanceCriteria)
 		dCount := len(desc.DesignDecisions)
 
+		// Compute expanded requirement count by resolving PRD group
+		// references to their sub-item counts (GH-122).
+		expandedCount := expandedRequirementCount(desc.Requirements, subItemCounts)
+
 		if maxReqs > 0 && rCount > maxReqs {
 			msg := fmt.Sprintf("[%d] %q: has %d requirements, max is %d", issue.Index, issue.Title, rCount, maxReqs)
 			logf("validateMeasureOutput: %s", msg)
 			result.Errors = append(result.Errors, msg)
+		}
+
+		// Log expanded count as warning when it exceeds the limit.
+		// This is best-effort — we never block on expanded counts.
+		if maxReqs > 0 && expandedCount > maxReqs && expandedCount != rCount {
+			msg := fmt.Sprintf("[%d] %q: expanded sub-item count is %d (max %d); consider restructuring PRD requirement groups",
+				issue.Index, issue.Title, expandedCount, maxReqs)
+			logf("validateMeasureOutput: %s", msg)
+			result.Warnings = append(result.Warnings, msg)
 		}
 
 		if desc.DeliverableType == "code" {
@@ -550,6 +577,114 @@ func validateMeasureOutput(issues []proposedIssue, maxReqs int) validationResult
 		}
 	}
 	return result
+}
+
+// prdRefPattern matches PRD requirement references in task requirement text.
+// Examples: "prd003 R2", "prd004-ts R1.3", "prd001-orchestrator-core R5".
+// Group 1 = PRD stem (e.g., "prd003" or "prd004-ts").
+// Group 2 = requirement group number (e.g., "2" from "R2").
+// Group 3 = optional sub-item number (e.g., "3" from "R1.3"); empty for groups.
+var prdRefPattern = regexp.MustCompile(`(prd\d+[-\w]*)\s+R(\d+)(?:\.(\d+))?`)
+
+// loadPRDSubItemCounts loads all PRDs from the standard path and returns a
+// map of PRD stem -> group key -> sub-item count. A group with no sub-items
+// maps to 1. The stem is the filename without path and extension (e.g.,
+// "prd003-cobbler-workflows"); an additional entry keyed by the short prefix
+// (e.g., "prd003") is added for fuzzy matching.
+func loadPRDSubItemCounts() map[string]map[string]int {
+	paths, _ := filepath.Glob("docs/specs/product-requirements/prd*.yaml")
+	counts := make(map[string]map[string]int, len(paths)*2)
+	for _, path := range paths {
+		prd := loadYAML[PRDDoc](path)
+		if prd == nil {
+			continue
+		}
+		stem := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		groupCounts := make(map[string]int, len(prd.Requirements))
+		for key, group := range prd.Requirements {
+			if len(group.Items) > 0 {
+				groupCounts[key] = len(group.Items)
+			} else {
+				groupCounts[key] = 1
+			}
+		}
+		counts[stem] = groupCounts
+		// Add short prefix entry (e.g., "prd003") for fuzzy matching.
+		if idx := strings.IndexByte(stem, '-'); idx > 0 {
+			short := stem[:idx]
+			if _, exists := counts[short]; !exists {
+				counts[short] = groupCounts
+			}
+		}
+	}
+	return counts
+}
+
+// expandedRequirementCount computes the effective requirement count by
+// parsing PRD group references from each requirement's text and expanding
+// groups to their sub-item counts. A requirement referencing "prd003 R2"
+// where R2 has 4 sub-items counts as 4, not 1. Requirements without a
+// recognized PRD reference or referencing a specific sub-item (R1.3)
+// count as 1.
+func expandedRequirementCount(reqs []issueDescItem, subItemCounts map[string]map[string]int) int {
+	if len(subItemCounts) == 0 {
+		return len(reqs)
+	}
+	total := 0
+	for _, req := range reqs {
+		matches := prdRefPattern.FindStringSubmatch(req.Text)
+		if matches == nil {
+			total++
+			continue
+		}
+		prdStem := matches[1]
+		groupNum := matches[2]
+		subItem := matches[3]
+
+		// Specific sub-item reference (e.g., R1.3) counts as 1.
+		if subItem != "" {
+			total++
+			continue
+		}
+
+		// Group reference (e.g., R2). Look up sub-item count.
+		groupKey := "R" + groupNum
+		if groups, ok := subItemCounts[prdStem]; ok {
+			if count, found := groups[groupKey]; found {
+				total += count
+				continue
+			}
+		}
+		// PRD or group not found — count as 1.
+		total++
+	}
+	return total
+}
+
+// warnOversizedGroups loads PRDs and logs a warning for each requirement
+// group whose sub-item count exceeds maxReqs. This is advisory and runs
+// before the measure prompt is built so operators can restructure PRDs.
+func warnOversizedGroups(maxReqs int) {
+	paths, _ := filepath.Glob("docs/specs/product-requirements/prd*.yaml")
+	for _, path := range paths {
+		prd := loadYAML[PRDDoc](path)
+		if prd == nil {
+			continue
+		}
+		stem := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		keys := make([]string, 0, len(prd.Requirements))
+		for k := range prd.Requirements {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			group := prd.Requirements[key]
+			if len(group.Items) > maxReqs {
+				logf("warning: %s %s has %d sub-items (max_requirements_per_task=%d); consider splitting this requirement group",
+					stem, key, len(group.Items), maxReqs)
+			}
+		}
+	}
 }
 
 // saveHistory persists measure artifacts (log, issues YAML) to the configured
