@@ -94,6 +94,11 @@ type GenerationConfig struct {
 	// Prefix is the prefix for generation branch names (default "generation-").
 	Prefix string `yaml:"prefix"`
 
+	// Name sets a custom generation branch name suffix. When non-empty,
+	// GeneratorStart uses Prefix + Name instead of Prefix + timestamp.
+	// Example: Name "gh-42" with default prefix produces "generation-gh-42".
+	Name string `yaml:"name"`
+
 	// Cycles is the maximum number of measure+stitch cycles per run
 	// (default 0, meaning run until all issues are closed).
 	Cycles int `yaml:"cycles"`
