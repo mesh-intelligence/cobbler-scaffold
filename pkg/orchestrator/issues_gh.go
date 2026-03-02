@@ -211,8 +211,9 @@ func createCobblerIssue(repo, generation string, issue proposedIssue) (int, erro
 	// Parse the issue number from the URL output (e.g. "https://github.com/owner/repo/issues/123\n").
 	url := strings.TrimSpace(string(out))
 	parts := strings.Split(url, "/")
-	if len(parts) == 0 {
-		return 0, fmt.Errorf("parsing gh issue create output: empty URL (raw: %s)", string(out))
+	// A valid GitHub issue URL has at least 7 segments: ["https:", "", "github.com", "owner", "repo", "issues", "123"].
+	if len(parts) < 7 {
+		return 0, fmt.Errorf("parsing gh issue create output: expected URL, got %q", url)
 	}
 	var number int
 	if _, err := fmt.Sscanf(parts[len(parts)-1], "%d", &number); err != nil || number == 0 {

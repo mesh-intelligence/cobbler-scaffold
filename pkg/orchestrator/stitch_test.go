@@ -234,7 +234,10 @@ func TestCleanupWorktree_NonExistentDir_NoOp(t *testing.T) {
 		worktreeDir: "/nonexistent/worktree/path",
 		branchName:  "stitch-test-cleanup",
 	}
-	cleanupWorktree(task) // must not panic
+	ok := cleanupWorktree(task) // must not panic
+	if ok {
+		t.Error("cleanupWorktree should return false for non-existent worktree")
+	}
 }
 
 func TestBuildStitchPrompt_RepositoryFiles(t *testing.T) {
@@ -733,7 +736,10 @@ func TestCleanupWorktree_RealWorktree(t *testing.T) {
 		worktreeDir: worktreeDir,
 	}
 
-	cleanupWorktree(task)
+	ok := cleanupWorktree(task)
+	if !ok {
+		t.Error("cleanupWorktree should return true for successful removal")
+	}
 
 	// Worktree directory should be removed.
 	if _, err := os.Stat(worktreeDir); !os.IsNotExist(err) {
