@@ -181,10 +181,13 @@ func (Test) Unit() error {
 }
 
 // Usecase runs all use-case tests including Claude-dependent tests.
-// Packages run in parallel. For fast local-only tests, use test:usecase:local.
+// Packages run one at a time (-p 1) so that Claude-dependent packages
+// (uc002, uc003, uc004) do not compete for API capacity. Within each
+// package, t.Parallel() is still honoured. For fast local-only tests,
+// use test:usecase:local.
 func (Test) Usecase() error {
 	for _, pkg := range []string{"./tests/rel01.0/...", "./tests/e2e/..."} {
-		cmd := exec.Command("go", "test", "-tags=usecase,claude", "-v", "-count=1", "-timeout", "1800s", pkg)
+		cmd := exec.Command("go", "test", "-tags=usecase,claude", "-v", "-count=1", "-timeout", "1800s", "-p", "1", pkg)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
