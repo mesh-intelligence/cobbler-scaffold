@@ -785,6 +785,94 @@ func TestGeneratorStart_EnvNameOverridesConfig(t *testing.T) {
 	}
 }
 
+// TestGeneratorStart_AddsBinToGitignore verifies that GeneratorStart appends
+// bin/ to .gitignore on the generation branch (GH-469).
+// MUST NOT call t.Parallel() — uses initTestGitRepo / os.Chdir.
+func TestGeneratorStart_AddsBinToGitignore(t *testing.T) {
+	initTestGitRepo(t)
+
+	o := &Orchestrator{cfg: Config{
+		Generation: GenerationConfig{
+			Prefix:          "generation-",
+			PreserveSources: true,
+		},
+		Project: ProjectConfig{MagefilesDir: "magefiles", BinaryDir: "bin"},
+		Cobbler: CobblerConfig{Dir: ".cobbler/"},
+	}}
+
+	if err := o.GeneratorStart(); err != nil {
+		t.Fatalf("GeneratorStart() error = %v", err)
+	}
+
+	data, err := os.ReadFile(".gitignore")
+	if err != nil {
+		t.Fatalf("reading .gitignore: %v", err)
+	}
+	if !strings.Contains(string(data), "bin/") {
+		t.Errorf(".gitignore = %q, want to contain 'bin/'", string(data))
+	}
+}
+
+// --- appendToGitignore (parallel-safe, no git) ---
+
+func TestAppendToGitignore_CreatesFileWhenMissing(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := appendToGitignore(dir, "bin/"); err != nil {
+		t.Fatalf("appendToGitignore error = %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, ".gitignore"))
+	if err != nil {
+		t.Fatalf("reading .gitignore: %v", err)
+	}
+	if !strings.Contains(string(data), "bin/") {
+		t.Errorf(".gitignore = %q, want 'bin/'", string(data))
+	}
+}
+
+func TestAppendToGitignore_SkipsWhenAlreadyPresent(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".gitignore")
+	os.WriteFile(path, []byte("bin/\n"), 0o644)
+
+	if err := appendToGitignore(dir, "bin/"); err != nil {
+		t.Fatalf("appendToGitignore error = %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading .gitignore: %v", err)
+	}
+	// Should have exactly one occurrence.
+	count := strings.Count(string(data), "bin/")
+	if count != 1 {
+		t.Errorf(".gitignore has %d occurrences of 'bin/', want 1:\n%s", count, data)
+	}
+}
+
+func TestAppendToGitignore_AppendsToExistingFile(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".gitignore")
+	os.WriteFile(path, []byte("*.log\n"), 0o644)
+
+	if err := appendToGitignore(dir, "bin/"); err != nil {
+		t.Fatalf("appendToGitignore error = %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading .gitignore: %v", err)
+	}
+	if !strings.Contains(string(data), "*.log") {
+		t.Error("appendToGitignore removed existing content")
+	}
+	if !strings.Contains(string(data), "bin/") {
+		t.Errorf(".gitignore = %q, want to contain 'bin/'", string(data))
+	}
+}
+
 // --- GeneratorSwitch validation (git, NOT parallel) ---
 
 func TestGeneratorSwitch_NoBranchConfigured(t *testing.T) {
