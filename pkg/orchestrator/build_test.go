@@ -6,6 +6,7 @@ package orchestrator
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -57,6 +58,87 @@ func TestInstall_SkipsWhenNoMainPackage(t *testing.T) {
 	}}
 	if err := o.Install(); err != nil {
 		t.Errorf("Install() with empty MainPackage should not error, got: %v", err)
+	}
+}
+
+// --- BuildAll ---
+
+func TestBuildAll_SkipsWhenNoCmdDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	o := &Orchestrator{cfg: Config{
+		Project: ProjectConfig{BinaryDir: filepath.Join(dir, "bin")},
+	}}
+	if err := o.BuildAll(); err != nil {
+		t.Errorf("BuildAll() with no cmd/ should not error, got: %v", err)
+	}
+	// bin/ should not be created when there are no packages.
+	if _, err := os.Stat(filepath.Join(dir, "bin")); !os.IsNotExist(err) {
+		t.Error("BuildAll() should not create bin/ when no cmd/ packages exist")
+	}
+}
+
+func TestBuildAll_DelegatesToBuildWhenMainPackageSet(t *testing.T) {
+	t.Parallel()
+	o := &Orchestrator{cfg: Config{
+		Project: ProjectConfig{
+			MainPackage: "nonexistent/pkg",
+			BinaryDir:   t.TempDir(),
+			BinaryName:  "mybin",
+		},
+	}}
+	// Should attempt Build() and fail because package doesn't exist.
+	// Key is it does NOT fall through to multi-cmd path.
+	err := o.BuildAll()
+	if err == nil {
+		t.Error("BuildAll() with nonexistent MainPackage should fail")
+	}
+	if !strings.Contains(err.Error(), "go build") {
+		t.Errorf("error = %q, want to contain 'go build'", err.Error())
+	}
+}
+
+func TestDiscoverCmdPackages_NoCmdDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	pkgs, err := discoverCmdPackages(dir)
+	if err != nil {
+		t.Fatalf("discoverCmdPackages error = %v", err)
+	}
+	if len(pkgs) != 0 {
+		t.Errorf("pkgs = %v, want empty", pkgs)
+	}
+}
+
+func TestDiscoverCmdPackages_FindsMainPackages(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	// Create cmd/foo/main.go and cmd/bar/main.go; cmd/notmain/ has no main.go.
+	for _, path := range []string{
+		"cmd/foo/main.go",
+		"cmd/bar/main.go",
+	} {
+		full := filepath.Join(dir, path)
+		os.MkdirAll(filepath.Dir(full), 0o755)
+		os.WriteFile(full, []byte("package main\n"), 0o644)
+	}
+	os.MkdirAll(filepath.Join(dir, "cmd/notmain"), 0o755)
+
+	pkgs, err := discoverCmdPackages(dir)
+	if err != nil {
+		t.Fatalf("discoverCmdPackages error = %v", err)
+	}
+	if len(pkgs) != 2 {
+		t.Errorf("pkgs = %v, want 2 entries", pkgs)
+	}
+	for _, p := range pkgs {
+		if !strings.HasPrefix(p, "./cmd/") || !strings.HasSuffix(p, "/") {
+			t.Errorf("pkg %q should be of form ./cmd/<name>/", p)
+		}
 	}
 }
 

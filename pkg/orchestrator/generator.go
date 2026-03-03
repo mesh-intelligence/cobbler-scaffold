@@ -221,6 +221,12 @@ func (o *Orchestrator) GeneratorStart() error {
 		return fmt.Errorf("recording base branch: %w", err)
 	}
 
+	// Ensure bin/ is ignored on the generation branch so compiled binaries
+	// are never staged by git add -A (GH-469).
+	if err := appendToGitignore(".", o.cfg.Project.BinaryDir+"/"); err != nil {
+		logf("generator:start: warning: could not update .gitignore: %v", err)
+	}
+
 	// Reset Go sources and reinitialize module unless preserve_sources is set.
 	// Library repos (e.g. cobbler-scaffold itself) set preserve_sources: true so
 	// generator:start does not destroy the library code. See prd002 R10.1.
@@ -921,4 +927,36 @@ func (o *Orchestrator) FullReset() error {
 		return err
 	}
 	return o.GeneratorReset()
+}
+
+// appendToGitignore adds entry to the .gitignore file in dir if not already
+// present. Creates the file if it does not exist. Used by GeneratorStart to
+// ensure build artifacts (bin/) are not committed to the generation branch
+// regardless of where they are produced (GH-469).
+func appendToGitignore(dir, entry string) error {
+	path := filepath.Join(dir, ".gitignore")
+
+	data, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("reading .gitignore: %w", err)
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == entry {
+			return nil // already present
+		}
+	}
+
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("opening .gitignore: %w", err)
+	}
+	defer f.Close()
+
+	prefix := ""
+	if len(data) > 0 && data[len(data)-1] != '\n' {
+		prefix = "\n"
+	}
+	_, err = fmt.Fprintf(f, "%s%s\n", prefix, entry)
+	return err
 }

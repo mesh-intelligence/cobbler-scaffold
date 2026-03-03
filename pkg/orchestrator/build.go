@@ -32,6 +32,70 @@ func (o *Orchestrator) Build() error {
 	return nil
 }
 
+// BuildAll compiles all cmd/ sub-packages to BinaryDir when MainPackage is
+// empty. It discovers every cmd/*/main.go package and builds each to
+// bin/<name> using go build -o bin/<name> ./cmd/<name>/. If no cmd/
+// directory exists the target is skipped. prd003 B1.1.
+func (o *Orchestrator) BuildAll() error {
+	if o.cfg.Project.MainPackage != "" {
+		// Single-package project — delegate to Build.
+		return o.Build()
+	}
+
+	pkgs, err := discoverCmdPackages(".")
+	if err != nil {
+		return fmt.Errorf("discovering cmd packages: %w", err)
+	}
+	if len(pkgs) == 0 {
+		logf("build:all: no cmd/ packages found, skipping")
+		return nil
+	}
+
+	if err := os.MkdirAll(o.cfg.Project.BinaryDir, 0o755); err != nil {
+		return fmt.Errorf("creating output directory: %w", err)
+	}
+
+	for _, pkg := range pkgs {
+		name := filepath.Base(pkg)
+		outPath := filepath.Join(o.cfg.Project.BinaryDir, name)
+		logf("build:all: go build -o %s %s", outPath, pkg)
+		cmd := exec.Command(binGo, "build", "-o", outPath, pkg)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("go build %s: %w", pkg, err)
+		}
+	}
+
+	logf("build:all: built %d package(s) to %s", len(pkgs), o.cfg.Project.BinaryDir)
+	return nil
+}
+
+// discoverCmdPackages returns the import paths of all packages under cmd/
+// that contain a main.go file, relative to root.
+func discoverCmdPackages(root string) ([]string, error) {
+	cmdDir := filepath.Join(root, "cmd")
+	entries, err := os.ReadDir(cmdDir)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading cmd/: %w", err)
+	}
+
+	var pkgs []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		mainGo := filepath.Join(cmdDir, e.Name(), "main.go")
+		if _, err := os.Stat(mainGo); err == nil {
+			pkgs = append(pkgs, "./cmd/"+e.Name()+"/")
+		}
+	}
+	return pkgs, nil
+}
+
 // Lint runs golangci-lint on the project.
 func (o *Orchestrator) Lint() error {
 	logf("lint: running golangci-lint")

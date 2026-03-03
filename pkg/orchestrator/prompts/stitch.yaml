@@ -23,3 +23,4 @@ constraints: |
   - Do NOT invent interfaces, types, or patterns not described in the source code, Required Reading, or PRDs.
   - Do NOT add features, refactoring, or improvements beyond what the requirements specify.
   - Do NOT run any git commands. No git add, git commit, git init, git status, rm .git, or any other git operation. Git is managed externally by the orchestrator. Just write code and verify it compiles and passes tests.
+  - When building cmd/ binaries to verify compilation, use `go build -o bin/<name> ./cmd/<name>/` so outputs land in bin/ (which is git-ignored) rather than in the working directory.
