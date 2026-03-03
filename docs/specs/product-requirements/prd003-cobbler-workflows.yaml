@@ -52,12 +52,12 @@ requirements:
       - R3.9: For each task, stitch must capture LOC before Claude
       - R3.10: For each task, stitch must build the prompt from the template with task data
       - R3.11: For each task, stitch must invoke Claude in the worktree directory
-      - R3.11a: The orchestrator must stage and commit Claude's changes in the worktree (Claude is forbidden from running git commands)
-      - R3.12: For each task, stitch must merge the task branch back to the base branch
-      - R3.13: For each task, stitch must capture LOC after Claude and git diff stats
-      - R3.14: For each task, stitch must clean up the worktree and delete the task branch
-      - R3.15: For each task, stitch must record an InvocationRecord and close the task
-      - R3.16: worktreeBasePath must derive the repo name from git rev-parse --git-common-dir so the temp directory for task worktrees is identical whether stitch is invoked from the main repo root or from a git worktree; it must fall back to filepath.Base(os.Getwd()) if git is unavailable
+      - R3.12: The orchestrator must stage and commit Claude's changes in the worktree (Claude is forbidden from running git commands)
+      - R3.13: For each task, stitch must merge the task branch back to the base branch
+      - R3.14: For each task, stitch must capture LOC after Claude and git diff stats
+      - R3.15: For each task, stitch must clean up the worktree and delete the task branch
+      - R3.16: For each task, stitch must record an InvocationRecord and close the task
+      - R3.17: worktreeBasePath must derive the repo name from git rev-parse --git-common-dir so the temp directory for task worktrees is identical whether stitch is invoked from the main repo root or from a git worktree; it must fall back to filepath.Base(os.Getwd()) if git is unavailable
 
   R4:
     title: Recovery

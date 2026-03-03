@@ -29,9 +29,9 @@ flow:
   - F9: "Clean up: stale task worktrees and branches are removed; orphaned issues are reset to ready"
 
 touchpoints:
-  - T1: "Stable worktree base path: prd003-cobbler-workflows R3.16"
+  - T1: "Stable worktree base path: prd003-cobbler-workflows R3.17"
   - T2: "Recovery across invocation directories: prd003-cobbler-workflows R4.7"
-  - T3: "Stitch worktree management: prd003-cobbler-workflows R3.7, R3.14"
+  - T3: "Stitch worktree management: prd003-cobbler-workflows R3.7, R3.15"
   - T4: "Resume and recovery: prd003-cobbler-workflows R4.1, R4.2"
 
 success_criteria:

@@ -663,6 +663,53 @@ func TestPRDDoc_Validate_RequirementGroupEmptyItems(t *testing.T) {
 	}
 }
 
+func TestPRDDoc_Validate_ItemIDLetterSuffix_Error(t *testing.T) {
+	t.Parallel()
+	// R2a, R2b are letter-suffix IDs — not valid; must use R2.1, R2.2 (GH-536).
+	d := &PRDDoc{
+		ID:      "prd001-core",
+		Title:   "Core",
+		Problem: "The problem",
+		Requirements: map[string]PRDRequirementGroup{
+			"R2": {Title: "Group 2", Items: []map[string]string{
+				{"R2a": "Do A"},
+				{"R2b": "Do B"},
+			}},
+		},
+	}
+	errs := d.Validate()
+	if len(errs) != 2 {
+		t.Fatalf("expected 2 errors for R2a and R2b, got %d: %v", len(errs), errs)
+	}
+	for _, e := range errs {
+		if !contains(e, "numeric dotted format") {
+			t.Errorf("error %q should mention numeric dotted format", e)
+		}
+	}
+}
+
+func TestPRDDoc_Validate_ItemIDDotted_Valid(t *testing.T) {
+	t.Parallel()
+	// R1.1, R2.3 are valid numeric dotted IDs (GH-536).
+	d := &PRDDoc{
+		ID:      "prd001-core",
+		Title:   "Core",
+		Problem: "The problem",
+		Requirements: map[string]PRDRequirementGroup{
+			"R1": {Title: "Group 1", Items: []map[string]string{
+				{"R1.1": "Do X"},
+				{"R1.2": "Do Y"},
+			}},
+			"R2": {Title: "Group 2", Items: []map[string]string{
+				{"R2.3": "Do Z"},
+			}},
+		},
+	}
+	if errs := d.Validate(); len(errs) != 0 {
+		t.Errorf("expected no errors for valid dotted IDs, got: %v", errs)
+	}
+}
+
 func TestUseCaseDoc_Validate_AllPresent(t *testing.T) {
 	d := &UseCaseDoc{
 		ID:      "rel01.0-uc001-init",
