@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -1516,8 +1517,12 @@ func (d *RoadmapDoc) Validate() []string {
 	return errs
 }
 
+// prdItemIDRe matches valid PRD requirement item IDs: R{group}.{item} (e.g., R1.1, R2.3).
+// Letter suffixes like R2a are not valid (GH-536).
+var prdItemIDRe = regexp.MustCompile(`^R\d+\.\d+$`)
+
 // Validate checks that all required fields in PRDDoc are non-empty, including
-// each requirement group's title and items.
+// each requirement group's title, items, and item ID format (GH-536).
 func (d *PRDDoc) Validate() []string {
 	var errs []string
 	if d.ID == "" {
@@ -1541,6 +1546,13 @@ func (d *PRDDoc) Validate() []string {
 		}
 		if len(g.Items) == 0 {
 			errs = append(errs, fmt.Sprintf("requirements.%s.items is required", k))
+		}
+		for _, item := range g.Items {
+			for itemKey := range item {
+				if !prdItemIDRe.MatchString(itemKey) {
+					errs = append(errs, fmt.Sprintf("requirements.%s: item ID %q must use numeric dotted format (e.g., R1.1)", k, itemKey))
+				}
+			}
 		}
 	}
 	return errs

@@ -29,10 +29,11 @@ touchpoints:
   - T1: "BinaryResolver interface: prd004-differential-comparison R1"
   - T2: "GitTagResolver (worktree + build): prd004-differential-comparison R2"
   - T3: "GNUResolver (Homebrew lookup): prd004-differential-comparison R3"
-  - T4: "Test case loading from YAML specs: prd004-differential-comparison R4"
-  - T5: "Comparison execution and timeout: prd004-differential-comparison R5"
-  - T6: "Output formatting and mage target: prd004-differential-comparison R6"
-  - T7: "Git worktree management: git worktree add/remove pattern reused from stitch workflow (create branch worktree, build, clean up)"
+  - T4: "Path-based resolver: prd004-differential-comparison R4"
+  - T5: "Test case loading from YAML specs: prd004-differential-comparison R5"
+  - T6: "Comparison execution and timeout: prd004-differential-comparison R6"
+  - T7: "Output formatting and mage target: prd004-differential-comparison R7"
+  - T8: "Git worktree management: git worktree add/remove pattern reused from stitch workflow (create branch worktree, build, clean up)"
 
 success_criteria:
   - S1: Two generation tags can be compared with mage compare:run and produce pass/fail results

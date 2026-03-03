@@ -43,40 +43,40 @@ requirements:
       - R3.5: The cleanup function for GNUResolver must be a no-op
       - R3.6: GNUResolver.ListUtilities must scan the Homebrew coreutils gnubin directory and the moreutils utilities available on PATH
 
-  R3b:
+  R4:
     title: Path-Based Resolution
     items:
-      - R3b.1: PathResolver must resolve pre-built binaries from a local directory; given a utility name it returns the path to that binary in the directory
-      - R3b.2: PathResolver must return an error if the binary is not found in the directory
-      - R3b.3: The cleanup function for PathResolver must be a no-op
-      - R3b.4: PathResolver.ListUtilities must list all non-directory entries in the directory
-
-  R4:
-    title: Test Case Loading
-    items:
-      - R4.1: We define a CompareTestCase struct with fields for use_case, name, utility, stdin input, arguments, and expected outputs (stdout, stderr, exit_code)
-      - R4.2: LoadCompareTestCases must read YAML test suite files matching test-*.yaml from the specs directory
-      - R4.3: LoadCompareTestCases must filter to test cases that have concrete inputs and expected outputs, skipping entries that only reference Go test functions (go_test field only)
-      - R4.4: FilterByUtility must return only test cases matching the specified utility name
+      - R4.1: PathResolver must resolve pre-built binaries from a local directory; given a utility name it returns the path to that binary in the directory
+      - R4.2: PathResolver must return an error if the binary is not found in the directory
+      - R4.3: The cleanup function for PathResolver must be a no-op
+      - R4.4: PathResolver.ListUtilities must list all non-directory entries in the directory
 
   R5:
-    title: Comparison Execution
+    title: Test Case Loading
     items:
-      - R5.1: CompareUtility must run both binaries with identical inputs for each test case
-      - R5.2: Comparison must be byte-for-byte on stdout; stderr and exit code are compared separately
-      - R5.3: Each test case execution must enforce a timeout (default 10 seconds)
-      - R5.4: We define a TestResult struct with utility name, test name, pass/fail status, and diffs for stdout, stderr, and exit code
-      - R5.5: The comparison must collect all results before formatting output
+      - R5.1: We define a CompareTestCase struct with fields for use_case, name, utility, stdin input, arguments, and expected outputs (stdout, stderr, exit_code)
+      - R5.2: LoadCompareTestCases must read YAML test suite files matching test-*.yaml from the specs directory
+      - R5.3: LoadCompareTestCases must filter to test cases that have concrete inputs and expected outputs, skipping entries that only reference Go test functions (go_test field only)
+      - R5.4: FilterByUtility must return only test cases matching the specified utility name
 
   R6:
+    title: Comparison Execution
+    items:
+      - R6.1: CompareUtility must run both binaries with identical inputs for each test case
+      - R6.2: Comparison must be byte-for-byte on stdout; stderr and exit code are compared separately
+      - R6.3: Each test case execution must enforce a timeout (default 10 seconds)
+      - R6.4: We define a TestResult struct with utility name, test name, pass/fail status, and diffs for stdout, stderr, and exit code
+      - R6.5: The comparison must collect all results before formatting output
+
+  R7:
     title: Output and Mage Integration
     items:
-      - R6.1: FormatResults must produce structured text output showing pass/fail per utility per test case with summary counts
-      - R6.2: The Compare method on Orchestrator must accept two tag arguments and an optional utility filter
-      - R6.3: The Compare method must discover utilities from both resolvers, intersect to find the common set, and compare each
-      - R6.4: The Compare method must clean up all resolver resources via deferred cleanup calls
-      - R6.5: The Compare method must return an error if any comparison test fails
-      - R6.6: We expose a mage compare:run target that invokes the Compare method
+      - R7.1: FormatResults must produce structured text output showing pass/fail per utility per test case with summary counts
+      - R7.2: The Compare method on Orchestrator must accept two tag arguments and an optional utility filter
+      - R7.3: The Compare method must discover utilities from both resolvers, intersect to find the common set, and compare each
+      - R7.4: The Compare method must clean up all resolver resources via deferred cleanup calls
+      - R7.5: The Compare method must return an error if any comparison test fails
+      - R7.6: We expose a mage compare:run target that invokes the Compare method
 
 non_goals:
   - This PRD does not define concurrent comparison execution (comparisons run sequentially per utility)
