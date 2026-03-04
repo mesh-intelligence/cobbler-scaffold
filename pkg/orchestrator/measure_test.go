@@ -1779,3 +1779,64 @@ func TestBuildMeasurePrompt_ExcludeTests_DisabledFalse(t *testing.T) {
 		t.Error("_test.go should appear in prompt when MeasureExcludeTests=false")
 	}
 }
+
+// --- source summarization wiring (GH-617) ---
+
+// TestBuildMeasurePrompt_SourceMode_HeadersWired verifies that
+// MeasureSourceMode="headers" strips function bodies from source files
+// included in the measure prompt (prd003 R12).
+func TestBuildMeasurePrompt_SourceMode_HeadersWired(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	src := "package app\n\n// Exported returns a value.\nfunc Exported() string {\n\treturn \"body-unique-marker\"\n}\n"
+	os.WriteFile("pkg/app/main.go", []byte(src), 0o644)
+
+	cfg := Config{}
+	cfg.Project.GoSourceDirs = []string{"pkg/"}
+	cfg.Cobbler.MeasureSourceMode = "headers"
+	o := New(cfg)
+
+	prompt, err := o.buildMeasurePrompt("", "", 1)
+	if err != nil {
+		t.Fatalf("buildMeasurePrompt() error = %v", err)
+	}
+	if strings.Contains(prompt, "body-unique-marker") {
+		t.Error("headers mode should strip function bodies from measure prompt")
+	}
+	// Exported func name must still appear in the prompt.
+	if !strings.Contains(prompt, "Exported") {
+		t.Error("headers mode should keep exported func name in measure prompt")
+	}
+}
+
+// TestBuildMeasurePrompt_SourceMode_PhaseCtxWins verifies that a SourceMode
+// set in the phase context file takes precedence over the config value
+// (prd003 R12.6).
+func TestBuildMeasurePrompt_SourceMode_PhaseCtxWins(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	// Write a measure_context.yaml with source_mode: full so the config
+	// value of "headers" is overridden.
+	os.MkdirAll(".cobbler", 0o755)
+	os.WriteFile(".cobbler/measure_context.yaml", []byte("source_mode: full\n"), 0o644)
+	defer os.Remove(".cobbler/measure_context.yaml")
+
+	src := "package app\n\n// Exported returns a value.\nfunc Exported() string {\n\treturn \"body-present-marker\"\n}\n"
+	os.WriteFile("pkg/app/main.go", []byte(src), 0o644)
+
+	cfg := Config{}
+	cfg.Project.GoSourceDirs = []string{"pkg/"}
+	cfg.Cobbler.MeasureSourceMode = "headers"
+	o := New(cfg)
+
+	prompt, err := o.buildMeasurePrompt("", "", 1)
+	if err != nil {
+		t.Fatalf("buildMeasurePrompt() error = %v", err)
+	}
+	// Phase context set source_mode: full → body should be present.
+	if !strings.Contains(prompt, "body-present-marker") {
+		t.Error("phase context source_mode=full should override config headers mode; body should be in prompt")
+	}
+}

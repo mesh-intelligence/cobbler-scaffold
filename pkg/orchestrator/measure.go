@@ -376,6 +376,16 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 		phaseCtx.ExcludeTests = true
 		logf("buildMeasurePrompt: measure_exclude_tests=true, _test.go files will be excluded")
 	}
+	// Wire source summarization mode (GH-617, prd003 R12). Config wins when
+	// the phaseCtx file has not already set the mode (file-level wins).
+	if o.cfg.Cobbler.MeasureSourceMode != "" && phaseCtx.SourceMode == "" {
+		phaseCtx.SourceMode = o.cfg.Cobbler.MeasureSourceMode
+		logf("buildMeasurePrompt: measure_source_mode=%q from config", phaseCtx.SourceMode)
+	}
+	if o.cfg.Cobbler.MeasureSummarizeCommand != "" && phaseCtx.SummarizeCommand == "" {
+		phaseCtx.SummarizeCommand = o.cfg.Cobbler.MeasureSummarizeCommand
+		logf("buildMeasurePrompt: measure_summarize_command set from config")
+	}
 
 	// Auto-derive SourcePatterns from the road-map when MeasureRoadmapSource
 	// is enabled and no manual patterns are already set (GH-534).

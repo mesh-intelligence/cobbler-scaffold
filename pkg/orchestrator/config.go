@@ -265,6 +265,19 @@ type CobblerConfig struct {
 	// explicit false opts out. Set measure_exclude_tests: false to restore
 	// the old behaviour of including test files.
 	MeasureExcludeTests *bool `yaml:"measure_exclude_tests"`
+
+	// MeasureSourceMode controls how Go source files appear in the measure
+	// prompt. Valid values: "full" (default, verbatim inclusion), "headers"
+	// (exported declarations only, no function bodies), and "custom" (run
+	// MeasureSummarizeCommand per file and use its stdout). Empty string and
+	// "full" are equivalent. Stitch always uses full source. See prd003 R12.
+	MeasureSourceMode string `yaml:"measure_source_mode"`
+
+	// MeasureSummarizeCommand is the command run per source file when
+	// MeasureSourceMode is "custom". The source file path is appended as
+	// the last argument. stdout replaces the file content in the prompt.
+	// On non-zero exit or empty output, the full file content is used.
+	MeasureSummarizeCommand string `yaml:"measure_summarize_command"`
 }
 
 // PodmanConfig holds settings for the podman container runtime.
