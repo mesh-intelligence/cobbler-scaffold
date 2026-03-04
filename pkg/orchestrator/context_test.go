@@ -1546,6 +1546,174 @@ func TestBuildProjectContext_ExcludeTests_False(t *testing.T) {
 	}
 }
 
+// --- source summarization (GH-617) ---
+
+// TestSummarizeGoHeaders_ExportsOnly verifies that unexported functions are
+// removed, exported function bodies are stripped, and the import block and
+// exported types are kept (prd003 R12.3).
+func TestSummarizeGoHeaders_ExportsOnly(t *testing.T) {
+	t.Parallel()
+	src := `package myapp
+
+import "fmt"
+
+// Exported does something.
+func Exported() string {
+	fmt.Println("hello")
+	return "exported-value"
+}
+
+func unexported() {
+	_ = 1
+}
+
+// MyType is exported.
+type MyType struct {
+	Field int
+}
+
+type privateType struct{}
+`
+	got := summarizeGoHeaders(src)
+
+	// Exported func signature must be present.
+	if !strings.Contains(got, "func Exported() string") {
+		t.Errorf("expected exported func signature, got:\n%s", got)
+	}
+	// Function body must be stripped.
+	if strings.Contains(got, "fmt.Println") {
+		t.Errorf("function body should be stripped, got:\n%s", got)
+	}
+	if strings.Contains(got, "exported-value") {
+		t.Errorf("return statement should be stripped, got:\n%s", got)
+	}
+	// Unexported func must be removed.
+	if strings.Contains(got, "unexported") {
+		t.Errorf("unexported func should be removed, got:\n%s", got)
+	}
+	// Exported type must be present.
+	if !strings.Contains(got, "MyType") {
+		t.Errorf("exported type MyType should be kept, got:\n%s", got)
+	}
+	// Unexported type must be removed.
+	if strings.Contains(got, "privateType") {
+		t.Errorf("unexported type should be removed, got:\n%s", got)
+	}
+	// Import block must be kept.
+	if !strings.Contains(got, `"fmt"`) {
+		t.Errorf("import block should be kept, got:\n%s", got)
+	}
+}
+
+// TestSummarizeGoHeaders_InvalidInput verifies that invalid Go content is
+// returned unchanged (fallback, prd003 R12.3).
+func TestSummarizeGoHeaders_InvalidInput(t *testing.T) {
+	t.Parallel()
+	src := "this is not valid Go source!!!"
+	got := summarizeGoHeaders(src)
+	if got != src {
+		t.Errorf("invalid Go input should be returned unchanged, got:\n%s", got)
+	}
+}
+
+// TestSummarizeCustom_Output verifies that the command output replaces the
+// file content (prd003 R12.4).
+func TestSummarizeCustom_Output(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "sample.go")
+	os.WriteFile(filePath, []byte("package foo\n"), 0o644)
+
+	// "echo hello" appended with filePath → output contains "hello".
+	out := summarizeCustom("echo hello", filePath, "original content")
+	if !strings.Contains(out, "hello") {
+		t.Errorf("expected command output, got: %q", out)
+	}
+}
+
+// TestSummarizeCustom_FallbackOnFailure verifies that a failing command
+// causes fallback to full content (prd003 R12.4).
+func TestSummarizeCustom_FallbackOnFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "sample.go")
+	os.WriteFile(filePath, []byte("package foo\n"), 0o644)
+
+	fullContent := "original full content"
+	got := summarizeCustom("false", filePath, fullContent)
+	if got != fullContent {
+		t.Errorf("failing command should fall back to full content, got: %q", got)
+	}
+}
+
+// TestSummarizeCustom_EmptyCommand verifies that an empty command returns
+// full content unchanged.
+func TestSummarizeCustom_EmptyCommand(t *testing.T) {
+	t.Parallel()
+	full := "original content"
+	got := summarizeCustom("", "any/path.go", full)
+	if got != full {
+		t.Errorf("empty command should return full content, got: %q", got)
+	}
+}
+
+// TestBuildProjectContext_SourceMode_Headers verifies that headers mode
+// strips function bodies via buildProjectContext (GH-617, prd003 R12).
+func TestBuildProjectContext_SourceMode_Headers(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	src := "package app\n\n// Exported returns a value.\nfunc Exported() string {\n\treturn \"body-content\"\n}\n\nfunc internal() { _ = 1 }\n"
+	os.WriteFile("pkg/app/main.go", []byte(src), 0o644)
+
+	project := ProjectConfig{GoSourceDirs: []string{"pkg/"}}
+	phaseCtx := &PhaseContext{SourceMode: "headers"}
+
+	ctx, err := buildProjectContext("", project, phaseCtx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ctx.SourceCode) == 0 {
+		t.Fatal("expected non-empty SourceCode")
+	}
+	lines := ctx.SourceCode[0].Lines
+	// Function body keyword must be absent.
+	if strings.Contains(lines, "body-content") {
+		t.Errorf("headers mode should strip function body, but 'body-content' found in Lines")
+	}
+	// Exported func name must be present.
+	if !strings.Contains(lines, "Exported") {
+		t.Errorf("headers mode should keep exported func name, got:\n%s", lines)
+	}
+}
+
+// TestBuildProjectContext_SourceMode_Full verifies that full mode passes
+// content through unchanged (prd003 R12.7).
+func TestBuildProjectContext_SourceMode_Full(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	project := ProjectConfig{GoSourceDirs: []string{"pkg/"}}
+
+	ctxFull, err := buildProjectContext("", project, &PhaseContext{SourceMode: "full"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctxNil, err := buildProjectContext("", project, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ctxFull.SourceCode) != len(ctxNil.SourceCode) {
+		t.Errorf("full mode should match nil phaseCtx: %d vs %d files",
+			len(ctxFull.SourceCode), len(ctxNil.SourceCode))
+	}
+	for i := range ctxFull.SourceCode {
+		if ctxFull.SourceCode[i].Lines != ctxNil.SourceCode[i].Lines {
+			t.Errorf("full mode Lines differ from nil mode for %s", ctxFull.SourceCode[i].File)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // parseTouchpointPackages tests (GH-534)
 // ---------------------------------------------------------------------------

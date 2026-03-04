@@ -4,10 +4,16 @@
 package orchestrator
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/printer"
+	"go/token"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -38,6 +44,14 @@ type PhaseContext struct {
 	// in the prompt context. Measure prompt only — stitch needs test files
 	// to write compatible tests (GH-616).
 	ExcludeTests bool `yaml:"exclude_tests"`
+	// SourceMode overrides CobblerConfig.MeasureSourceMode for this
+	// invocation. Valid values: "full", "headers", "custom". Empty means
+	// use the config value. Measure prompt only — stitch ignores this
+	// field and always uses full source (GH-617, prd003 R12.6).
+	SourceMode string `yaml:"source_mode"`
+	// SummarizeCommand overrides CobblerConfig.MeasureSummarizeCommand
+	// for this invocation. Used when SourceMode is "custom" (GH-617).
+	SummarizeCommand string `yaml:"summarize_command"`
 }
 
 // loadPhaseContext reads a phase context YAML file. Returns (nil, nil)
@@ -910,6 +924,86 @@ func numberLines(content string) string {
 	return strings.Join(result, "\n")
 }
 
+// ---------------------------------------------------------------------------
+// Source summarization (GH-617, prd003 R12)
+// ---------------------------------------------------------------------------
+
+// summarizeGoHeaders parses a Go source file and returns a headers-only
+// version: package declaration, import block, and exported type/func/const/var
+// declarations with doc comments but without function bodies (prd003 R12.3).
+// Returns full content unchanged if parsing fails.
+func summarizeGoHeaders(content string) string {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", content, parser.ParseComments)
+	if err != nil {
+		return content
+	}
+
+	var kept []ast.Decl
+	for _, decl := range f.Decls {
+		switch d := decl.(type) {
+		case *ast.FuncDecl:
+			if !d.Name.IsExported() {
+				continue
+			}
+			// Nil the body — go/printer omits it from the output.
+			d.Body = nil
+			kept = append(kept, d)
+		case *ast.GenDecl:
+			if d.Tok == token.IMPORT {
+				// Always keep the import block; exported types reference it.
+				kept = append(kept, d)
+				continue
+			}
+			var exportedSpecs []ast.Spec
+			for _, spec := range d.Specs {
+				switch s := spec.(type) {
+				case *ast.TypeSpec:
+					if s.Name.IsExported() {
+						exportedSpecs = append(exportedSpecs, s)
+					}
+				case *ast.ValueSpec:
+					// Keep the entire ValueSpec when at least one name is exported.
+					for _, name := range s.Names {
+						if name.IsExported() {
+							exportedSpecs = append(exportedSpecs, s)
+							break
+						}
+					}
+				}
+			}
+			if len(exportedSpecs) > 0 {
+				d.Specs = exportedSpecs
+				kept = append(kept, d)
+			}
+		}
+	}
+	f.Decls = kept
+
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, fset, f); err != nil {
+		return content
+	}
+	return buf.String()
+}
+
+// summarizeCustom runs command with filePath appended as the last argument
+// and returns stdout as the summarized content (prd003 R12.4). Falls back to
+// fullContent when the command exits non-zero or produces empty output.
+func summarizeCustom(command, filePath, fullContent string) string {
+	if command == "" {
+		return fullContent
+	}
+	parts := strings.Fields(command)
+	parts = append(parts, filePath)
+	out, err := exec.Command(parts[0], parts[1:]...).Output() //nolint:gosec
+	if err != nil || len(strings.TrimSpace(string(out))) == 0 {
+		logf("summarizeCustom: command %q failed for %s (%v), using full content", command, filePath, err)
+		return fullContent
+	}
+	return string(out)
+}
+
 // loadSourceFiles walks the given directories and reads all .go files,
 // returning them sorted by path for deterministic prompt output.
 func loadSourceFiles(dirs []string) []SourceFile {
@@ -1557,6 +1651,39 @@ func buildProjectContext(existingIssuesJSON string, project ProjectConfig, phase
 			logf("buildProjectContext: excluded %d _test.go file(s) from source context",
 				len(ctx.SourceCode)-len(filtered))
 			ctx.SourceCode = filtered
+		}
+
+		// Apply source summarization mode (GH-617, prd003 R12). Re-read raw
+		// file content from disk to feed the summarizer; re-apply numberLines
+		// so the SourceFile.Lines format is consistent. Stitch never sets
+		// SourceMode so this block only runs for measure prompts.
+		if phaseCtx != nil && phaseCtx.SourceMode != "" && phaseCtx.SourceMode != "full" {
+			var summarized []SourceFile
+			for _, sf := range ctx.SourceCode {
+				raw, readErr := os.ReadFile(sf.File)
+				if readErr != nil {
+					logf("buildProjectContext: cannot re-read %s for summarization: %v, using full", sf.File, readErr)
+					summarized = append(summarized, sf)
+					continue
+				}
+				var content string
+				switch phaseCtx.SourceMode {
+				case "headers":
+					content = summarizeGoHeaders(string(raw))
+				case "custom":
+					content = summarizeCustom(phaseCtx.SummarizeCommand, sf.File, string(raw))
+				default:
+					logf("buildProjectContext: unknown source_mode %q for %s, using full", phaseCtx.SourceMode, sf.File)
+					summarized = append(summarized, sf)
+					continue
+				}
+				summarized = append(summarized, SourceFile{
+					File:  sf.File,
+					Lines: numberLines(content),
+				})
+			}
+			logf("buildProjectContext: applied source_mode=%q to %d file(s)", phaseCtx.SourceMode, len(summarized))
+			ctx.SourceCode = summarized
 		}
 	}
 
