@@ -1488,3 +1488,219 @@ func TestBuildProjectContext_SourcePatternsEmpty(t *testing.T) {
 		t.Errorf("expected >=2 source files with empty SourcePatterns, got %d", len(ctx.SourceCode))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// parseTouchpointPackages tests (GH-534)
+// ---------------------------------------------------------------------------
+
+func TestParseTouchpointPackages_EmDash(t *testing.T) {
+	t.Parallel()
+	touchpoints := []map[string]string{
+		{"T1": "cmd/du \u2014 prd009-du R1, R2, R3"},
+		{"T2": "pkg/sys \u2014 prd003-sys"},
+	}
+	got := parseTouchpointPackages(touchpoints)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 packages, got %v", got)
+	}
+	if got[0] != "cmd/du" || got[1] != "pkg/sys" {
+		t.Errorf("unexpected packages: %v", got)
+	}
+}
+
+func TestParseTouchpointPackages_EnDash(t *testing.T) {
+	t.Parallel()
+	touchpoints := []map[string]string{
+		{"T1": "pkg/format \u2013 prd007-format R1"},
+	}
+	got := parseTouchpointPackages(touchpoints)
+	if len(got) != 1 || got[0] != "pkg/format" {
+		t.Errorf("expected [pkg/format], got %v", got)
+	}
+}
+
+func TestParseTouchpointPackages_MultiplePathsCommaSeparated(t *testing.T) {
+	t.Parallel()
+	touchpoints := []map[string]string{
+		{"T1": "cmd/cp, cmd/mv \u2014 prd001-cp R1"},
+	}
+	got := parseTouchpointPackages(touchpoints)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 packages, got %v", got)
+	}
+	if got[0] != "cmd/cp" || got[1] != "cmd/mv" {
+		t.Errorf("unexpected packages: %v", got)
+	}
+}
+
+func TestParseTouchpointPackages_NoDash_Ignored(t *testing.T) {
+	t.Parallel()
+	// Cobbler-style touchpoints without em/en-dash should yield no packages.
+	touchpoints := []map[string]string{
+		{"T1": "Config (workflow fields): prd001-orchestrator-core R1"},
+		{"T2": "Prompt templates: prd003-cobbler-workflows R5"},
+	}
+	got := parseTouchpointPackages(touchpoints)
+	if len(got) != 0 {
+		t.Errorf("expected no packages for colon-separated touchpoints, got %v", got)
+	}
+}
+
+func TestParseTouchpointPackages_TrailingSlashNormalized(t *testing.T) {
+	t.Parallel()
+	touchpoints := []map[string]string{
+		{"T1": "pkg/util/ \u2014 prd002-util R1"},
+	}
+	got := parseTouchpointPackages(touchpoints)
+	if len(got) != 1 || got[0] != "pkg/util" {
+		t.Errorf("expected [pkg/util] (trailing slash stripped), got %v", got)
+	}
+}
+
+func TestParseTouchpointPackages_Empty(t *testing.T) {
+	t.Parallel()
+	if got := parseTouchpointPackages(nil); got != nil {
+		t.Errorf("expected nil for nil input, got %v", got)
+	}
+	if got := parseTouchpointPackages([]map[string]string{}); got != nil {
+		t.Errorf("expected nil for empty input, got %v", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// selectNextPendingUseCase tests (GH-534)
+// ---------------------------------------------------------------------------
+
+func TestSelectNextPendingUseCase_AllDone(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	roadmap := `id: rm1
+title: Roadmap
+releases:
+  - version: "01.0"
+    name: Release 1
+    status: done
+    use_cases:
+      - id: rel01.0-uc001-init
+        status: done
+`
+	if err := os.WriteFile("docs/road-map.yaml", []byte(roadmap), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	uc, err := selectNextPendingUseCase(ProjectConfig{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if uc != nil {
+		t.Errorf("expected nil for all-done road-map, got %+v", uc)
+	}
+}
+
+func TestSelectNextPendingUseCase_PendingFound(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	roadmap := `id: rm1
+title: Roadmap
+releases:
+  - version: "01.0"
+    name: Release 1
+    status: in_progress
+    use_cases:
+      - id: rel01.0-uc001-init
+        status: done
+      - id: rel01.0-uc002-workflow
+        status: in_progress
+`
+	ucContent := `id: rel01.0-uc002-workflow
+title: Workflow
+touchpoints:
+  - T1: "pkg/workflow \u2014 prd003-wf R1"
+`
+	if err := os.WriteFile("docs/road-map.yaml", []byte(roadmap), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("docs/specs/use-cases/rel01.0-uc002-workflow.yaml", []byte(ucContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	uc, err := selectNextPendingUseCase(ProjectConfig{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if uc == nil {
+		t.Fatal("expected non-nil use case")
+	}
+	if uc.ID != "rel01.0-uc002-workflow" {
+		t.Errorf("expected uc002-workflow, got %s", uc.ID)
+	}
+}
+
+func TestSelectNextPendingUseCase_ReleaseFilter(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	roadmap := `id: rm1
+title: Roadmap
+releases:
+  - version: "01.0"
+    name: Release 1
+    status: done
+    use_cases:
+      - id: rel01.0-uc001-init
+        status: done
+  - version: "02.0"
+    name: Release 2
+    status: in_progress
+    use_cases:
+      - id: rel02.0-uc001-ext
+        status: not started
+`
+	ucContent := `id: rel02.0-uc001-ext
+title: Extension
+touchpoints:
+  - T1: "pkg/ext \u2014 prd004-ext R1"
+`
+	if err := os.WriteFile("docs/road-map.yaml", []byte(roadmap), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("docs/specs/use-cases/rel02.0-uc001-ext.yaml", []byte(ucContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Without release filter, uc002 is the next pending (in release 02.0).
+	uc, err := selectNextPendingUseCase(ProjectConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if uc == nil || uc.ID != "rel02.0-uc001-ext" {
+		t.Errorf("expected rel02.0-uc001-ext without filter, got %v", uc)
+	}
+
+	// With release filter ["01.0"], release 02.0 is excluded → no pending UC.
+	uc2, err2 := selectNextPendingUseCase(ProjectConfig{Releases: []string{"01.0"}})
+	if err2 != nil {
+		t.Fatal(err2)
+	}
+	if uc2 != nil {
+		t.Errorf("expected nil with release filter [01.0], got %+v", uc2)
+	}
+}
+
+func TestSelectNextPendingUseCase_MissingRoadmap(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	// Remove the road-map written by setupContextTestDir.
+	os.Remove("docs/road-map.yaml")
+
+	uc, err := selectNextPendingUseCase(ProjectConfig{})
+	if err != nil {
+		t.Fatalf("expected nil error for missing road-map, got %v", err)
+	}
+	if uc != nil {
+		t.Errorf("expected nil for missing road-map, got %+v", uc)
+	}
+}

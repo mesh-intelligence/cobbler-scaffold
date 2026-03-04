@@ -360,6 +360,29 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 		logf("buildMeasurePrompt: measure_source_patterns set from config")
 	}
 
+	// Auto-derive SourcePatterns from the road-map when MeasureRoadmapSource
+	// is enabled and no manual patterns are already set (GH-534).
+	if o.cfg.Cobbler.MeasureRoadmapSource && !phaseCtx.ExcludeSource && phaseCtx.SourcePatterns == "" {
+		uc, err := selectNextPendingUseCase(o.cfg.Project)
+		if err != nil {
+			logf("buildMeasurePrompt: road-map source selection error: %v", err)
+		} else if uc != nil {
+			pkgPaths := parseTouchpointPackages(uc.Touchpoints)
+			if len(pkgPaths) > 0 {
+				var patterns []string
+				for _, p := range pkgPaths {
+					patterns = append(patterns, p+"/**/*.go")
+				}
+				phaseCtx.SourcePatterns = strings.Join(patterns, "\n")
+				logf("buildMeasurePrompt: road-map source: UC=%s packages=%v", uc.ID, pkgPaths)
+			} else {
+				logf("buildMeasurePrompt: road-map source: UC=%s has no package touchpoints, loading all source", uc.ID)
+			}
+		} else {
+			logf("buildMeasurePrompt: road-map source: all use cases done, loading all source")
+		}
+	}
+
 	projectCtx, ctxErr := buildProjectContext(existingIssues, o.cfg.Project, phaseCtx)
 	if ctxErr != nil {
 		logf("buildMeasurePrompt: buildProjectContext error: %v", ctxErr)

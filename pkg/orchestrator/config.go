@@ -246,6 +246,17 @@ type CobblerConfig struct {
 	// MeasureExcludeSource is true. When empty, all GoSourceDirs files
 	// are included.
 	MeasureSourcePatterns string `yaml:"measure_source_patterns"`
+
+	// MeasureRoadmapSource enables automatic source filtering based on the
+	// next pending use case in docs/road-map.yaml. When true, the orchestrator
+	// reads road-map.yaml, identifies the first use case whose status is not
+	// "done", parses its touchpoints to extract package directory paths, and
+	// restricts the measure prompt to source files under those directories.
+	// This bounds prompt size by the PRD's dependency graph rather than the
+	// full codebase. Ignored when MeasureExcludeSource is true or when
+	// MeasureSourcePatterns is already set (manual patterns take priority).
+	// Default false; existing behaviour is preserved when false.
+	MeasureRoadmapSource bool `yaml:"measure_roadmap_source"`
 }
 
 // PodmanConfig holds settings for the podman container runtime.

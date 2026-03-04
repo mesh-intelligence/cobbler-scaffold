@@ -1223,6 +1223,96 @@ func prdIDsFromUseCases(useCases []*UseCaseDoc) map[string]bool {
 	return ids
 }
 
+// ---------------------------------------------------------------------------
+// Road-map-driven source selection (GH-534)
+// ---------------------------------------------------------------------------
+
+// selectNextPendingUseCase reads docs/road-map.yaml and returns the first
+// use case whose status is not "done". When a release filter is configured
+// in cfg (via Releases or Release), only releases in scope are considered.
+// Returns (nil, nil) when all use cases are done or the road-map is absent.
+func selectNextPendingUseCase(cfg ProjectConfig) (*UseCaseDoc, error) {
+	rm := loadYAML[RoadmapDoc]("docs/road-map.yaml")
+	if rm == nil {
+		logf("selectNextPendingUseCase: docs/road-map.yaml not found or empty")
+		return nil, nil
+	}
+
+	rf := newReleaseFilter(cfg.Releases, cfg.Release)
+	for i := range rm.Releases {
+		rel := &rm.Releases[i]
+		// Skip releases outside the configured scope.
+		if rf.active() {
+			if rf.ReleaseSet != nil && !rf.ReleaseSet[rel.Version] {
+				continue
+			}
+			if rf.ReleaseSet == nil && rel.Version > rf.MaxRelease {
+				continue
+			}
+		}
+		for _, uc := range rel.UseCases {
+			if strings.EqualFold(uc.Status, "done") {
+				continue
+			}
+			path := filepath.Join("docs", "specs", "use-cases", uc.ID+".yaml")
+			doc := loadYAML[UseCaseDoc](path)
+			if doc == nil {
+				logf("selectNextPendingUseCase: use case file not found: %s", path)
+				return nil, nil
+			}
+			doc.File = path
+			logf("selectNextPendingUseCase: next pending UC=%s status=%s", uc.ID, uc.Status)
+			return doc, nil
+		}
+	}
+	logf("selectNextPendingUseCase: all use cases done")
+	return nil, nil
+}
+
+// parseTouchpointPackages extracts Go package directory paths from a use
+// case's touchpoints. Each touchpoint value is expected to use the format:
+//
+//	"<pkg-path> — <prd-id> R1, R2"   (em-dash U+2014 or en-dash U+2013)
+//
+// where <pkg-path> may be a single directory or a comma-separated list.
+// Only segments that contain a "/" are treated as paths; others are ignored.
+// The returned list is deduplicated and sorted.
+func parseTouchpointPackages(touchpoints []map[string]string) []string {
+	seen := make(map[string]bool)
+	for _, m := range touchpoints {
+		for _, val := range m {
+			// Split on em-dash (U+2014) or en-dash (U+2013), with any surrounding
+			// whitespace. Take the left-hand side as the potential package path(s).
+			var left string
+			if idx := strings.Index(val, "\u2014"); idx >= 0 {
+				left = strings.TrimSpace(val[:idx])
+			} else if idx := strings.Index(val, "\u2013"); idx >= 0 {
+				left = strings.TrimSpace(val[:idx])
+			} else {
+				continue
+			}
+			// left may be comma-separated (e.g., "cmd/cp, cmd/mv").
+			for _, part := range strings.Split(left, ",") {
+				part = strings.TrimSpace(part)
+				// Only accept path-like segments (must contain "/").
+				if part == "" || !strings.Contains(part, "/") {
+					continue
+				}
+				seen[strings.TrimSuffix(part, "/")] = true
+			}
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(seen))
+	for p := range seen {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // loadContextFileInto loads a single file into the appropriate field
 // of ctx based on its classified category. Applies release filtering
 // for use_case and test_suite categories. Does not handle constitution
