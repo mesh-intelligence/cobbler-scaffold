@@ -188,6 +188,7 @@ func (o *Orchestrator) RunMeasure() error {
 		var createdIDs []string
 		var lastOutputFile string
 		var lastValidationErrors []string // errors from previous attempt, fed back into retry prompt
+		placeholderUpgraded := false     // set when importIssues upgraded the placeholder in-place
 
 		// Attempt loop: try Claude + import, retrying on validation failure.
 		for attempt := 0; attempt <= maxRetries; attempt++ {
@@ -274,7 +275,7 @@ func (o *Orchestrator) RunMeasure() error {
 
 			var importErr error
 			var validationErrs []string
-			createdIDs, validationErrs, importErr = o.importIssues(outputFile, repo, generation)
+			createdIDs, validationErrs, importErr = o.importIssues(outputFile, repo, generation, placeholderNum)
 			if importErr != nil {
 				logf("iteration %d import failed: %v", i+1, importErr)
 				if attempt < maxRetries {
@@ -285,7 +286,7 @@ func (o *Orchestrator) RunMeasure() error {
 				// Retries exhausted: accept with warning (R5).
 				logf("iteration %d retries exhausted, accepting last result with warnings", i+1)
 				var forceErr error
-				createdIDs, forceErr = o.importIssuesForce(outputFile, repo, generation)
+				createdIDs, forceErr = o.importIssuesForce(outputFile, repo, generation, placeholderNum)
 				if forceErr != nil {
 					logf("iteration %d force import failed: %v", i+1, forceErr)
 				}
@@ -295,8 +296,18 @@ func (o *Orchestrator) RunMeasure() error {
 
 		logf("iteration %d imported %d issue(s)", i+1, len(createdIDs))
 
-		// Close the placeholder now that the iteration is complete (GH-568).
-		if placeholderNum > 0 {
+		// Track whether the placeholder was upgraded in-place (GH-578).
+		phStr := fmt.Sprintf("%d", placeholderNum)
+		for _, id := range createdIDs {
+			if id == phStr {
+				placeholderUpgraded = true
+				break
+			}
+		}
+
+		// Close the placeholder only when it was not upgraded in-place (GH-578).
+		// An upgraded placeholder became the task issue; closing it destroys the task.
+		if placeholderNum > 0 && !placeholderUpgraded {
 			closeMeasuringPlaceholder(repo, placeholderNum)
 		}
 
@@ -452,19 +463,22 @@ type proposedIssue struct {
 
 // importIssues imports proposed issues from a YAML file into GitHub. It returns
 // the created issue IDs, any validation error strings (for retry feedback), and
-// a non-nil error when validation fails in enforcing mode.
-func (o *Orchestrator) importIssues(yamlFile, repo, generation string) ([]string, []string, error) {
-	return o.importIssuesImpl(yamlFile, repo, generation, false)
+// a non-nil error when validation fails in enforcing mode. ph is the measuring
+// placeholder issue number; when ph > 0 and exactly one issue is proposed, the
+// placeholder is upgraded in-place instead of creating a new issue (GH-578).
+func (o *Orchestrator) importIssues(yamlFile, repo, generation string, ph int) ([]string, []string, error) {
+	return o.importIssuesImpl(yamlFile, repo, generation, false, ph)
 }
 
 // importIssuesForce imports issues bypassing enforcing validation. Used when
-// retries are exhausted to accept the last result with warnings (R5).
-func (o *Orchestrator) importIssuesForce(yamlFile, repo, generation string) ([]string, error) {
-	ids, _, err := o.importIssuesImpl(yamlFile, repo, generation, true)
+// retries are exhausted to accept the last result with warnings (R5). ph is
+// the placeholder number passed through to importIssuesImpl (GH-578).
+func (o *Orchestrator) importIssuesForce(yamlFile, repo, generation string, ph int) ([]string, error) {
+	ids, _, err := o.importIssuesImpl(yamlFile, repo, generation, true, ph)
 	return ids, err
 }
 
-func (o *Orchestrator) importIssuesImpl(yamlFile, repo, generation string, skipEnforcement bool) ([]string, []string, error) {
+func (o *Orchestrator) importIssuesImpl(yamlFile, repo, generation string, skipEnforcement bool, ph int) ([]string, []string, error) {
 	logf("importIssues: reading %s", yamlFile)
 	data, err := os.ReadFile(yamlFile)
 	if err != nil {
@@ -495,17 +509,29 @@ func (o *Orchestrator) importIssuesImpl(yamlFile, repo, generation string, skipE
 			len(vr.Errors), strings.Join(vr.Errors, "; "))
 	}
 
-	// Create all issues on GitHub. Dependencies are encoded in the front-matter;
-	// promoteReadyIssues (called by pickReadyIssue) resolves the DAG at pick time.
+	// Create all issues on GitHub. When a placeholder number is given and exactly
+	// one issue is proposed, upgrade the placeholder in-place instead of creating
+	// a new issue, eliminating the two-issue dance (GH-578).
 	var ids []string
-	for _, issue := range issues {
-		logf("importIssues: creating task %d: %s (dep=%d)", issue.Index, issue.Title, issue.Dependency)
-		ghNum, err := createCobblerIssue(repo, generation, issue)
-		if err != nil {
-			logf("importIssues: createCobblerIssue failed for %q: %v", issue.Title, err)
-			continue
+	upgraded := false
+	if ph > 0 && len(issues) == 1 {
+		if err := upgradeMeasuringPlaceholder(repo, ph, generation, issues[0]); err != nil {
+			logf("importIssues: upgradeMeasuringPlaceholder #%d failed, falling back to createCobblerIssue: %v", ph, err)
+		} else {
+			ids = append(ids, fmt.Sprintf("%d", ph))
+			upgraded = true
 		}
-		ids = append(ids, fmt.Sprintf("%d", ghNum))
+	}
+	if !upgraded {
+		for _, issue := range issues {
+			logf("importIssues: creating task %d: %s (dep=%d)", issue.Index, issue.Title, issue.Dependency)
+			ghNum, err := createCobblerIssue(repo, generation, issue)
+			if err != nil {
+				logf("importIssues: createCobblerIssue failed for %q: %v", issue.Title, err)
+				continue
+			}
+			ids = append(ids, fmt.Sprintf("%d", ghNum))
+		}
 	}
 
 	if len(ids) > 0 {

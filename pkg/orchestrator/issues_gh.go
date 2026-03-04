@@ -228,6 +228,41 @@ func closeMeasuringPlaceholder(repo string, number int) {
 	logf("closeMeasuringPlaceholder: closed #%d", number)
 }
 
+// upgradeMeasuringPlaceholder converts the transient measuring placeholder
+// into the task issue in-place. It edits the placeholder's title and body
+// to match the proposed issue, adds the cobbler-gen label so stitch can
+// pick it up, and links it as a sub-issue of the parent generation issue
+// if the generation name encodes one (GH-578).
+func upgradeMeasuringPlaceholder(repo string, number int, generation string, issue proposedIssue) error {
+	body := formatIssueFrontMatter(generation, issue.Index, issue.Dependency) + issue.Description
+
+	// Edit title and body in one command.
+	if err := exec.Command(binGh, "issue", "edit",
+		"--repo", repo,
+		fmt.Sprintf("%d", number),
+		"--title", issue.Title,
+		"--body", body,
+	).Run(); err != nil {
+		return fmt.Errorf("gh issue edit placeholder #%d: %w", number, err)
+	}
+
+	// Add cobbler-gen label so stitch can pick it up.
+	if err := addIssueLabel(repo, number, cobblerGenLabel(generation)); err != nil {
+		return fmt.Errorf("adding gen label to #%d: %w", number, err)
+	}
+
+	logf("upgradeMeasuringPlaceholder: upgraded #%d %q gen=%s index=%d dep=%d",
+		number, issue.Title, generation, issue.Index, issue.Dependency)
+
+	// Link as sub-issue of the parent if the generation name encodes one.
+	if parentNumber := extractParentIssueNumber(generation); parentNumber > 0 {
+		if err := linkSubIssue(repo, parentNumber, number); err != nil {
+			logf("upgradeMeasuringPlaceholder: linkSubIssue warning for #%d -> parent #%d: %v", number, parentNumber, err)
+		}
+	}
+	return nil
+}
+
 // createCobblerIssue creates a GitHub issue on repo for the given generation
 // and proposedIssue. Returns the GitHub issue number.
 //
