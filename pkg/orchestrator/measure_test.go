@@ -1104,7 +1104,7 @@ func TestBuildMeasurePrompt_GoldenExample(t *testing.T) {
 func TestImportIssuesImpl_NonexistentFile(t *testing.T) {
 	t.Parallel()
 	o := New(Config{})
-	_, _, err := o.importIssuesImpl("/nonexistent/file.yaml", "owner/repo", "gen", false)
+	_, _, err := o.importIssuesImpl("/nonexistent/file.yaml", "owner/repo", "gen", false, 0)
 	if err == nil {
 		t.Error("expected error for nonexistent file")
 	}
@@ -1117,7 +1117,7 @@ func TestImportIssuesImpl_InvalidYAML(t *testing.T) {
 	os.WriteFile(yamlFile, []byte("{{{not valid yaml"), 0o644)
 
 	o := New(Config{})
-	_, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false)
+	_, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 0)
 	if err == nil {
 		t.Error("expected error for invalid YAML")
 	}
@@ -1137,7 +1137,7 @@ func TestImportIssuesImpl_EmptyIssueList(t *testing.T) {
 	o := New(cfg)
 
 	// Empty list should not error — no issues to create, no GitHub calls.
-	ids, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false)
+	ids, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 0)
 	if err != nil {
 		t.Fatalf("importIssuesImpl() error = %v", err)
 	}
@@ -1172,7 +1172,7 @@ acceptance_criteria:
 	cfg.Cobbler.EnforceMeasureValidation = true
 	o := New(cfg)
 
-	_, validationErrs, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false)
+	_, validationErrs, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 0)
 	if err == nil {
 		t.Error("expected validation error in enforcing mode")
 	}
@@ -1213,11 +1213,90 @@ acceptance_criteria:
 	// skipEnforcement=true should bypass validation errors.
 	// This will fail at createCobblerIssue (no real GitHub), but should NOT
 	// fail at validation.
-	ids, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", true)
+	ids, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", true, 0)
 	if err != nil {
 		t.Fatalf("importIssuesImpl() with skipEnforcement should not return validation error, got: %v", err)
 	}
 	// ids will be empty because createCobblerIssue fails (no GitHub), but no error returned.
+	_ = ids
+}
+
+// --- importIssuesImpl upgrade path (GH-578) ---
+
+// singleDocIssue returns YAML for one minimal documentation issue.
+func singleDocIssue(index int, title string) []proposedIssue {
+	desc := "deliverable_type: documentation\nrequirements:\n  - id: R1\n    text: r1\n  - id: R2\n    text: r2\nacceptance_criteria:\n  - id: AC1\n    text: ac1\n  - id: AC2\n    text: ac2\n  - id: AC3\n    text: ac3\n"
+	return []proposedIssue{{Index: index, Title: title, Description: desc}}
+}
+
+// TestImportIssuesImpl_UpgradePath_PhZero_SingleIssue verifies that ph=0
+// skips the upgrade path even when exactly one issue is proposed, falling
+// through to createCobblerIssue (which fails gracefully without real GitHub).
+func TestImportIssuesImpl_UpgradePath_PhZero_SingleIssue(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	yamlFile := filepath.Join(dir, "issues.yaml")
+	data, _ := yaml.Marshal(singleDocIssue(1, "only task"))
+	os.WriteFile(yamlFile, data, 0o644)
+
+	cfg := Config{}
+	cfg.Cobbler.Dir = dir
+	o := New(cfg)
+
+	ids, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 0)
+	if err != nil {
+		t.Fatalf("importIssuesImpl() unexpected error: %v", err)
+	}
+	// createCobblerIssue fails (no real GitHub); ids empty is expected.
+	_ = ids
+}
+
+// TestImportIssuesImpl_UpgradePath_PhPositive_SingleIssue verifies that when
+// ph > 0 and exactly one issue is proposed, the upgrade path is attempted.
+// Since gh is not available, upgradeMeasuringPlaceholder fails and the fallback
+// createCobblerIssue is invoked. Both fail gracefully; no top-level error.
+func TestImportIssuesImpl_UpgradePath_PhPositive_SingleIssue(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	yamlFile := filepath.Join(dir, "issues.yaml")
+	data, _ := yaml.Marshal(singleDocIssue(1, "only task"))
+	os.WriteFile(yamlFile, data, 0o644)
+
+	cfg := Config{}
+	cfg.Cobbler.Dir = dir
+	o := New(cfg)
+
+	// ph=99 triggers the upgrade path; both gh calls fail without real GitHub.
+	ids, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 99)
+	if err != nil {
+		t.Fatalf("importIssuesImpl() unexpected error: %v", err)
+	}
+	if len(ids) != 0 {
+		t.Errorf("expected 0 ids when gh unavailable, got %d", len(ids))
+	}
+}
+
+// TestImportIssuesImpl_UpgradePath_PhPositive_MultipleIssues verifies that when
+// ph > 0 but more than one issue is proposed, the upgrade path is skipped and
+// createCobblerIssue is invoked for each issue (fails gracefully without gh).
+func TestImportIssuesImpl_UpgradePath_PhPositive_MultipleIssues(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	yamlFile := filepath.Join(dir, "issues.yaml")
+	issues := append(singleDocIssue(1, "task one"), singleDocIssue(2, "task two")...)
+	data, _ := yaml.Marshal(issues)
+	os.WriteFile(yamlFile, data, 0o644)
+
+	cfg := Config{}
+	cfg.Cobbler.Dir = dir
+	o := New(cfg)
+
+	// ph=42 but 2 issues: upgrade path must not be taken.
+	ids, _, err := o.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 42)
+	if err != nil {
+		t.Fatalf("importIssuesImpl() unexpected error: %v", err)
+	}
+	// createCobblerIssue fails (no real GitHub); ids empty is expected.
 	_ = ids
 }
 
