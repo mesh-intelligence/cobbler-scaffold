@@ -446,35 +446,67 @@ func closeTestGenerationIssues(t testing.TB, dir string) {
 	if branch == "" {
 		return
 	}
+
+	seen := map[int]bool{}
+
+	// Close labelled cobbler issues (normal task issues created by measure/stitch).
 	label := "cobbler-gen-" + branch
-	out, err := exec.Command("gh", "issue", "list",
+	if out, err := exec.Command("gh", "issue", "list",
 		"--repo", repo,
 		"--label", label,
 		"--state", "open",
 		"--json", "number",
 		"--limit", "200",
-	).Output()
-	if err != nil {
-		t.Logf("closeTestGenerationIssues: list: %v", err)
-		return
-	}
-	var issues []struct {
-		Number int `json:"number"`
-	}
-	if err := json.Unmarshal(out, &issues); err != nil {
-		t.Logf("closeTestGenerationIssues: parse: %v", err)
-		return
-	}
-	for _, iss := range issues {
-		if err := exec.Command("gh", "issue", "close",
-			"--repo", repo,
-			fmt.Sprintf("%d", iss.Number),
-		).Run(); err != nil {
-			t.Logf("closeTestGenerationIssues: close #%d: %v", iss.Number, err)
+	).Output(); err != nil {
+		t.Logf("closeTestGenerationIssues: list labelled: %v", err)
+	} else {
+		var issues []struct{ Number int `json:"number"` }
+		if err := json.Unmarshal(out, &issues); err == nil {
+			for _, iss := range issues {
+				seen[iss.Number] = true
+			}
 		}
 	}
-	if len(issues) > 0 {
-		t.Logf("closeTestGenerationIssues: closed %d issue(s) for %s on %s", len(issues), repo, branch)
+
+	// Also close unlabelled [measuring] placeholders for this generation.
+	// These are created without cobbler labels (so stitch ignores them) and
+	// are missed by the label-based query above when Claude fails mid-run.
+	placeholderPrefix := fmt.Sprintf("[measuring] %s task", branch)
+	if out, err := exec.Command("gh", "issue", "list",
+		"--repo", repo,
+		"--state", "open",
+		"--search", placeholderPrefix+" in:title",
+		"--json", "number,title",
+		"--limit", "200",
+	).Output(); err != nil {
+		t.Logf("closeTestGenerationIssues: list placeholders: %v", err)
+	} else {
+		var issues []struct {
+			Number int    `json:"number"`
+			Title  string `json:"title"`
+		}
+		if err := json.Unmarshal(out, &issues); err == nil {
+			for _, iss := range issues {
+				if strings.HasPrefix(iss.Title, placeholderPrefix) {
+					seen[iss.Number] = true
+				}
+			}
+		}
+	}
+
+	closed := 0
+	for num := range seen {
+		if err := exec.Command("gh", "issue", "close",
+			"--repo", repo,
+			fmt.Sprintf("%d", num),
+		).Run(); err != nil {
+			t.Logf("closeTestGenerationIssues: close #%d: %v", num, err)
+		} else {
+			closed++
+		}
+	}
+	if closed > 0 {
+		t.Logf("closeTestGenerationIssues: closed %d issue(s) for %s on %s", closed, repo, branch)
 	}
 }
 
