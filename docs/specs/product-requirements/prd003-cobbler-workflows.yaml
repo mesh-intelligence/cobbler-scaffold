@@ -154,6 +154,17 @@ requirements:
       - R11.6: Defect filing is best-effort; errors from gh issue create are logged and must not block the measure cycle
       - R11.7: Defects must not be passed to Claude in the measure prompt; the Defects field in AnalysisDoc must be omitted from ConsistencyDetails so Claude does not see or act on them
 
+  R12:
+    title: Source Summarization Modes
+    items:
+      - R12.1: "CobblerConfig must include a MeasureSourceMode string field with three valid values: full (default, include source verbatim), headers (exported declarations only, no function bodies), and custom (run a configured command per file and use its stdout as the summarized content)."
+      - R12.2: "CobblerConfig must include a MeasureSummarizeCommand string field used when MeasureSourceMode is custom; the command receives the source file path as its last argument and must write the summary to stdout."
+      - R12.3: "headers mode must produce output containing the package declaration, the import block, and all exported type, function, constant, and variable declarations with their doc comments; function and method bodies must be omitted."
+      - R12.4: "custom mode must run MeasureSummarizeCommand with the source file path appended; on non-zero exit or empty stdout the orchestrator must fall back to full content for that file and log a warning."
+      - R12.5: "The stitch prompt must always use full source content regardless of MeasureSourceMode; summarization applies only during buildMeasurePrompt."
+      - R12.6: "PhaseContext must include SourceMode string and SummarizeCommand string fields so that per-invocation context files can override the config-level mode; when PhaseContext.SourceMode is non-empty it takes precedence over CobblerConfig.MeasureSourceMode."
+      - R12.7: "When MeasureSourceMode is empty or full, buildProjectContext must produce output identical to the current implementation; no existing tests may fail."
+
 non_goals:
   - This PRD does not define the generation lifecycle (see prd002)
   - This PRD does not define the prompt content or Claude behavior expectations
@@ -168,3 +179,4 @@ acceptance_criteria:
   - Measure and stitch each read their own context file at invocation time when present
   - Projects without context files use current behavior unchanged
   - Schema errors and constitution drift are filed as bug issues in the target repo and excluded from the measure prompt
+  - Source summarization mode is configurable per project; headers and custom modes reduce measure prompt size without affecting stitch
