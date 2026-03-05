@@ -1434,9 +1434,18 @@ func prdIDsFromUseCases(useCases []*UseCaseDoc) map[string]bool {
 // Road-map-driven source selection (GH-534)
 // ---------------------------------------------------------------------------
 
+// ucStatusDone reports whether a road-map use-case status value means the use
+// case is complete and should not be proposed for new work. Both "done" and
+// "implemented" are treated as complete: "implemented" means code already
+// exists; "done" means the full lifecycle (code + tests + review) is finished.
+func ucStatusDone(status string) bool {
+	return strings.EqualFold(status, "done") || strings.EqualFold(status, "implemented")
+}
+
 // selectNextPendingUseCase reads docs/road-map.yaml and returns the first
-// use case whose status is not "done". When a release filter is configured
-// in cfg (via Releases or Release), only releases in scope are considered.
+// use case whose status is neither "done" nor "implemented". When a release
+// filter is configured in cfg (via Releases or Release), only releases in
+// scope are considered.
 // Returns (nil, nil) when all use cases are done or the road-map is absent.
 func selectNextPendingUseCase(cfg ProjectConfig) (*UseCaseDoc, error) {
 	rm := loadYAML[RoadmapDoc]("docs/road-map.yaml")
@@ -1458,7 +1467,7 @@ func selectNextPendingUseCase(cfg ProjectConfig) (*UseCaseDoc, error) {
 			}
 		}
 		for _, uc := range rel.UseCases {
-			if strings.EqualFold(uc.Status, "done") {
+			if ucStatusDone(uc.Status) {
 				continue
 			}
 			path := filepath.Join("docs", "specs", "use-cases", uc.ID+".yaml")
