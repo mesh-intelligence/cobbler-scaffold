@@ -1914,6 +1914,105 @@ touchpoints:
 	}
 }
 
+// TestUCStatusDone verifies that both "done" and "implemented" are treated as
+// complete, and other values are not.
+func TestUCStatusDone(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		status string
+		want   bool
+	}{
+		{"done", true},
+		{"Done", true},
+		{"DONE", true},
+		{"implemented", true},
+		{"Implemented", true},
+		{"IMPLEMENTED", true},
+		{"spec_complete", false},
+		{"pending", false},
+		{"in_progress", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := ucStatusDone(tc.status); got != tc.want {
+			t.Errorf("ucStatusDone(%q) = %v, want %v", tc.status, got, tc.want)
+		}
+	}
+}
+
+// TestSelectNextPendingUseCase_ImplementedSkipped verifies that use cases with
+// status "implemented" are skipped, matching the "done" behaviour (GH-682).
+func TestSelectNextPendingUseCase_ImplementedSkipped(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	roadmap := `id: rm1
+title: Roadmap
+releases:
+  - version: "01.0"
+    name: Release 1
+    status: in_progress
+    use_cases:
+      - id: rel01.0-uc001-format
+        status: implemented
+      - id: rel01.0-uc002-next
+        status: spec_complete
+`
+	ucContent := `id: rel01.0-uc002-next
+title: Next
+touchpoints:
+  - T1: "pkg/next — prd002-next R1"
+`
+	if err := os.WriteFile("docs/road-map.yaml", []byte(roadmap), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("docs/specs/use-cases/rel01.0-uc002-next.yaml", []byte(ucContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	uc, err := selectNextPendingUseCase(ProjectConfig{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if uc == nil {
+		t.Fatal("expected non-nil use case after skipping implemented")
+	}
+	if uc.ID != "rel01.0-uc002-next" {
+		t.Errorf("expected uc002-next (implemented uc001 skipped), got %s", uc.ID)
+	}
+}
+
+// TestSelectNextPendingUseCase_AllImplemented verifies that a road-map where
+// all use cases are "implemented" is treated the same as all "done".
+func TestSelectNextPendingUseCase_AllImplemented(t *testing.T) {
+	_, cleanup := setupContextTestDir(t)
+	defer cleanup()
+
+	roadmap := `id: rm1
+title: Roadmap
+releases:
+  - version: "01.0"
+    name: Release 1
+    status: done
+    use_cases:
+      - id: rel01.0-uc001-format
+        status: implemented
+      - id: rel01.0-uc002-build
+        status: implemented
+`
+	if err := os.WriteFile("docs/road-map.yaml", []byte(roadmap), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	uc, err := selectNextPendingUseCase(ProjectConfig{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if uc != nil {
+		t.Errorf("expected nil for all-implemented road-map, got %+v", uc)
+	}
+}
+
 func TestSelectNextPendingUseCase_MissingRoadmap(t *testing.T) {
 	_, cleanup := setupContextTestDir(t)
 	defer cleanup()
