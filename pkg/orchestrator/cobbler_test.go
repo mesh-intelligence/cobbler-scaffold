@@ -250,6 +250,16 @@ func TestExtractTextFromStreamJSON_MultipleTextBlocks(t *testing.T) {
 	}
 }
 
+func TestExtractTextFromStreamJSON_PlainTextFallback(t *testing.T) {
+	t.Parallel()
+	// SDK mode stores plain text in RawOutput — no JSON lines at all.
+	raw := []byte("```yaml\n- title: foo\n```\n")
+	text := extractTextFromStreamJSON(raw)
+	if text != string(raw) {
+		t.Errorf("expected raw text passthrough, got: %q", text)
+	}
+}
+
 // --- extractYAMLBlock ---
 
 func TestExtractYAMLBlock_ValidFencedBlock(t *testing.T) {

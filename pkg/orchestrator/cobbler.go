@@ -512,9 +512,13 @@ func (o *Orchestrator) checkPodman() error {
 }
 
 // extractTextFromStreamJSON concatenates all text blocks from assistant
-// messages in Claude's stream-json output.
+// messages in Claude's stream-json output. If no line parses as JSON at all
+// (e.g. SDK mode stores plain text in RawOutput) the raw bytes are returned
+// unchanged so downstream YAML extraction still works. Stream-json output
+// with no assistant messages (system/result only) still returns "".
 func extractTextFromStreamJSON(rawOutput []byte) string {
 	var sb strings.Builder
+	anyJSON := false // true when at least one line is valid JSON
 	for _, line := range bytes.Split(rawOutput, []byte("\n")) {
 		if len(line) == 0 {
 			continue
@@ -528,7 +532,11 @@ func extractTextFromStreamJSON(rawOutput []byte) string {
 				} `json:"content"`
 			} `json:"message"`
 		}
-		if json.Unmarshal(line, &msg) != nil || msg.Type != "assistant" {
+		if json.Unmarshal(line, &msg) != nil {
+			continue // not JSON — skip but do not set anyJSON
+		}
+		anyJSON = true
+		if msg.Type != "assistant" {
 			continue
 		}
 		for _, block := range msg.Message.Content {
@@ -536,6 +544,10 @@ func extractTextFromStreamJSON(rawOutput []byte) string {
 				sb.WriteString(block.Text)
 			}
 		}
+	}
+	if !anyJSON {
+		// RawOutput is plain text (SDK mode); return as-is.
+		return string(rawOutput)
 	}
 	return sb.String()
 }
