@@ -179,10 +179,19 @@ func (o *Orchestrator) RunMeasure() error {
 		// Create a placeholder issue so users can see measure is running Claude.
 		// The placeholder has no cobbler labels and is invisible to stitch and to
 		// the measure context prompt. It is closed after the iteration regardless
-		// of outcome (GH-568).
+		// of outcome (GH-568). The defer below closes it on any early-return path
+		// (e.g. Claude failure) so it never stays open as an orphan (GH-747).
 		placeholderNum, placeholderErr := createMeasuringPlaceholder(repo, generation, i+1)
 		if placeholderErr != nil {
 			logf("measure: warning: createMeasuringPlaceholder: %v", placeholderErr)
+		}
+		placeholderResolved := false
+		if placeholderNum > 0 {
+			defer func(num int) {
+				if !placeholderResolved {
+					closeMeasuringPlaceholderWithComment(repo, num, "Measure did not complete; closed automatically.")
+				}
+			}(placeholderNum)
 		}
 
 		var createdIDs []string
@@ -307,6 +316,8 @@ func (o *Orchestrator) RunMeasure() error {
 
 		// Close the placeholder only when it was not upgraded in-place (GH-578).
 		// An upgraded placeholder became the task issue; closing it destroys the task.
+		// Mark placeholderResolved so the defer registered above is a no-op (GH-747).
+		placeholderResolved = true
 		if placeholderNum > 0 && !placeholderUpgraded {
 			closeMeasuringPlaceholder(repo, placeholderNum)
 		}
