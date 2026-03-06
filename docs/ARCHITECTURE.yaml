@@ -10,8 +10,9 @@ overview:
 
     The system operates as build tooling, not a standalone application. An Orchestrator struct
     holds a Config and provides methods that Mage calls as targets. These methods coordinate
-    five subsystems: git branch management, Claude invocation (containerized via podman),
-    issue tracking (GitHub Issues via gh CLI), metrics collection, and project scaffolding.
+    five subsystems: git branch management, Claude invocation (podman container, host CLI,
+    or Go Agent SDK — selected by cobbler.mode in configuration.yaml), issue tracking
+    (GitHub Issues via gh CLI), metrics collection, and project scaffolding.
 
   lifecycle: |
     Generations are the primary unit of work. A generation starts from a tagged main state,
@@ -187,13 +188,17 @@ components:
 
   - name: Cobbler Common
     responsibility: |
-      Claude invocation (runClaude), token parsing, LOC capture, invocation recording,
-      history artifact saving, progress logging, configuration logging, and worktree path
-      management. The progressWriter logs real-time Claude stream events (tool calls, turns,
-      timing) with claude: prefix for clear log attribution.
+      Claude invocation (runClaude dispatches to runClaudePodman, runClaudeCLI, or
+      runClaudeSDK based on effectiveMode()), token parsing, LOC capture, invocation
+      recording, history artifact saving, progress logging, configuration logging, and
+      worktree path management. The progressWriter logs real-time Claude stream events
+      (tool calls, turns, timing) with claude: prefix for clear log attribution.
     capabilities:
-      - Wrap podman run for Claude execution with same-path mounting
-      - Capture and parse token usage from Claude stream-json output
+      - Dispatch Claude invocation to podman, CLI, or SDK mode via effectiveMode()
+      - Wrap podman run for Claude execution with same-path mounting (podman mode)
+      - Invoke claude binary directly on host (cli mode)
+      - Invoke Claude via Go Agent SDK with sdkEnvMu-serialised env mutation (sdk mode)
+      - Capture and parse token usage from Claude stream-json or SDK result output
       - Snapshot LOC before and after Claude
       - Save history artifacts (prompt, log, stats YAML) to configurable directory
       - Log real-time Claude progress (turns, tool calls, timing)
@@ -226,6 +231,7 @@ components:
       - Pick lowest-numbered ready issue and mark in-progress
       - Close issues and re-promote dependents
       - Garbage-collect stale generation issues in a single bulk API call
+      - Close orphaned measuring placeholders with an explanatory comment on Claude failure (GH-747)
       - File defects in target repos
     references:
       - prd003-cobbler-workflows
@@ -509,18 +515,21 @@ design_decisions:
       - "Single-phase approach: Claude both proposes and executes, losing the ability to review before execution"
 
   - id: 4
-    title: Container-isolated Claude execution
+    title: Pluggable Claude execution mode
     decision: |
-      We run Claude inside a podman container. The orchestrator wraps every invocation with
-      podman run, mounting the working directory at the same path inside the container. A
-      pre-flight check verifies that podman is installed, the configured image is available,
-      and containers can start before any workflow begins.
+      We support three Claude execution modes selected by cobbler.mode in configuration.yaml:
+      podman (default) wraps every invocation in a container with same-path mounting;
+      cli invokes the claude binary directly on the host; sdk uses the Go Agent SDK
+      (github.com/schlunsen/claude-agent-sdk-go) for structured streaming. effectiveMode()
+      resolves the configured mode and runClaude dispatches to the appropriate
+      implementation. Podman mode performs a pre-flight check before each run. SDK mode
+      serialises process-env mutations around each invocation via sdkEnvMu.
     benefits:
-      - Isolates Claude from the host environment
-      - Makes builds reproducible across machines
-      - Absolute paths in prompts resolve correctly via same-path mounting
+      - Podman mode isolates Claude from the host and makes builds reproducible
+      - CLI and SDK modes work on hosts without a container runtime (CI, laptops)
+      - Mode is a single configuration field — no code change to switch
     alternatives_rejected:
-      - "Running Claude as bare binary on host: simpler but provides no isolation, and environment differences are harder to debug"
+      - "Hard-coded podman only: blocks use in CI and environments without a VM backend"
 
   - id: 5
     title: GitHub Issues for task tracking
@@ -686,7 +695,9 @@ project_structure:
   - path: pkg/orchestrator/codestatus.go
     role: Code implementation status — scan tests/ for use-case test directories, compare roadmap spec status with test file presence, detect spec-vs-code gaps
   - path: pkg/orchestrator/compare.go
-    role: Cross-generation differential comparison — binary resolution, build, Compare() entry point, YAML test suite loading, and differential binary runner (prd004)
+    role: Cross-generation differential comparison — binary resolution, build, Compare() entry point, and differential binary runner (prd004)
+  - path: pkg/orchestrator/testloader.go
+    role: Load CompareTestCase records from YAML test suite files and run them against both binaries (prd004)
   - path: pkg/orchestrator/outcomes.go
     role: Outcome trailer parsing — scan git history for task metrics (tokens, LOC, cost, duration)
   - path: pkg/orchestrator/prompt_files.go
