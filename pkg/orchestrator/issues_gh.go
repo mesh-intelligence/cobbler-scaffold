@@ -246,6 +246,20 @@ func closeMeasuringPlaceholder(repo string, number int) {
 	logf("closeMeasuringPlaceholder: closed #%d", number)
 }
 
+// closeMeasuringPlaceholderWithComment closes the placeholder issue and adds a
+// comment explaining why it was closed. Used on error paths to avoid orphans
+// (GH-747). Best-effort: logs and ignores errors.
+func closeMeasuringPlaceholderWithComment(repo string, number int, comment string) {
+	if err := exec.Command(binGh, "issue", "comment",
+		"--repo", repo,
+		fmt.Sprintf("%d", number),
+		"--body", comment,
+	).Run(); err != nil {
+		logf("closeMeasuringPlaceholderWithComment: comment on #%d warning: %v", number, err)
+	}
+	closeMeasuringPlaceholder(repo, number)
+}
+
 // upgradeMeasuringPlaceholder converts the transient measuring placeholder
 // into the task issue in-place. It edits the placeholder's title and body
 // to match the proposed issue, adds the cobbler-gen label so stitch can

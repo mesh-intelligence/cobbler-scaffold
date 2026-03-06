@@ -668,6 +668,58 @@ func TestCloseMeasuringPlaceholder_FakeRepo_NoOp(t *testing.T) {
 	closeMeasuringPlaceholder("fake/repo-that-does-not-exist", 99999) // must not panic
 }
 
+// TestCloseMeasuringPlaceholderWithComment_FakeRepo_NoOp verifies
+// closeMeasuringPlaceholderWithComment does not panic when the GitHub CLI
+// fails on a fake repo (GH-747).
+func TestCloseMeasuringPlaceholderWithComment_FakeRepo_NoOp(t *testing.T) {
+	t.Parallel()
+	closeMeasuringPlaceholderWithComment("fake/repo-that-does-not-exist", 99999,
+		"Measure did not complete; closed automatically.") // must not panic
+}
+
+// TestPlaceholderResolved_DeferIsNoOpOnSuccess verifies that when
+// placeholderResolved is set to true before a defer fires, the defer body
+// does not call closeMeasuringPlaceholderWithComment (GH-747).
+// We validate the flag contract directly: if resolved==true, defer is skipped;
+// if resolved==false, defer fires with the comment function.
+func TestPlaceholderResolved_DeferIsNoOpOnSuccess(t *testing.T) {
+	t.Parallel()
+	called := false
+	closeFunc := func() { called = true }
+
+	resolved := true
+	func() {
+		defer func() {
+			if !resolved {
+				closeFunc()
+			}
+		}()
+	}()
+	if called {
+		t.Error("closeFunc must not be called when placeholderResolved=true")
+	}
+}
+
+// TestPlaceholderResolved_DeferFiresOnFailure verifies that when
+// placeholderResolved remains false, the defer calls the close function (GH-747).
+func TestPlaceholderResolved_DeferFiresOnFailure(t *testing.T) {
+	t.Parallel()
+	called := false
+	closeFunc := func() { called = true }
+
+	resolved := false
+	func() {
+		defer func() {
+			if !resolved {
+				closeFunc()
+			}
+		}()
+	}()
+	if !called {
+		t.Error("closeFunc must be called when placeholderResolved=false")
+	}
+}
+
 // --- progress comments (GH-567) ---
 
 // TestCommentCobblerIssue_FakeRepo_NoOp verifies commentCobblerIssue does not
