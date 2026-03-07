@@ -137,7 +137,7 @@ func (o *Orchestrator) GeneratorStats() error {
 		rows = append(rows, s)
 	}
 
-	sort.Slice(rows, func(i, j int) bool { return rows[i].Index < rows[j].Index })
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Number < rows[j].Number })
 
 	// Header.
 	fmt.Printf("Generation: %s\n", genBranch)
@@ -196,7 +196,7 @@ func (o *Orchestrator) GeneratorStats() error {
 
 	// Issue table.
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "#\tIdx\tStatus\tRel\tReqs\tCost\tDuration\tTurns\tProd\tTest\tTitle")
+	fmt.Fprintln(w, "#\tStatus\tRel\tReqs\tCost\tDuration\tTurns\tProd\tTest\tTitle")
 	for _, r := range rows {
 		cost := "-"
 		if r.costUSD > 0 {
@@ -230,8 +230,8 @@ func (o *Orchestrator) GeneratorStats() error {
 		if len(title) > 48 {
 			title = title[:45] + "..."
 		}
-		fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			r.Number, r.Index, r.status, rel, reqs, cost, dur, turns, prod, test, title)
+		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			r.Number, r.status, rel, reqs, cost, dur, turns, prod, test, title)
 	}
 	if err := w.Flush(); err != nil {
 		return err
