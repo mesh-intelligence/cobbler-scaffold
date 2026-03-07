@@ -590,8 +590,26 @@ func pickReadyIssue(repo, generation string) (cobblerIssue, error) {
 	if err := removeIssueLabel(repo, picked.Number, cobblerLabelReady); err != nil {
 		logf("pickReadyIssue: remove ready label from #%d: %v", picked.Number, err)
 	}
+
+	// Rename [measure] → [stitch] so stats:generator shows which phase executed the task.
+	if strings.HasPrefix(picked.Title, "[measure] ") {
+		picked.Title = "[stitch] " + strings.TrimPrefix(picked.Title, "[measure] ")
+		if err := editIssueTitle(repo, picked.Number, picked.Title); err != nil {
+			logf("pickReadyIssue: rename title warning for #%d: %v", picked.Number, err)
+		}
+	}
+
 	logf("pickReadyIssue: picked #%d %q gen=%s", picked.Number, picked.Title, generation)
 	return picked, nil
+}
+
+// editIssueTitle updates the title of a GitHub issue.
+func editIssueTitle(repo string, number int, title string) error {
+	return exec.Command(binGh, "issue", "edit",
+		"--repo", repo,
+		fmt.Sprintf("%d", number),
+		"--title", title,
+	).Run()
 }
 
 // closeCobblerIssue closes a GitHub issue and re-runs promoteReadyIssues so

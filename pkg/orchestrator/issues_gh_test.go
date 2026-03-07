@@ -771,3 +771,31 @@ func TestLinkSubIssue_FakeRepo_Error(t *testing.T) {
 		t.Error("linkSubIssue with fake repo must return an error")
 	}
 }
+
+// --- measure→stitch title rename (GH-1022) ---
+
+func TestMeasureToStitchTitleRename(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		title string
+		want  string
+	}{
+		{"with prefix", "[measure] Implement cat utility", "[stitch] Implement cat utility"},
+		{"without prefix", "Implement cat utility", "Implement cat utility"},
+		{"empty", "", ""},
+		{"prefix only", "[measure] ", "[stitch] "},
+		{"nested prefix", "[measure] [measure] double", "[stitch] [measure] double"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.title
+			if strings.HasPrefix(got, "[measure] ") {
+				got = "[stitch] " + strings.TrimPrefix(got, "[measure] ")
+			}
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
