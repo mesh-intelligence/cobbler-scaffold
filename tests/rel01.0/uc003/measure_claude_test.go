@@ -45,6 +45,39 @@ func TestRel01_UC003_MeasureCreatesIssues(t *testing.T) {
 	t.Logf("cobbler:measure created %d issue(s)", n)
 }
 
+// MeasureReturnsZeroForImplementedSpec runs cobbler:measure against the
+// snapshot codebase without resetting Go sources. The snapshot is fully
+// implemented relative to its spec, so the measure agent should return an
+// empty task list and create zero issues. This validates the spec-complete
+// detection introduced in GH-889: the measure prompt now explicitly permits
+// returning [] when no meaningful work remains.
+// Requires Claude: invokes cobbler:measure which calls Claude via podman.
+func TestRel01_UC003_MeasureReturnsZeroForImplementedSpec(t *testing.T) {
+	dir := testutil.SetupRepo(t, snapshotDir)
+	testutil.SetupClaude(t, dir)
+
+	// Allow up to 3 issues so that if measure incorrectly proposes work it
+	// shows up in the assertion, rather than being artificially limited to 0.
+	testutil.WriteConfigOverride(t, dir, func(cfg *orchestrator.Config) {
+		cfg.Cobbler.MaxMeasureIssues = 3
+	})
+
+	// init is a no-op but follows the test convention; do NOT reset so the
+	// full codebase is visible to the measure agent.
+	if err := testutil.RunMage(t, dir, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	if err := testutil.RunMage(t, dir, "cobbler:measure"); err != nil {
+		t.Fatalf("cobbler:measure: %v", err)
+	}
+
+	n := testutil.CountReadyIssues(t, dir)
+	if n != 0 {
+		t.Errorf("expected 0 ready issues after measure on fully-implemented codebase, got %d", n)
+	}
+	t.Logf("cobbler:measure created %d issue(s) (want 0)", n)
+}
+
 // MeasureRecordsInvocation runs measure and verifies that an InvocationRecord
 // is saved in the history stats file with token data.
 // Requires Claude: invokes cobbler:measure which calls Claude via podman.

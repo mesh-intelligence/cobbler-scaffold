@@ -1751,6 +1751,72 @@ func TestRunClaudeSDK_ConcurrentCalls_Race(t *testing.T) {
 	}
 }
 
+// TestRunClaudeSDK_NonContentMessagesIgnored verifies that message types the
+// claude binary can emit — SystemMessage, UserMessage, StreamEvent — flow
+// through the runClaudeSDK message loop without error or panic. These types
+// are silently ignored in the switch statement (only AssistantMessage and
+// ResultMessage are acted upon), which is the correct behaviour. The test
+// also documents all known SDK message types so that a future regression
+// (e.g. a type causing a panic or an unexpected [SDK WARNING] parse failure)
+// is caught at unit-test level rather than in production generation runs.
+func TestRunClaudeSDK_NonContentMessagesIgnored(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		msgs []claudetypes.Message
+	}{
+		{
+			name: "SystemMessage",
+			msgs: []claudetypes.Message{
+				&claudetypes.SystemMessage{Type: "system", Subtype: "init"},
+				resultMsg(1, 1, 0),
+			},
+		},
+		{
+			name: "UserMessage",
+			msgs: []claudetypes.Message{
+				&claudetypes.UserMessage{Type: "user"},
+				resultMsg(1, 1, 0),
+			},
+		},
+		{
+			name: "StreamEvent",
+			msgs: []claudetypes.Message{
+				&claudetypes.StreamEvent{Type: "stream_event"},
+				resultMsg(1, 1, 0),
+			},
+		},
+		{
+			name: "MixedNonContent",
+			msgs: []claudetypes.Message{
+				&claudetypes.SystemMessage{Type: "system", Subtype: "init"},
+				&claudetypes.UserMessage{Type: "user"},
+				&claudetypes.StreamEvent{Type: "stream_event"},
+				resultMsg(5, 10, 0.001),
+			},
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			msgs := tc.msgs
+			o := newSDKOrchestrator(func(_ context.Context, _ string, _ *claudetypes.ClaudeAgentOptions) (<-chan claudetypes.Message, error) {
+				ch := make(chan claudetypes.Message, len(msgs))
+				for _, m := range msgs {
+					ch <- m
+				}
+				close(ch)
+				return ch, nil
+			})
+			_, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+			if err != nil {
+				t.Errorf("runClaudeSDK returned unexpected error for %s: %v", tc.name, err)
+			}
+		})
+	}
+}
+
 // --- filterSDKStderr ---
 
 func TestFilterSDKStderr_RateLimitWarningReplaced(t *testing.T) {
