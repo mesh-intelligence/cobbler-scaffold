@@ -201,3 +201,77 @@ func TestCountTotalPRDRequirements_NoPRDs(t *testing.T) {
 		t.Errorf("byPRD = %v, want empty", byPRD)
 	}
 }
+
+// --- buildPRDReleaseMap (GH-992) ---
+
+func TestBuildPRDReleaseMap(t *testing.T) {
+	// Uses os.Chdir — do NOT use t.Parallel()
+	dir := t.TempDir()
+	ucDir := filepath.Join(dir, "docs", "specs", "use-cases")
+	if err := os.MkdirAll(ucDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	ucContent := `id: rel01.0-uc003-measure-workflow
+title: Measure Workflow
+summary: Measure phase
+actor: Orchestrator
+trigger: mage cobbler:measure
+flow:
+  - F1: "step one"
+touchpoints:
+  - T1: "Config: prd001-orchestrator-core R1, prd003-cobbler-workflows R1"
+  - T2: "Prompt: prd003-cobbler-workflows R5"
+success_criteria:
+  - SC1: "it works"
+out_of_scope: []
+`
+	if err := os.WriteFile(filepath.Join(ucDir, "rel01.0-uc003-measure-workflow.yaml"), []byte(ucContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	uc2Content := `id: rel02.0-uc001-lifecycle-commands
+title: Lifecycle Commands
+summary: VS Code lifecycle
+actor: Developer
+trigger: command palette
+flow:
+  - F1: "step one"
+touchpoints:
+  - T1: "Extension: prd006-vscode-extension R1"
+success_criteria:
+  - SC1: "it works"
+out_of_scope: []
+`
+	if err := os.WriteFile(filepath.Join(ucDir, "rel02.0-uc001-lifecycle-commands.yaml"), []byte(uc2Content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	orig, _ := os.Getwd()
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(dir)
+
+	m := buildPRDReleaseMap()
+	if m["prd-001"] != "01.0" {
+		t.Errorf("prd-001 release = %q, want %q", m["prd-001"], "01.0")
+	}
+	if m["prd-003"] != "01.0" {
+		t.Errorf("prd-003 release = %q, want %q", m["prd-003"], "01.0")
+	}
+	if m["prd-006"] != "02.0" {
+		t.Errorf("prd-006 release = %q, want %q", m["prd-006"], "02.0")
+	}
+}
+
+func TestBuildPRDReleaseMap_NoUseCases(t *testing.T) {
+	// Uses os.Chdir — do NOT use t.Parallel()
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(dir)
+
+	m := buildPRDReleaseMap()
+	if len(m) != 0 {
+		t.Errorf("expected empty map, got %v", m)
+	}
+}

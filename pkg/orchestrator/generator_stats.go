@@ -20,6 +20,7 @@ type generatorIssueStats struct {
 	costUSD   float64
 	durationS int
 	prds      []string
+	release   string // roadmap release version, e.g. "01.0"
 }
 
 // GeneratorStats prints a status report for the current generation run.
@@ -57,6 +58,7 @@ func (o *Orchestrator) GeneratorStats() error {
 	var totalCost float64
 	var nDone, nFailed, nInProgress, nPending int
 	prdStatus := make(map[string]string) // prd name → highest-priority status
+	prdReleaseMap := buildPRDReleaseMap()
 
 	for _, iss := range issues {
 		s := generatorIssueStats{cobblerIssue: iss}
@@ -88,9 +90,14 @@ func (o *Orchestrator) GeneratorStats() error {
 		}
 		totalCost += s.costUSD
 
-		// Extract PRD references and track coverage.
+		// Extract PRD references, resolve release, and track coverage.
 		s.prds = extractPRDRefs(iss.Title + " " + iss.Description)
 		for _, prd := range s.prds {
+			if s.release == "" {
+				if rel, ok := prdReleaseMap[prd]; ok {
+					s.release = rel
+				}
+			}
 			existing := prdStatus[prd]
 			switch s.status {
 			case "in-progress":
@@ -121,11 +128,52 @@ func (o *Orchestrator) GeneratorStats() error {
 		fmt.Printf(", %d failed", nFailed)
 	}
 	fmt.Println()
-	fmt.Printf("Total cost: $%.2f\n\n", totalCost)
+	fmt.Printf("Total cost: $%.2f\n", totalCost)
+
+	// Per-release breakdown.
+	type relCounts struct{ done, inProgress, pending, failed int }
+	byRelease := make(map[string]*relCounts)
+	for _, r := range rows {
+		rel := r.release
+		if rel == "" {
+			rel = "-"
+		}
+		rc := byRelease[rel]
+		if rc == nil {
+			rc = &relCounts{}
+			byRelease[rel] = rc
+		}
+		switch r.status {
+		case "done":
+			rc.done++
+		case "in-progress":
+			rc.inProgress++
+		case "pending":
+			rc.pending++
+		case "failed":
+			rc.failed++
+		}
+	}
+	if len(byRelease) > 1 || (len(byRelease) == 1 && byRelease["-"] == nil) {
+		rels := make([]string, 0, len(byRelease))
+		for rel := range byRelease {
+			rels = append(rels, rel)
+		}
+		sort.Strings(rels)
+		for _, rel := range rels {
+			rc := byRelease[rel]
+			fmt.Printf("  rel %s: %d done, %d in-progress, %d pending", rel, rc.done, rc.inProgress, rc.pending)
+			if rc.failed > 0 {
+				fmt.Printf(", %d failed", rc.failed)
+			}
+			fmt.Println()
+		}
+	}
+	fmt.Println()
 
 	// Issue table.
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "#\tIdx\tStatus\tCost\tDuration\tTitle")
+	fmt.Fprintln(w, "#\tIdx\tStatus\tRel\tCost\tDuration\tTitle")
 	for _, r := range rows {
 		cost := "-"
 		if r.costUSD > 0 {
@@ -135,12 +183,16 @@ func (o *Orchestrator) GeneratorStats() error {
 		if r.durationS > 0 {
 			dur = formatDuration(r.durationS)
 		}
+		rel := r.release
+		if rel == "" {
+			rel = "-"
+		}
 		title := r.Title
 		if len(title) > 48 {
 			title = title[:45] + "..."
 		}
-		fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%s\t%s\n",
-			r.Number, r.Index, r.status, cost, dur, title)
+		fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%s\t%s\t%s\n",
+			r.Number, r.Index, r.status, rel, cost, dur, title)
 	}
 	if err := w.Flush(); err != nil {
 		return err
@@ -260,6 +312,51 @@ func countTotalPRDRequirements() (int, map[string]int) {
 		}
 	}
 	return total, byPRD
+}
+
+// buildPRDReleaseMap loads use case files and maps PRD short names (e.g.
+// "prd-003") to their roadmap release version by parsing touchpoint references.
+// Use case filenames encode the release: "rel01.0-uc003-measure-workflow.yaml".
+func buildPRDReleaseMap() map[string]string {
+	paths, _ := filepath.Glob("docs/specs/use-cases/rel*.yaml")
+	prdRelease := make(map[string]string)
+	for _, path := range paths {
+		base := filepath.Base(path)
+		// Extract release from filename: "rel01.0-uc003-..." → "01.0"
+		rel := ""
+		if strings.HasPrefix(base, "rel") {
+			if dash := strings.Index(base, "-uc"); dash > 3 {
+				rel = base[3:dash]
+			}
+		}
+		if rel == "" {
+			continue
+		}
+
+		uc := loadYAML[UseCaseDoc](path)
+		if uc == nil {
+			continue
+		}
+		// Touchpoints reference PRDs like "prd003-cobbler-workflows R1, R2".
+		for _, tp := range uc.Touchpoints {
+			for _, v := range tp {
+				for _, word := range strings.Fields(v) {
+					w := strings.ToLower(strings.Trim(word, ".,;:()[]`\"'"))
+					if !strings.HasPrefix(w, "prd") || len(w) < 6 {
+						continue
+					}
+					// Convert "prd003-cobbler-workflows" → "prd-003".
+					if w[3] >= '0' && w[3] <= '9' {
+						short := "prd-" + w[3:6]
+						if _, exists := prdRelease[short]; !exists {
+							prdRelease[short] = rel
+						}
+					}
+				}
+			}
+		}
+	}
+	return prdRelease
 }
 
 // extractPRDRefs returns deduplicated prd-* tokens found in text.
