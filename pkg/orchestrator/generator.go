@@ -101,12 +101,16 @@ func (o *Orchestrator) GeneratorResume() error {
 // up to MaxMeasureIssues new issues. The loop continues while open issues
 // exist. MaxStitchIssues caps total stitch iterations across all cycles
 // (0 = unlimited). Cycles caps the number of stitch+measure rounds
-// (0 = unlimited).
+// (0 = unlimited). MaxConsecutiveZeroLOCCycles stops the loop when stitch
+// produces zero LOC change for N consecutive cycles (default 3), preventing
+// runaway refinement loops on fully-implemented specs.
 func (o *Orchestrator) RunCycles(label string) error {
-	logf("generator %s: starting (stitchTotal=%d stitchPerCycle=%d measure=%d safetyCycles=%d)",
-		label, o.cfg.Cobbler.MaxStitchIssues, o.cfg.Cobbler.MaxStitchIssuesPerCycle, o.cfg.Cobbler.MaxMeasureIssues, o.cfg.Generation.Cycles)
+	maxZeroLOC := o.cfg.Cobbler.MaxConsecutiveZeroLOCCycles
+	logf("generator %s: starting (stitchTotal=%d stitchPerCycle=%d measure=%d safetyCycles=%d maxZeroLOC=%d)",
+		label, o.cfg.Cobbler.MaxStitchIssues, o.cfg.Cobbler.MaxStitchIssuesPerCycle, o.cfg.Cobbler.MaxMeasureIssues, o.cfg.Generation.Cycles, maxZeroLOC)
 
 	totalStitched := 0
+	consecutiveZeroLOC := 0
 	for cycle := 1; ; cycle++ {
 		if o.cfg.Generation.Cycles > 0 && cycle > o.cfg.Generation.Cycles {
 			logf("generator %s: reached max cycles (%d), stopping", label, o.cfg.Generation.Cycles)
@@ -129,11 +133,30 @@ func (o *Orchestrator) RunCycles(label string) error {
 		// Refresh analysis before each cycle so stitch sees current state.
 		o.RunPreCycleAnalysis()
 
+		// Capture LOC before stitch to detect zero-change cycles.
+		locBefore := o.captureLOC()
 		logf("generator %s: cycle %d — stitch (limit=%d, stitched so far=%d)", label, cycle, perCycle, totalStitched)
 		n, err := o.RunStitchN(perCycle)
 		totalStitched += n
 		if err != nil {
 			return fmt.Errorf("cycle %d stitch: %w", cycle, err)
+		}
+		locAfter := o.captureLOC()
+		locDelta := (locAfter.Production - locBefore.Production) + (locAfter.Test - locBefore.Test)
+		logf("generator %s: cycle %d — LOC delta=%d (prod %d→%d, test %d→%d)",
+			label, cycle, locDelta, locBefore.Production, locAfter.Production, locBefore.Test, locAfter.Test)
+
+		// Track consecutive zero-LOC cycles as a refinement-loop guard.
+		if locDelta == 0 {
+			consecutiveZeroLOC++
+			logf("generator %s: cycle %d — zero LOC change (%d consecutive)", label, cycle, consecutiveZeroLOC)
+			if maxZeroLOC > 0 && consecutiveZeroLOC >= maxZeroLOC {
+				logf("generator %s: %d consecutive zero-LOC cycles reached limit (%d); spec likely complete — stopping",
+					label, consecutiveZeroLOC, maxZeroLOC)
+				break
+			}
+		} else {
+			consecutiveZeroLOC = 0
 		}
 
 		logf("generator %s: cycle %d — measure", label, cycle)

@@ -124,6 +124,9 @@ func TestLoadConfig_AppliesDefaults(t *testing.T) {
 	if cfg.Cobbler.HistoryDir != "history" {
 		t.Errorf("Cobbler.HistoryDir default: got %q, want \"history\"", cfg.Cobbler.HistoryDir)
 	}
+	if cfg.Cobbler.MaxConsecutiveZeroLOCCycles != 3 {
+		t.Errorf("MaxConsecutiveZeroLOCCycles default: got %d, want 3", cfg.Cobbler.MaxConsecutiveZeroLOCCycles)
+	}
 }
 
 func TestLoadConfig_ConstitutionFileOverride(t *testing.T) {
@@ -248,6 +251,20 @@ func TestLoadConfig_EnforceMeasureValidationFromYAML(t *testing.T) {
 	}
 	if cfg.Cobbler.MaxMeasureRetries != 3 {
 		t.Errorf("MaxMeasureRetries: got %d, want 3", cfg.Cobbler.MaxMeasureRetries)
+	}
+}
+
+func TestLoadConfig_MaxConsecutiveZeroLOCCyclesFromYAML(t *testing.T) {
+	yaml := `cobbler:
+  max_consecutive_zero_loc_cycles: 7
+`
+	f := writeTemp(t, yaml)
+	cfg, err := LoadConfig(f)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.Cobbler.MaxConsecutiveZeroLOCCycles != 7 {
+		t.Errorf("MaxConsecutiveZeroLOCCycles: got %d, want 7", cfg.Cobbler.MaxConsecutiveZeroLOCCycles)
 	}
 }
 
