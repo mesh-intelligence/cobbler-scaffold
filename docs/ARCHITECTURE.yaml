@@ -72,8 +72,8 @@ interfaces:
       - "MeasurePromptData: template data for measure prompt (ProjectContext, Limit, OutputPath, UserInput, LinesMin, LinesMax, PlanningConstitution)"
       - "StitchPromptData: template data for stitch prompt (Title, ID, IssueType, Description, ExecutionConstitution, ProjectContext)"
       - "InvocationRecord: metrics per Claude invocation (Caller, StartedAt, DurationS, Tokens, LOCBefore, LOCAfter, Diff)"
-      - "HistoryStats: YAML-serializable per-invocation stats saved to history directory (Caller, TaskID, TaskTitle, StartedAt, Duration, Tokens, CostUSD, LOCBefore, LOCAfter, Diff)"
-      - "ClaudeResult: token usage from a Claude invocation (InputTokens, OutputTokens, CacheCreationTokens, CacheReadTokens, CostUSD, RawOutput)"
+      - "HistoryStats: YAML-serializable per-invocation stats saved to history directory (Caller, TaskID, TaskTitle, StartedAt, Duration, Tokens, CostUSD, LOCBefore, LOCAfter, Diff, NumTurns, DurationAPIMs, SessionID)"
+      - "ClaudeResult: token usage from a Claude invocation (InputTokens, OutputTokens, CacheCreationTokens, CacheReadTokens, CostUSD, RawOutput, NumTurns, DurationAPIMs, SessionID)"
     operations:
       - "New(cfg Config) *Orchestrator: construct with explicit config"
       - "NewFromFile(path string) (*Orchestrator, error): construct from configuration.yaml"
@@ -88,17 +88,23 @@ interfaces:
       - "ReleaseUpdate(version string) error: mark a release complete — set UC statuses to implemented, remove from project.releases in configuration.yaml (release:update target)"
       - "ReleaseClear(version string) error: reverse ReleaseUpdate — reset UC statuses to spec_complete, re-add to project.releases (release:clear target)"
       - "Measure(): propose tasks via Claude (prd003)"
+      - "RunMeasure(): run measure phase with full lifecycle (prompt build, Claude invocation, issue import) (prd003)"
       - "Stitch(): execute ready tasks in worktrees (prd003)"
+      - "RunStitch(): run stitch phase, executing all ready tasks (prd003)"
+      - "RunStitchN(limit int): run stitch phase up to limit tasks (prd003)"
+      - "RunCycles(label string): run measure+stitch cycles until no open issues remain (prd002)"
       - "Stats(): print LOC and documentation metrics (prd005)"
       - "Scaffold(): scaffold orchestrator into consuming project"
       - "Uninstall(): remove scaffold artifacts from target project"
       - "Tag(): create versioned doc-release tag, update version file"
       - "BuildImage(): build podman container image from embedded Dockerfile"
+      - "BuildAll(): go build all cmd/ sub-packages when MainPackage is empty (prd003)"
       - "Build(): go build the consuming project binary"
       - "Analyze(): cross-artifact consistency checking"
       - "Init(): initialize project (prd001)"
       - "FullReset(): reset cobbler and generator (prd001)"
       - "CobblerReset(): remove scratch directory (prd003)"
+      - "HistoryClean(): remove history subdirectory from scratch directory"
       - "Compare(): differential comparison between two git references (prd004)"
       - "CodeStatus(): report spec-vs-code gaps per use case and release (prd001)"
       - "TokenStats(): enumerate context files and report token counts (prd005)"
@@ -198,7 +204,9 @@ components:
       - Wrap podman run for Claude execution with same-path mounting (podman mode)
       - Invoke claude binary directly on host (cli mode)
       - Invoke Claude via Go Agent SDK with sdkEnvMu-serialised env mutation (sdk mode)
+      - Filter SDK stderr to replace rate_limit_event warnings with structured log entries (filterSDKStderr)
       - Capture and parse token usage from Claude stream-json or SDK result output
+      - Capture SDK metadata (NumTurns, DurationAPIMs, SessionID) from ResultMessage
       - Snapshot LOC before and after Claude
       - Save history artifacts (prompt, log, stats YAML) to configurable directory
       - Log real-time Claude progress (turns, tool calls, timing)
