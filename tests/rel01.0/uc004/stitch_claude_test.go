@@ -109,3 +109,52 @@ func TestRel01_UC004_StitchRecordsInvocation(t *testing.T) {
 		t.Fatal("expected at least one stitch report file in .cobbler/history/, got none")
 	}
 }
+
+// SecondMeasureProducesNoNewTasks runs a measure → stitch → measure cycle
+// and asserts the second measure creates zero new tasks. After stitch
+// implements the single proposed task and closes its issue, the second
+// measure should detect that the implementation satisfies the requirement
+// and return an empty task list rather than spinning with follow-up tasks.
+// This validates the multi-cycle termination behaviour introduced in GH-889.
+// Requires Claude: invokes cobbler:measure and cobbler:stitch which call Claude via podman.
+func TestRel01_UC004_SecondMeasureProducesNoNewTasks(t *testing.T) {
+	dir := testutil.SetupRepo(t, snapshotDir)
+	testutil.SetupClaude(t, dir)
+
+	testutil.WriteConfigOverride(t, dir, func(cfg *orchestrator.Config) {
+		cfg.Cobbler.MaxMeasureIssues = 1
+		cfg.Cobbler.MaxStitchIssuesPerCycle = 1
+	})
+
+	if err := testutil.RunMage(t, dir, "reset"); err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	if err := testutil.RunMage(t, dir, "generator:start"); err != nil {
+		t.Fatalf("generator:start: %v", err)
+	}
+
+	// First measure: propose one task.
+	if err := testutil.RunMage(t, dir, "cobbler:measure"); err != nil {
+		t.Fatalf("first cobbler:measure: %v", err)
+	}
+	if n := testutil.WaitForReadyIssues(t, dir, 1, 30*time.Second); n == 0 {
+		t.Fatal("expected at least 1 ready issue after first measure, got 0")
+	}
+
+	// Stitch: implement the proposed task and close its issue.
+	if err := testutil.RunMage(t, dir, "cobbler:stitch"); err != nil {
+		t.Fatalf("cobbler:stitch: %v", err)
+	}
+
+	// Second measure: with the task implemented and its issue closed, measure
+	// should recognise the spec is satisfied and return an empty task list.
+	if err := testutil.RunMage(t, dir, "cobbler:measure"); err != nil {
+		t.Fatalf("second cobbler:measure: %v", err)
+	}
+
+	n := testutil.CountReadyIssues(t, dir)
+	if n != 0 {
+		t.Errorf("expected 0 ready issues after second measure (stitch already implemented the task), got %d", n)
+	}
+	t.Logf("second cobbler:measure created %d issue(s) (want 0)", n)
+}
