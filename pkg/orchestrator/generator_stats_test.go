@@ -47,11 +47,23 @@ func TestParseStitchComment_SubMinuteDuration(t *testing.T) {
 	}
 }
 
+func TestParseStitchComment_WithTurns(t *testing.T) {
+	t.Parallel()
+	body := "Stitch completed in 3m 15s. LOC delta: +20 prod, +10 test. Cost: $0.55. Turns: 12."
+	d := parseStitchComment(body)
+	if d.numTurns != 12 {
+		t.Errorf("numTurns = %d, want 12", d.numTurns)
+	}
+	if d.costUSD != 0.55 {
+		t.Errorf("costUSD = %v, want 0.55", d.costUSD)
+	}
+}
+
 func TestParseStitchComment_NoMatch(t *testing.T) {
 	t.Parallel()
 	d := parseStitchComment("unrelated comment text")
-	if d.costUSD != 0 || d.durationS != 0 {
-		t.Errorf("expected zero values, got cost=%v dur=%d", d.costUSD, d.durationS)
+	if d.costUSD != 0 || d.durationS != 0 || d.numTurns != 0 {
+		t.Errorf("expected zero values, got cost=%v dur=%d turns=%d", d.costUSD, d.durationS, d.numTurns)
 	}
 }
 
