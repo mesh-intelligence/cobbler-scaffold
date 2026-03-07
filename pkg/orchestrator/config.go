@@ -214,6 +214,13 @@ type CobblerConfig struct {
 	// is disabled and requirement count is governed only by P9 range rules.
 	MaxRequirementsPerTask int `yaml:"max_requirements_per_task"`
 
+	// MaxConsecutiveZeroLOCCycles is the number of consecutive stitch cycles
+	// that may produce zero LOC change before the generator stops with a
+	// warning. This prevents runaway refinement loops where measure keeps
+	// proposing follow-up tasks on a fully-implemented spec. Default 3.
+	// Set to 0 to disable the guard.
+	MaxConsecutiveZeroLOCCycles int `yaml:"max_consecutive_zero_loc_cycles"`
+
 	// HistoryDir is the directory for saving measure artifacts (prompt,
 	// issues YAML, stream-json log) per iteration. Default "history".
 	HistoryDir string `yaml:"history_dir"`
@@ -510,6 +517,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Cobbler.IdleTimeoutSeconds == 0 {
 		c.Cobbler.IdleTimeoutSeconds = 60
+	}
+	if c.Cobbler.MaxConsecutiveZeroLOCCycles == 0 {
+		c.Cobbler.MaxConsecutiveZeroLOCCycles = 3
 	}
 	if c.Claude.MaxTimeSec == 0 {
 		c.Claude.MaxTimeSec = 300
