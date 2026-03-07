@@ -1605,6 +1605,35 @@ type privateType struct{}
 	}
 }
 
+// TestSummarizeGoHeaders_ExportedVarConst verifies that exported var/const
+// declarations are kept while unexported ones are stripped.
+func TestSummarizeGoHeaders_ExportedVarConst(t *testing.T) {
+	t.Parallel()
+	src := `package example
+
+const Version = "1.0.0"
+
+const internal = "hidden"
+
+var DefaultTimeout = 30
+
+var secretKey = "shh"
+`
+	got := summarizeGoHeaders(src)
+	if !strings.Contains(got, "Version") {
+		t.Errorf("exported const Version should be kept, got:\n%s", got)
+	}
+	if strings.Contains(got, "internal") {
+		t.Errorf("unexported const should be removed, got:\n%s", got)
+	}
+	if !strings.Contains(got, "DefaultTimeout") {
+		t.Errorf("exported var DefaultTimeout should be kept, got:\n%s", got)
+	}
+	if strings.Contains(got, "secretKey") {
+		t.Errorf("unexported var should be removed, got:\n%s", got)
+	}
+}
+
 // TestSummarizeGoHeaders_InvalidInput verifies that invalid Go content is
 // returned unchanged (fallback, prd003 R12.3).
 func TestSummarizeGoHeaders_InvalidInput(t *testing.T) {

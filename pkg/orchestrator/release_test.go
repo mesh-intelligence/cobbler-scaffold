@@ -229,6 +229,91 @@ func TestAddReleaseToConfig_Idempotent(t *testing.T) {
 	}
 }
 
+func TestMutateConfigReleases_MissingFile(t *testing.T) {
+	t.Parallel()
+	err := mutateConfigReleases(filepath.Join(t.TempDir(), "nonexistent.yaml"), "01.0", true)
+	if err == nil {
+		t.Error("expected error for missing file, got nil")
+	}
+}
+
+func TestMutateConfigReleases_InvalidYAML(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "bad.yaml")
+	os.WriteFile(path, []byte("{{{not yaml"), 0o644)
+	err := mutateConfigReleases(path, "01.0", true)
+	if err == nil {
+		t.Error("expected error for invalid YAML, got nil")
+	}
+}
+
+func TestMutateConfigReleases_NoProjectReleases(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	os.WriteFile(path, []byte("project:\n  module_path: foo\n"), 0o644)
+	// Should log and skip, not error.
+	err := mutateConfigReleases(path, "01.0", true)
+	if err != nil {
+		t.Errorf("expected nil (skip) when project.releases absent, got: %v", err)
+	}
+}
+
+func TestMutateProjectReleasesNode_NoProjectKey(t *testing.T) {
+	t.Parallel()
+	var root yaml.Node
+	yaml.Unmarshal([]byte("other: value\n"), &root)
+	err := mutateProjectReleasesNode(&root, "01.0", true)
+	if err == nil {
+		t.Error("expected error for missing project key")
+	}
+}
+
+func TestMutateProjectReleasesNode_ReleasesNotSequence(t *testing.T) {
+	t.Parallel()
+	var root yaml.Node
+	yaml.Unmarshal([]byte("project:\n  releases: not-a-list\n"), &root)
+	err := mutateProjectReleasesNode(&root, "01.0", true)
+	if err == nil {
+		t.Error("expected error when project.releases is not a sequence")
+	}
+}
+
+func TestReleaseVersionsFromConfig_MissingFile(t *testing.T) {
+	t.Parallel()
+	_, err := releaseVersionsFromConfig(filepath.Join(t.TempDir(), "missing.yaml"))
+	if err == nil {
+		t.Error("expected error for missing file")
+	}
+}
+
+func TestReleaseVersionsFromConfig_InvalidYAML(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "bad.yaml")
+	os.WriteFile(path, []byte("{{{"), 0o644)
+	_, err := releaseVersionsFromConfig(path)
+	if err == nil {
+		t.Error("expected error for invalid YAML")
+	}
+}
+
+func TestRoadmapUCStatuses_MissingFile(t *testing.T) {
+	t.Parallel()
+	_, err := roadmapUCStatuses(filepath.Join(t.TempDir(), "missing.yaml"), "01.0")
+	if err == nil {
+		t.Error("expected error for missing file")
+	}
+}
+
+func TestRoadmapUCStatuses_VersionNotFound(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "roadmap.yaml")
+	os.WriteFile(path, []byte(sampleRoadmap), 0o644)
+	_, err := roadmapUCStatuses(path, "99.9")
+	if err == nil {
+		t.Error("expected error for unknown version")
+	}
+}
+
 func TestRemoveReleaseFromConfig_NotPresent(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "configuration.yaml")
