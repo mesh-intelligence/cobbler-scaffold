@@ -4,7 +4,6 @@
 package orchestrator
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -13,13 +12,14 @@ import (
 	"time"
 
 	claudesdk "github.com/schlunsen/claude-agent-sdk-go"
-	claudetypes "github.com/schlunsen/claude-agent-sdk-go/types"
+
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/claude"
 )
 
 // sdkQueryFunc is the function signature for claudesdk.Query.
 // Storing it on the Orchestrator allows tests to inject a fake without a
 // real Claude binary.
-type sdkQueryFunc func(ctx context.Context, prompt string, opts *claudetypes.ClaudeAgentOptions) (<-chan claudetypes.Message, error)
+type sdkQueryFunc = claude.SdkQueryFunc
 
 // Orchestrator provides Claude Code orchestration operations.
 // Create one with New() and call its methods from mage targets.

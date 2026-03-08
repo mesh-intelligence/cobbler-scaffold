@@ -4,87 +4,91 @@
 package orchestrator
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 
-	claudetypes "github.com/schlunsen/claude-agent-sdk-go/types"
-	"gopkg.in/yaml.v3"
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/claude"
 )
 
-// ClaudeResult holds token usage from a Claude invocation.
-// InputTokens is the total input (non-cached + cache creation + cache read).
-// CacheCreationTokens and CacheReadTokens break down how the input was served.
-// RawOutput contains the full stream-json output from Claude for history.
-// NumTurns is populated from progressWriter in CLI/Podman mode and from the
-// SDK ResultMessage in SDK mode. DurationAPIMs and SessionID are SDK-only.
-type ClaudeResult struct {
-	InputTokens         int
-	OutputTokens        int
-	CacheCreationTokens int
-	CacheReadTokens     int
-	CostUSD             float64
-	NumTurns            int    // CLI: from progressWriter; SDK: from ResultMessage
-	DurationAPIMs       int    // SDK mode only; API-side latency in milliseconds
-	SessionID           string // SDK mode only; Claude session identifier
-	RawOutput           []byte
+// ---------------------------------------------------------------------------
+// Dependency injection: wire the parent package's logf, binary paths,
+// and helper functions into the internal/claude package at init time.
+// ---------------------------------------------------------------------------
+
+func init() {
+	claude.Log = logf
+	claude.BinGit = binGit
+	claude.BinClaude = binClaude
+	claude.BinPodman = binPodman
 }
+
+// ---------------------------------------------------------------------------
+// Type aliases for backward compatibility
+// ---------------------------------------------------------------------------
+
+// ClaudeResult holds token usage from a Claude invocation.
+type ClaudeResult = claude.ClaudeResult
 
 // LocSnapshot holds a point-in-time LOC count.
-type LocSnapshot struct {
-	Production int `json:"production"`
-	Test       int `json:"test"`
+type LocSnapshot = claude.LocSnapshot
+
+// InvocationRecord is the JSON blob recorded as a GitHub issue comment.
+type InvocationRecord = claude.InvocationRecord
+
+// HistoryStats is the YAML-serializable stats file.
+type HistoryStats = claude.HistoryStats
+
+// StitchReport is the YAML-serializable stitch report.
+type StitchReport = claude.StitchReport
+
+// claudeTokens holds token counts for an invocation record.
+type claudeTokens = claude.ClaudeTokens
+
+// diffRecord holds file-level diff statistics.
+type diffRecord = claude.DiffRecord
+
+// historyTokens holds token counts in the history stats YAML.
+type historyTokens = claude.HistoryTokens
+
+// historyDiff holds diff statistics in the history stats YAML.
+type historyDiff = claude.HistoryDiff
+
+// FileChange holds per-file diff information.
+type FileChange = claude.FileChange
+
+// ---------------------------------------------------------------------------
+// Orchestrator wrapper methods
+// ---------------------------------------------------------------------------
+
+// historyDir returns the resolved history directory path.
+func (o *Orchestrator) historyDir() string {
+	return claude.HistoryDir(o.cfg.Cobbler.Dir, o.cfg.Cobbler.HistoryDir)
 }
 
-// sdkEnvMu serialises temporary process-env mutations in runClaudeSDK.
-// The SDK inherits os.Environ() when spawning its subprocess, so we must
-// unset CLAUDECODE at the process level before calling Query. The mutex
-// prevents concurrent calls from interleaving the unset/restore sequence.
-var sdkEnvMu sync.Mutex
-
-// sdkStderrMu serialises os.Stderr replacement in runClaudeSDK.
-// The SDK transport writes rate-limit warnings directly to os.Stderr via its
-// internal logger. We redirect os.Stderr through a filter pipe for the full
-// duration of each SDK call so those warnings can be replaced with a clean
-// operator-facing log entry. The mutex prevents concurrent redirects from
-// interfering with each other.
-var sdkStderrMu sync.Mutex
-
-// filterSDKStderr reads lines from r and forwards them to dst, except that
-// lines matching the SDK's rate-limit parse warning are replaced with a
-// structured log entry. It closes r and signals done when r reaches EOF.
-// Write directly to dst (not via logf) to avoid writing back into the pipe.
-func filterSDKStderr(r *os.File, dst *os.File, done chan<- struct{}) {
-	defer func() {
-		_ = r.Close()
-		close(done)
-	}()
-	sc := bufio.NewScanner(r)
-	for sc.Scan() {
-		line := sc.Text()
-		if strings.Contains(line, "Failed to parse message from CLI") &&
-			strings.Contains(line, "rate_limit_event") {
-			ts := time.Now().Format(time.RFC3339)
-			fmt.Fprintf(dst, "[%s] claude: rate_limit\n", ts)
-			continue
-		}
-		fmt.Fprintln(dst, line)
-	}
+// saveHistoryReport writes a stitch report YAML file to the history directory.
+func (o *Orchestrator) saveHistoryReport(ts string, report StitchReport) {
+	claude.SaveHistoryReport(o.historyDir(), ts, report)
 }
 
-// captureLOC returns the current Go LOC counts. Errors are swallowed
-// because stats collection is best-effort.
+// saveHistoryStats writes a stats YAML file to the history directory.
+func (o *Orchestrator) saveHistoryStats(ts, phase string, stats HistoryStats) {
+	claude.SaveHistoryStats(o.historyDir(), ts, phase, stats)
+}
+
+// saveHistoryPrompt writes the prompt to the history directory.
+func (o *Orchestrator) saveHistoryPrompt(ts, phase, prompt string) {
+	claude.SaveHistoryPrompt(o.historyDir(), ts, phase, prompt)
+}
+
+// saveHistoryLog writes the raw Claude output to the history directory.
+func (o *Orchestrator) saveHistoryLog(ts, phase string, rawOutput []byte) {
+	claude.SaveHistoryLog(o.historyDir(), ts, phase, rawOutput)
+}
+
+// captureLOC returns the current Go LOC counts.
 func (o *Orchestrator) captureLOC() LocSnapshot {
 	rec, err := o.CollectStats()
 	if err != nil {
@@ -94,972 +98,191 @@ func (o *Orchestrator) captureLOC() LocSnapshot {
 	return LocSnapshot{Production: rec.GoProdLOC, Test: rec.GoTestLOC}
 }
 
-// captureLOCAt returns Go LOC counts measured in dir. It temporarily changes
-// the working directory so CollectStats walks the correct tree. Errors are
-// swallowed because stats collection is best-effort.
+// captureLOCAt returns Go LOC counts measured in dir.
 func (o *Orchestrator) captureLOCAt(dir string) LocSnapshot {
-	if dir == "" {
-		return o.captureLOC()
-	}
-	orig, err := os.Getwd()
-	if err != nil {
-		logf("captureLOCAt: getwd: %v", err)
-		return LocSnapshot{}
-	}
-	if err := os.Chdir(dir); err != nil {
-		logf("captureLOCAt: chdir to %s: %v", dir, err)
-		return LocSnapshot{}
-	}
-	defer func() { os.Chdir(orig) }() //nolint:errcheck
-	return o.captureLOC()
+	return claude.CaptureLOCAt(dir, o.captureLOC)
 }
 
-// InvocationRecord is the JSON blob recorded as a GitHub issue comment after
-// every Claude invocation.
-type InvocationRecord struct {
-	Caller       string       `json:"caller"`
-	StartedAt    string       `json:"started_at"`
-	DurationS    int          `json:"duration_s"`
-	Tokens       claudeTokens `json:"tokens"`
-	LOCBefore    LocSnapshot  `json:"loc_before"`
-	LOCAfter     LocSnapshot  `json:"loc_after"`
-	Diff         diffRecord   `json:"diff"`
-	NumTurns     int          `json:"num_turns,omitempty"`
-}
-
-type claudeTokens struct {
-	Input         int     `json:"input"`
-	Output        int     `json:"output"`
-	CacheCreation int     `json:"cache_creation"`
-	CacheRead     int     `json:"cache_read"`
-	CostUSD       float64 `json:"cost_usd"`
-}
-
-type diffRecord struct {
-	Files      int `json:"files"`
-	Insertions int `json:"insertions"`
-	Deletions  int `json:"deletions"`
-}
-
-// HistoryStats is the YAML-serializable stats file saved alongside prompt
-// and log artifacts in the history directory.
-type HistoryStats struct {
-	Caller        string        `yaml:"caller"`
-	TaskID        string        `yaml:"task_id,omitempty"`
-	TaskTitle     string        `yaml:"task_title,omitempty"`
-	Status        string        `yaml:"status,omitempty"`
-	Error         string        `yaml:"error,omitempty"`
-	StartedAt     string        `yaml:"started_at"`
-	Duration      string        `yaml:"duration"`
-	DurationS     int           `yaml:"duration_s"`
-	Tokens        historyTokens `yaml:"tokens"`
-	CostUSD       float64       `yaml:"cost_usd"`
-	NumTurns      int           `yaml:"num_turns,omitempty"`
-	DurationAPIMs int           `yaml:"duration_api_ms,omitempty"`
-	SessionID     string        `yaml:"session_id,omitempty"`
-	LOCBefore     LocSnapshot   `yaml:"loc_before"`
-	LOCAfter      LocSnapshot   `yaml:"loc_after"`
-	Diff          historyDiff   `yaml:"diff"`
-}
-
-type historyTokens struct {
-	Input         int `yaml:"input"`
-	Output        int `yaml:"output"`
-	CacheCreation int `yaml:"cache_creation"`
-	CacheRead     int `yaml:"cache_read"`
-}
-
-type historyDiff struct {
-	Files      int `yaml:"files"`
-	Insertions int `yaml:"insertions"`
-	Deletions  int `yaml:"deletions"`
-}
-
-// StitchReport is the YAML-serializable report file saved alongside stats
-// and log artifacts after a successful stitch. It includes per-file diffstat
-// so that downstream consumers can see exactly what changed.
-type StitchReport struct {
-	TaskID    string       `yaml:"task_id"`
-	TaskTitle string       `yaml:"task_title"`
-	Status    string       `yaml:"status"`
-	Branch    string       `yaml:"branch"`
-	Diff      historyDiff  `yaml:"diff"`
-	Files     []FileChange `yaml:"files"`
-	LOCBefore LocSnapshot  `yaml:"loc_before"`
-	LOCAfter  LocSnapshot  `yaml:"loc_after"`
-}
-
-// historyDir returns the resolved history directory path. When HistoryDir is
-// relative it is joined with Cobbler.Dir so that history files live under the
-// cobbler scratch directory (e.g. ".cobbler/history").
-func (o *Orchestrator) historyDir() string {
-	d := o.cfg.Cobbler.HistoryDir
-	if d == "" || filepath.IsAbs(d) {
-		return d
-	}
-	return filepath.Join(o.cfg.Cobbler.Dir, d)
-}
-
-// saveHistoryReport writes a stitch report YAML file to the history directory.
-// The file is named {ts}-stitch-report.yaml. When HistoryDir is empty the
-// call is a no-op, consistent with the other save functions.
-func (o *Orchestrator) saveHistoryReport(ts string, report StitchReport) {
-	dir := o.historyDir()
-	if dir == "" {
-		return
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		logf("saveHistoryReport: mkdir %s: %v", dir, err)
-		return
-	}
-
-	data, err := yaml.Marshal(&report)
-	if err != nil {
-		logf("saveHistoryReport: marshal: %v", err)
-		return
-	}
-
-	path := filepath.Join(dir, ts+"-stitch-report.yaml")
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		logf("saveHistoryReport: write %s: %v", path, err)
-		return
-	}
-	logf("saveHistoryReport: saved %s", path)
-}
-
-// saveHistoryStats writes a stats YAML file to the history directory.
-// The file is named {ts}-{phase}-stats.yaml.
-func (o *Orchestrator) saveHistoryStats(ts, phase string, stats HistoryStats) {
-	dir := o.historyDir()
-	if dir == "" {
-		return
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		logf("saveHistoryStats: mkdir %s: %v", dir, err)
-		return
-	}
-
-	data, err := yaml.Marshal(&stats)
-	if err != nil {
-		logf("saveHistoryStats: marshal: %v", err)
-		return
-	}
-
-	path := filepath.Join(dir, ts+"-"+phase+"-stats.yaml")
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		logf("saveHistoryStats: write %s: %v", path, err)
-		return
-	}
-	logf("saveHistoryStats: saved %s", path)
-}
-
-// saveHistoryPrompt writes the prompt to the history directory.
-// Called BEFORE runClaude so the prompt is on disk even if Claude times out.
-func (o *Orchestrator) saveHistoryPrompt(ts, phase, prompt string) {
-	dir := o.historyDir()
-	if dir == "" {
-		return
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		logf("saveHistoryPrompt: mkdir %s: %v", dir, err)
-		return
-	}
-	path := filepath.Join(dir, ts+"-"+phase+"-prompt.yaml")
-	if err := os.WriteFile(path, []byte(prompt), 0o644); err != nil {
-		logf("saveHistoryPrompt: write: %v", err)
-	} else {
-		logf("saveHistoryPrompt: saved %s", path)
-	}
-}
-
-// saveHistoryLog writes the raw Claude output to the history directory.
-// Called AFTER runClaude completes.
-func (o *Orchestrator) saveHistoryLog(ts, phase string, rawOutput []byte) {
-	dir := o.historyDir()
-	if dir == "" {
-		return
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		logf("saveHistoryLog: mkdir %s: %v", dir, err)
-		return
-	}
-	path := filepath.Join(dir, ts+"-"+phase+"-log.log")
-	if err := os.WriteFile(path, rawOutput, 0o644); err != nil {
-		logf("saveHistoryLog: write: %v", err)
-	} else {
-		logf("saveHistoryLog: saved %s", path)
-	}
-}
-
-// formatOutcomeTrailers returns the set of git trailer strings for rec.
-// Each string has the form "Key: Value" suitable for use with
-// git commit --trailer. The order is stable; always ten entries.
-func formatOutcomeTrailers(rec InvocationRecord) []string {
-	return []string{
-		fmt.Sprintf("Tokens-Input: %d", rec.Tokens.Input),
-		fmt.Sprintf("Tokens-Output: %d", rec.Tokens.Output),
-		fmt.Sprintf("Tokens-Cache-Creation: %d", rec.Tokens.CacheCreation),
-		fmt.Sprintf("Tokens-Cache-Read: %d", rec.Tokens.CacheRead),
-		fmt.Sprintf("Tokens-Cost-USD: %.4f", rec.Tokens.CostUSD),
-		fmt.Sprintf("Loc-Prod-Before: %d", rec.LOCBefore.Production),
-		fmt.Sprintf("Loc-Prod-After: %d", rec.LOCAfter.Production),
-		fmt.Sprintf("Loc-Test-Before: %d", rec.LOCBefore.Test),
-		fmt.Sprintf("Loc-Test-After: %d", rec.LOCAfter.Test),
-		fmt.Sprintf("Duration-Seconds: %d", rec.DurationS),
-	}
-}
-
-// appendOutcomeTrailers amends the last commit in the given git worktree
-// directory with outcome trailers from rec. All trailers are added in a
-// single git commit --amend invocation (requires git >= 2.38.0).
-//
-// This function must be called before the worktree branch is merged so that
-// the trailers travel with the commit into the generation branch history.
-// Errors are returned but treated as non-fatal by callers.
-func appendOutcomeTrailers(worktreeDir string, rec InvocationRecord) error {
-	args := []string{"-C", worktreeDir, "commit", "--amend", "--no-edit"}
-	for _, t := range formatOutcomeTrailers(rec) {
-		args = append(args, "--trailer", t)
-	}
-	cmd := exec.Command(binGit, args...)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git commit --amend: %w\n%s", err, out)
-	}
-	return nil
-}
-
-// progressWriter wraps a bytes.Buffer, logging concise one-line summaries
-// of Claude stream-json events (tool calls, result) via logf(). All bytes
-// pass through to the underlying buffer unchanged.
-type progressWriter struct {
-	buf       *bytes.Buffer
-	start     time.Time
-	lastEvent time.Time
-	partial   []byte
-	turn      int
-	gotFirst  bool
-}
-
-func newProgressWriter(dst *bytes.Buffer, start time.Time) *progressWriter {
-	return &progressWriter{buf: dst, start: start, lastEvent: start}
-}
-
-func (pw *progressWriter) Write(p []byte) (int, error) {
-	if !pw.gotFirst {
-		pw.gotFirst = true
-		logf("claude: [%s] first output", time.Since(pw.start).Round(time.Second))
-	}
-	n, err := pw.buf.Write(p)
-	if err != nil {
-		return n, err
-	}
-	pw.partial = append(pw.partial, p...)
-	for {
-		idx := bytes.IndexByte(pw.partial, '\n')
-		if idx < 0 {
-			break
-		}
-		pw.logLine(pw.partial[:idx])
-		pw.partial = pw.partial[idx+1:]
-	}
-	return n, nil
-}
-
-// logLine parses a single JSON line and logs assistant turns, tool calls,
-// and the final result event.
-func (pw *progressWriter) logLine(line []byte) {
-	if len(line) == 0 {
-		return
-	}
-	var msg struct {
-		Type    string `json:"type"`
-		Message struct {
-			Content []struct {
-				Type  string          `json:"type"`
-				Text  string          `json:"text"`
-				Name  string          `json:"name"`
-				Input json.RawMessage `json:"input"`
-			} `json:"content"`
-		} `json:"message"`
-		TotalCostUSD float64 `json:"total_cost_usd"`
-		Usage        struct {
-			InputTokens              int `json:"input_tokens"`
-			OutputTokens             int `json:"output_tokens"`
-			CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
-			CacheReadInputTokens     int `json:"cache_read_input_tokens"`
-		} `json:"usage"`
-	}
-	if json.Unmarshal(line, &msg) != nil {
-		return
-	}
-	now := time.Now()
-	step := now.Sub(pw.lastEvent).Round(time.Second)
-	total := now.Sub(pw.start).Round(time.Second)
-	pw.lastEvent = now
-
-	switch msg.Type {
-	case "assistant":
-		pw.turn++
-		// Find first text snippet for log context.
-		snippet := ""
-		for _, b := range msg.Message.Content {
-			if b.Type == "text" && b.Text != "" {
-				snippet = b.Text
-				if len(snippet) > 120 {
-					snippet = snippet[:120] + "..."
-				}
-				snippet = strings.ReplaceAll(snippet, "\n", " ")
-				break
-			}
-		}
-		// Always log the turn header with timing.
-		if snippet != "" {
-			logf("claude: [%s +%s] turn %d: %s", total, step, pw.turn, snippet)
-		} else {
-			logf("claude: [%s +%s] turn %d", total, step, pw.turn)
-		}
-		// Log each tool call.
-		for _, b := range msg.Message.Content {
-			if b.Type == "tool_use" {
-				logf("claude: [%s] turn %d: tool %s %s", total, pw.turn, b.Name, toolSummary(b.Input))
-			}
-		}
-	case "user":
-		logf("claude: [%s +%s] tools done, waiting for LLM", total, step)
-	case "rate_limit_event":
-		logf("claude: [%s] rate_limit", total)
-	case "system":
-		logf("claude: [%s] ready", total)
-	case "result":
-		u := msg.Usage
-		totalIn := u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
-		logf("claude: [%s] done: %d turn(s), in=%d (base=%d cache_create=%d cache_read=%d) out=%d cost=$%.4f",
-			total, pw.turn, totalIn, u.InputTokens, u.CacheCreationInputTokens,
-			u.CacheReadInputTokens, u.OutputTokens, msg.TotalCostUSD)
-	}
-}
-
-// toolSummary extracts a concise context string from tool input JSON
-// (file_path, command, pattern, etc.).
-func toolSummary(input json.RawMessage) string {
-	if len(input) == 0 {
-		return ""
-	}
-	var fields map[string]json.RawMessage
-	if json.Unmarshal(input, &fields) != nil {
-		return ""
-	}
-	for _, key := range []string{"file_path", "path", "pattern", "command"} {
-		raw, ok := fields[key]
-		if !ok {
-			continue
-		}
-		var val string
-		if json.Unmarshal(raw, &val) != nil {
-			continue
-		}
-		if key == "command" && len(val) > 80 {
-			val = val[:80] + "..."
-		}
-		return val
-	}
-	return ""
-}
-
-// parseClaudeTokens extracts token usage from Claude's stream-json output.
-// It scans backwards for the "result" event and parses the usage object,
-// which includes cache_creation_input_tokens and cache_read_input_tokens
-// in addition to the base input_tokens and output_tokens.
-//
-// The total input tokens is: input_tokens + cache_creation + cache_read.
-func parseClaudeTokens(output []byte) ClaudeResult {
-	lines := bytes.Split(bytes.TrimSpace(output), []byte("\n"))
-	for i := len(lines) - 1; i >= 0; i-- {
-		var raw map[string]json.RawMessage
-		if err := json.Unmarshal(lines[i], &raw); err != nil {
-			continue
-		}
-		typeField, ok := raw["type"]
-		if !ok {
-			continue
-		}
-		var eventType string
-		if json.Unmarshal(typeField, &eventType) != nil || eventType != "result" {
-			continue
-		}
-
-		var result struct {
-			TotalCostUSD float64 `json:"total_cost_usd"`
-			Usage        struct {
-				InputTokens              int `json:"input_tokens"`
-				OutputTokens             int `json:"output_tokens"`
-				CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
-				CacheReadInputTokens     int `json:"cache_read_input_tokens"`
-			} `json:"usage"`
-		}
-		if err := json.Unmarshal(lines[i], &result); err != nil {
-			logf("parseClaudeTokens: unmarshal error: %v", err)
-			return ClaudeResult{}
-		}
-
-		u := result.Usage
-		totalInput := u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
-
-		logf("parseClaudeTokens: in=%d (base=%d cache_create=%d cache_read=%d) out=%d cost=$%.4f",
-			totalInput, u.InputTokens, u.CacheCreationInputTokens, u.CacheReadInputTokens,
-			u.OutputTokens, result.TotalCostUSD)
-
-		return ClaudeResult{
-			InputTokens:         totalInput,
-			OutputTokens:        u.OutputTokens,
-			CacheCreationTokens: u.CacheCreationInputTokens,
-			CacheReadTokens:     u.CacheReadInputTokens,
-			CostUSD:             result.TotalCostUSD,
-		}
-	}
-	return ClaudeResult{}
-}
-
-// checkClaude verifies that Claude can be invoked. In podman mode it
-// confirms podman is available and the container image exists. In CLI and
-// SDK modes it confirms the claude binary is on PATH. All modes verify
-// credentials.
+// checkClaude verifies that Claude can be invoked.
 func (o *Orchestrator) checkClaude() error {
-	switch o.cfg.Cobbler.effectiveMode() {
-	case ExecutionModeCLI, ExecutionModeSDK:
-		if _, err := exec.LookPath(binClaude); err != nil {
-			return fmt.Errorf("claude not found on PATH; install the Claude CLI or set mode: podman")
-		}
-		return o.ensureCredentials()
-	}
-	if err := o.checkPodman(); err != nil {
-		return err
-	}
-	return o.ensureCredentials()
+	return claude.CheckClaude(claude.CheckClaudeDeps{
+		EffectiveMode:      o.cfg.Cobbler.effectiveMode(),
+		EnsureCredentialsFn: o.ensureCredentials,
+		CheckPodmanFn:      o.checkPodman,
+	})
 }
 
 // ensureCredentials checks that the credential file exists in SecretsDir.
-// If missing, it attempts to extract credentials from the macOS Keychain.
-// Returns an error if the file still does not exist after the attempt.
 func (o *Orchestrator) ensureCredentials() error {
-	credPath := filepath.Join(o.cfg.Claude.SecretsDir, o.cfg.EffectiveTokenFile())
-	if _, err := os.Stat(credPath); err == nil {
-		return nil
-	}
-
-	logf("ensureCredentials: %s not found, attempting keychain extraction", credPath)
-	if err := o.ExtractCredentials(); err != nil {
-		logf("ensureCredentials: keychain extraction failed: %v", err)
-	}
-
-	if _, err := os.Stat(credPath); err != nil {
-		return fmt.Errorf("claude credentials not found at %s; "+
-			"run 'mage credentials' on the host or place a valid credential file at %s",
-			credPath, credPath)
-	}
-	return nil
+	return claude.EnsureCredentials(
+		o.cfg.Claude.SecretsDir,
+		o.cfg.EffectiveTokenFile(),
+		o.ExtractCredentials,
+	)
 }
 
-// checkPodman verifies that podman is available and that the configured
-// image exists locally. If the image is missing, it builds it from the
-// embedded Dockerfile.
+// checkPodman verifies that podman is available and the image exists.
 func (o *Orchestrator) checkPodman() error {
-	if _, err := exec.LookPath(binPodman); err != nil {
-		return fmt.Errorf("podman not found on PATH; see README.md")
-	}
-	return o.ensureImage()
+	return claude.CheckPodman(o.ensureImage)
 }
 
-// extractTextFromStreamJSON concatenates all text blocks from assistant
-// messages in Claude's stream-json output. If no line parses as JSON at all
-// (e.g. SDK mode stores plain text in RawOutput) the raw bytes are returned
-// unchanged so downstream YAML extraction still works. Stream-json output
-// with no assistant messages (system/result only) still returns "".
-func extractTextFromStreamJSON(rawOutput []byte) string {
-	var sb strings.Builder
-	anyJSON := false // true when at least one line is valid JSON
-	for _, line := range bytes.Split(rawOutput, []byte("\n")) {
-		if len(line) == 0 {
-			continue
-		}
-		var msg struct {
-			Type    string `json:"type"`
-			Message struct {
-				Content []struct {
-					Type string `json:"type"`
-					Text string `json:"text"`
-				} `json:"content"`
-			} `json:"message"`
-		}
-		if json.Unmarshal(line, &msg) != nil {
-			continue // not JSON — skip but do not set anyJSON
-		}
-		anyJSON = true
-		if msg.Type != "assistant" {
-			continue
-		}
-		for _, block := range msg.Message.Content {
-			if block.Type == "text" {
-				sb.WriteString(block.Text)
-			}
-		}
-	}
-	if !anyJSON {
-		// RawOutput is plain text (SDK mode); return as-is.
-		return string(rawOutput)
-	}
-	return sb.String()
+// logConfig prints the resolved configuration for debugging.
+func (o *Orchestrator) logConfig(target string) {
+	claude.LogConfig(target, claude.LogConfigDeps{
+		Silence:                 o.cfg.Silence(),
+		MaxStitchIssues:         o.cfg.Cobbler.MaxStitchIssues,
+		MaxStitchIssuesPerCycle: o.cfg.Cobbler.MaxStitchIssuesPerCycle,
+		MaxMeasureIssues:        o.cfg.Cobbler.MaxMeasureIssues,
+		GenerationBranch:        o.cfg.Generation.Branch,
+		UserPrompt:              o.cfg.Cobbler.UserPrompt,
+	})
 }
 
-// extractYAMLBlock finds the first ```yaml fenced code block in text
-// and returns its content. Returns an error if no YAML block is found.
-func extractYAMLBlock(text string) ([]byte, error) {
-	// Look for ```yaml or ```yml opening fence.
-	markers := []string{"```yaml\n", "```yml\n", "```yaml\r\n", "```yml\r\n"}
-	start := -1
-	markerLen := 0
-	for _, m := range markers {
-		idx := strings.Index(text, m)
-		if idx >= 0 && (start < 0 || idx < start) {
-			start = idx
-			markerLen = len(m)
-		}
-	}
-	if start < 0 {
-		return nil, fmt.Errorf("no ```yaml fenced code block found in Claude output")
-	}
-
-	content := text[start+markerLen:]
-	end := strings.Index(content, "\n```")
-	if end < 0 {
-		// Try without newline prefix (block ends at EOF or with just ```)
-		end = strings.Index(content, "```")
-	}
-	if end < 0 {
-		return nil, fmt.Errorf("unclosed ```yaml fenced code block")
-	}
-
-	return []byte(strings.TrimSpace(content[:end])), nil
-}
-
-// runClaude executes Claude inside a podman container and returns token
-// usage. The process is killed if ClaudeMaxTimeSec is exceeded.
-// Extra Claude CLI arguments (e.g., "--max-turns", "1") are appended
-// after the default args.
+// runClaude executes Claude and returns token usage.
 func (o *Orchestrator) runClaude(prompt, dir string, silence bool, extraClaudeArgs ...string) (ClaudeResult, error) {
-	logf("runClaude: promptLen=%d dir=%q silence=%v", len(prompt), dir, silence)
+	return claude.RunClaude(o.runClaudeDeps(), prompt, dir, silence, extraClaudeArgs...)
+}
 
-	if o.cfg.Claude.Temperature != 0 {
-		logf("runClaude: warning: temperature=%.2f configured but Claude CLI does not support --temperature; parameter ignored", o.cfg.Claude.Temperature)
+// runClaudeDeps builds the dependency struct for RunClaude.
+func (o *Orchestrator) runClaudeDeps() claude.RunClaudeDeps {
+	return claude.RunClaudeDeps{
+		EffectiveMode:        o.cfg.Cobbler.effectiveMode(),
+		ClaudeTimeout:        o.cfg.ClaudeTimeout(),
+		Temperature:          o.cfg.Claude.Temperature,
+		Silence:              o.cfg.Silence(),
+		ClaudeArgs:           o.cfg.Claude.Args,
+		PodmanArgs:           o.cfg.Podman.Args,
+		PodmanImage:          o.cfg.Podman.Image,
+		SecretsDir:           o.cfg.Claude.SecretsDir,
+		TokenFile:            o.cfg.EffectiveTokenFile(),
+		ContainerCreds:       o.cfg.Claude.ContainerCredentialsPath,
+		IdleTimeoutS:         o.cfg.Cobbler.IdleTimeoutSeconds,
+		SdkQueryFn:           o.sdkQueryFn,
+		ExtractCredentialsFn: o.ExtractCredentials,
+		BuildPodmanCmdFn:     o.buildPodmanCmd,
 	}
+}
 
-	// Refresh credentials from macOS Keychain before each invocation.
-	// OAuth tokens expire periodically; extracting just before launch
-	// ensures the container always gets a valid token.
-	if err := o.ExtractCredentials(); err != nil {
-		logf("runClaude: credential refresh warning: %v", err)
-	}
-
-	workDir := dir
-	if workDir == "" {
-		var err error
-		workDir, err = os.Getwd()
-		if err != nil {
-			return ClaudeResult{}, fmt.Errorf("getting working directory: %w", err)
-		}
-	}
-
-	timeout := o.cfg.ClaudeTimeout()
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	if o.cfg.Cobbler.effectiveMode() == ExecutionModeSDK {
-		return o.runClaudeSDK(ctx, prompt, workDir, silence, extraClaudeArgs...)
-	}
-
-	var cmd *exec.Cmd
-	if o.cfg.Cobbler.effectiveMode() == ExecutionModeCLI {
-		cmd = o.buildDirectCmd(ctx, workDir, extraClaudeArgs...)
-	} else {
-		cmd = o.buildPodmanCmd(ctx, workDir, extraClaudeArgs...)
-	}
-
-	cmd.Stdin = strings.NewReader(prompt)
-
-	// idleAt tracks the nanosecond timestamp of the last byte written to stdout.
-	// The watchdog goroutine reads this atomically to detect hung sessions.
-	var idleAt atomic.Int64
-	idleAt.Store(time.Now().UnixNano())
-
-	var stdoutBuf bytes.Buffer
-	var outputWriter io.Writer
-	var pw *progressWriter
-	if silence {
-		pw = newProgressWriter(&stdoutBuf, time.Now())
-		outputWriter = pw
-	} else {
-		outputWriter = io.MultiWriter(os.Stdout, &stdoutBuf)
-		cmd.Stderr = os.Stderr
-	}
-	// Wrap the output writer to update idleAt on every write.
-	cmd.Stdout = &idleTrackingWriter{w: outputWriter, lastWrite: &idleAt}
-
-	// Launch idle watchdog if IdleTimeoutSeconds > 0.
-	idleDur := time.Duration(o.cfg.Cobbler.IdleTimeoutSeconds) * time.Second
-	if idleDur > 0 {
-		go func() {
-			ticker := time.NewTicker(time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					last := time.Unix(0, idleAt.Load())
-					if time.Since(last) >= idleDur {
-						logf("runClaude: idle watchdog triggered after %s with no output — cancelling session",
-							time.Since(last).Round(time.Second))
-						cancel()
-						return
-					}
-				}
-			}
-		}()
-	}
-
-	start := time.Now()
-	err := cmd.Run()
-
-	if ctx.Err() == context.DeadlineExceeded {
-		elapsed := time.Since(start).Round(time.Second)
-		last := time.Unix(0, idleAt.Load())
-		idleElapsed := time.Since(last).Round(time.Second)
-		if idleDur > 0 && idleElapsed >= idleDur {
-			logf("runClaude: idle timeout after %s with no output (session ran %s)", idleElapsed, elapsed)
-			return ClaudeResult{}, fmt.Errorf("claude idle timeout: no output for %s", idleElapsed)
-		}
-		logf("runClaude: killed after %s (max time %s exceeded)", elapsed, timeout)
-		return ClaudeResult{}, fmt.Errorf("claude max time exceeded (%s)", timeout)
-	}
-
-	rawOutput := stdoutBuf.Bytes()
-	result := parseClaudeTokens(rawOutput)
-	if pw != nil {
-		result.NumTurns = pw.turn
-	}
-	result.RawOutput = make([]byte, len(rawOutput))
-	copy(result.RawOutput, rawOutput)
-	logf("runClaude: finished in %s in=%d (cache_create=%d cache_read=%d) out=%d cost=$%.4f (err=%v)",
-		time.Since(start).Round(time.Second), result.InputTokens,
-		result.CacheCreationTokens, result.CacheReadTokens,
-		result.OutputTokens, result.CostUSD, err)
-	return result, err
+// runClaudeSDK executes Claude via the Go Agent SDK.
+func (o *Orchestrator) runClaudeSDK(ctx context.Context, prompt, workDir string, silence bool, extraClaudeArgs ...string) (ClaudeResult, error) {
+	return claude.RunClaudeSDK(o.runClaudeDeps(), ctx, prompt, workDir, silence, extraClaudeArgs...)
 }
 
 // buildPodmanCmd constructs the exec.Cmd for running Claude inside a
 // podman container. It mounts the working directory and the credential
 // file so Claude Code can authenticate.
 func (o *Orchestrator) buildPodmanCmd(ctx context.Context, workDir string, extraClaudeArgs ...string) *exec.Cmd {
+	return buildPodmanCmdWithCfg(ctx, workDir, o.cfg, extraClaudeArgs...)
+}
+
+// buildDirectCmd constructs the exec.Cmd for running claude directly.
+func (o *Orchestrator) buildDirectCmd(ctx context.Context, workDir string, extraClaudeArgs ...string) *exec.Cmd {
+	return claude.BuildDirectCmd(ctx, workDir, o.cfg.Claude.Args, extraClaudeArgs...)
+}
+
+// hasOpenIssues returns true if there are open orchestrator issues.
+func (o *Orchestrator) hasOpenIssues() (bool, error) {
+	return claude.HasOpenIssues(claude.HasOpenIssuesDeps{
+		DetectGitHubRepoFn: func(repoRoot string) (string, error) {
+			return detectGitHubRepo(repoRoot, o.cfg)
+		},
+		GitCurrentBranchFn: gitCurrentBranch,
+		ListOpenCobblerIssuesFn: func(repo, branch string) (int, error) {
+			issues, err := listOpenCobblerIssues(repo, branch)
+			return len(issues), err
+		},
+	})
+}
+
+// HistoryClean removes the history subdirectory.
+func (o *Orchestrator) HistoryClean() error {
+	return claude.HistoryClean(o.historyDir())
+}
+
+// CobblerReset removes the cobbler scratch directory.
+func (o *Orchestrator) CobblerReset() error {
+	return claude.CobblerReset(o.cfg.Cobbler.Dir)
+}
+
+// ---------------------------------------------------------------------------
+// Functions delegated to internal/claude (package-level)
+// ---------------------------------------------------------------------------
+
+// parseClaudeTokens extracts token usage from Claude's stream-json output.
+func parseClaudeTokens(output []byte) ClaudeResult {
+	return claude.ParseClaudeTokens(output)
+}
+
+// extractTextFromStreamJSON concatenates all text blocks from assistant messages.
+func extractTextFromStreamJSON(rawOutput []byte) string {
+	return claude.ExtractTextFromStreamJSON(rawOutput)
+}
+
+// extractYAMLBlock finds the first ```yaml fenced code block in text.
+func extractYAMLBlock(text string) ([]byte, error) {
+	return claude.ExtractYAMLBlock(text)
+}
+
+// filterSDKStderr reads lines from r and replaces rate-limit warnings.
+var filterSDKStderr = claude.FilterSDKStderr
+
+// toolSummary extracts a concise context string from tool input JSON.
+func toolSummary(input json.RawMessage) string {
+	return claude.ToolSummary(input)
+}
+
+// intFromUsage extracts an integer from the ResultMessage usage map.
+func intFromUsage(usage map[string]interface{}, key string) int {
+	return claude.IntFromUsage(usage, key)
+}
+
+// formatOutcomeTrailers returns the set of git trailer strings for rec.
+func formatOutcomeTrailers(rec InvocationRecord) []string {
+	return claude.FormatOutcomeTrailers(rec)
+}
+
+// appendOutcomeTrailers amends the last commit with outcome trailers.
+func appendOutcomeTrailers(worktreeDir string, rec InvocationRecord) error {
+	return claude.AppendOutcomeTrailers(worktreeDir, rec)
+}
+
+// worktreeBasePath returns the directory used for stitch worktrees.
+func worktreeBasePath() string {
+	return claude.WorktreeBasePath()
+}
+
+// progressWriter wraps a bytes.Buffer, logging concise event summaries.
+type progressWriter = claude.ProgressWriter
+
+// newProgressWriter creates a progressWriter.
+var newProgressWriter = claude.NewProgressWriter
+
+// idleTrackingWriter wraps an io.Writer and records the last write timestamp.
+type idleTrackingWriter = claude.IdleTrackingWriter
+
+// buildPodmanCmdWithCfg constructs the exec.Cmd for running Claude inside a
+// podman container. This stays in the parent package because it needs Config.
+func buildPodmanCmdWithCfg(ctx context.Context, workDir string, cfg Config, extraClaudeArgs ...string) *exec.Cmd {
 	args := []string{"run", "--rm", "-i",
 		"-v", workDir + ":" + workDir,
 		"-w", workDir,
 	}
 
 	// Mount credentials into the container at the path Claude Code expects.
-	credPath := filepath.Join(o.cfg.Claude.SecretsDir, o.cfg.EffectiveTokenFile())
+	credPath := filepath.Join(cfg.Claude.SecretsDir, cfg.EffectiveTokenFile())
 	if absCredPath, err := filepath.Abs(credPath); err == nil {
 		if _, err := os.Stat(absCredPath); err == nil {
 			args = append(args,
-				"-v", absCredPath+":"+o.cfg.Claude.ContainerCredentialsPath+":ro")
+				"-v", absCredPath+":"+cfg.Claude.ContainerCredentialsPath+":ro")
 		}
 	}
 
-	args = append(args, o.cfg.Podman.Args...)
-	args = append(args, o.cfg.Podman.Image)
+	args = append(args, cfg.Podman.Args...)
+	args = append(args, cfg.Podman.Image)
 	args = append(args, binClaude)
-	args = append(args, o.cfg.Claude.Args...)
+	args = append(args, cfg.Claude.Args...)
 	args = append(args, extraClaudeArgs...)
 
-	logf("runClaude: exec %s %v (timeout=%s)", binPodman, args, o.cfg.ClaudeTimeout())
+	logf("runClaude: exec %s %v (timeout=%s)", binPodman, args, cfg.ClaudeTimeout())
 	return exec.CommandContext(ctx, binPodman, args...)
-}
-
-// buildDirectCmd constructs the exec.Cmd for running the claude binary
-// directly on the host, without a podman container. The working directory
-// is set on the command so Claude Code operates within the correct project
-// root. No volume mounts or image selection are involved.
-//
-// CLAUDECODE is stripped from the environment so that claude can start even
-// when the caller is itself running inside a Claude Code session. Without this,
-// claude detects the nested session and exits with status 1.
-func (o *Orchestrator) buildDirectCmd(ctx context.Context, workDir string, extraClaudeArgs ...string) *exec.Cmd {
-	args := append([]string{}, o.cfg.Claude.Args...)
-	args = append(args, extraClaudeArgs...)
-	logf("runClaude: exec %s %v (mode=cli timeout=%s)", binClaude, args, o.cfg.ClaudeTimeout())
-	cmd := exec.CommandContext(ctx, binClaude, args...)
-	cmd.Dir = workDir
-	// Inherit the full environment but remove CLAUDECODE so that the claude
-	// subprocess does not see itself as nested inside another Claude session.
-	filtered := make([]string, 0, len(os.Environ()))
-	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, "CLAUDECODE=") {
-			filtered = append(filtered, e)
-		}
-	}
-	cmd.Env = filtered
-	return cmd
-}
-
-// runClaudeSDK executes Claude via the Go Agent SDK and returns token usage.
-// It is called by runClaude when the execution mode is ExecutionModeSDK.
-//
-// The SDK communicates with the claude binary via the --stdio JSONL protocol,
-// returning typed message events (AssistantMessage, ResultMessage, etc.).
-// This provides structured streaming and native token reporting without the
-// need for raw stream-json parsing.
-//
-// CLAUDECODE is temporarily unset from the process environment via sdkEnvMu
-// so the claude subprocess can start even inside a Claude Code session.
-func (o *Orchestrator) runClaudeSDK(ctx context.Context, prompt, workDir string, silence bool, extraClaudeArgs ...string) (ClaudeResult, error) {
-	opts := claudetypes.NewClaudeAgentOptions()
-	opts.CWD = &workDir
-	opts.DangerouslySkipPermissions = true
-	opts.AllowDangerouslySkipPermissions = true
-
-	// Preserve Claude Code's built-in system prompt (tool discipline, read-before-write,
-	// etc.) by using a preset instead of leaving SystemPrompt nil. When nil, the SDK
-	// passes --system-prompt "" which strips the defaults, causing stitch to hallucinate
-	// file reads from package_contracts (GH-965).
-	opts = opts.WithSystemPromptPreset(claudetypes.SystemPromptPreset{
-		Type:   "preset",
-		Preset: "claude_code",
-	})
-
-	// Map --max-turns from extraClaudeArgs into the options struct.
-	for i := 0; i+1 < len(extraClaudeArgs); i++ {
-		if extraClaudeArgs[i] == "--max-turns" {
-			if n, err := strconv.Atoi(extraClaudeArgs[i+1]); err == nil {
-				opts = opts.WithMaxTurns(n)
-			}
-			i++ // skip the value token
-		}
-	}
-
-	start := time.Now()
-
-	// Redirect os.Stderr through a filter pipe for the full duration of this
-	// call. The SDK transport writes rate_limit_event warnings directly to
-	// os.Stderr via its internal logger (not surfaced through the message
-	// channel). filterSDKStderr replaces those warnings with a structured log
-	// entry and forwards all other lines to the original stderr unchanged.
-	// sdkStderrMu serialises concurrent calls so redirects do not interleave.
-	// The lock must be acquired before any logf call to prevent a data race on
-	// os.Stderr between the redirect write and logf's read.
-	sdkStderrMu.Lock()
-	origStderr := os.Stderr
-	pr, pw, pipeErr := os.Pipe()
-	if pipeErr == nil {
-		os.Stderr = pw
-	}
-	stderrDone := make(chan struct{})
-	if pipeErr == nil {
-		go filterSDKStderr(pr, origStderr, stderrDone)
-	}
-	// Log after os.Stderr is redirected so the message flows through the filter.
-	logf("runClaude: SDK query workDir=%q (timeout=%s)", workDir, o.cfg.ClaudeTimeout())
-
-	// Cleanup: restore stderr and drain the filter goroutine after the call.
-	// Defined here so all return paths below trigger it via the defer.
-	defer func() {
-		if pipeErr == nil {
-			pw.Close()
-			<-stderrDone
-			os.Stderr = origStderr
-		}
-		sdkStderrMu.Unlock()
-	}()
-
-	// The SDK calls os.Environ() when constructing the subprocess env, so
-	// opts.Env["CLAUDECODE"]="" would merely append after CLAUDECODE=1 already
-	// in the slice — and getenv() returns the first match, not the last.
-	// Instead, temporarily remove CLAUDECODE from the process environment so
-	// the subprocess inherits a clean env. The mutex serialises concurrent
-	// runClaudeSDK callers to prevent interleaving of the unset/restore.
-	sdkEnvMu.Lock()
-	oldVal, hadVal := os.LookupEnv("CLAUDECODE")
-	_ = os.Unsetenv("CLAUDECODE")
-
-	msgChan, err := o.sdkQueryFn(ctx, prompt, opts)
-
-	// Restore CLAUDECODE as soon as the subprocess is launched (Query is
-	// synchronous up to subprocess start; channel reads happen after unlock).
-	if hadVal {
-		_ = os.Setenv("CLAUDECODE", oldVal)
-	}
-	sdkEnvMu.Unlock()
-
-	if err != nil {
-		return ClaudeResult{}, fmt.Errorf("claude SDK query: %w", err)
-	}
-
-	var result ClaudeResult
-	var textBuf strings.Builder
-	var gotResult bool
-
-	for msg := range msgChan {
-		switch m := msg.(type) {
-		case *claudetypes.AssistantMessage:
-			for _, block := range m.Content {
-				switch b := block.(type) {
-				case *claudetypes.TextBlock:
-					if !silence {
-						fmt.Print(b.Text)
-					}
-					textBuf.WriteString(b.Text)
-				}
-			}
-		case *claudetypes.ResultMessage:
-			gotResult = true
-			if m.TotalCostUSD != nil {
-				result.CostUSD = *m.TotalCostUSD
-			}
-			result.InputTokens = intFromUsage(m.Usage, "input_tokens")
-			result.OutputTokens = intFromUsage(m.Usage, "output_tokens")
-			result.CacheCreationTokens = intFromUsage(m.Usage, "cache_creation_input_tokens")
-			result.CacheReadTokens = intFromUsage(m.Usage, "cache_read_input_tokens")
-			result.NumTurns = m.NumTurns
-			result.DurationAPIMs = m.DurationAPIMs
-			result.SessionID = m.SessionID
-			if m.IsError {
-				return result, fmt.Errorf("claude SDK session returned error result")
-			}
-		}
-	}
-
-	if !gotResult {
-		return ClaudeResult{}, fmt.Errorf("claude SDK session produced no result (subprocess may have exited early)")
-	}
-
-	// Store the collected text as RawOutput for history compatibility.
-	result.RawOutput = []byte(textBuf.String())
-	logf("runClaude: SDK finished in %s in=%d (cache_create=%d cache_read=%d) out=%d cost=$%.4f",
-		time.Since(start).Round(time.Second),
-		result.InputTokens, result.CacheCreationTokens, result.CacheReadTokens,
-		result.OutputTokens, result.CostUSD)
-	return result, nil
-}
-
-// intFromUsage extracts an integer from the ResultMessage usage map,
-// which uses map[string]interface{} because Anthropic API usage fields
-// are JSON numbers (float64 after decode).
-func intFromUsage(usage map[string]interface{}, key string) int {
-	if usage == nil {
-		return 0
-	}
-	v, ok := usage[key]
-	if !ok {
-		return 0
-	}
-	switch n := v.(type) {
-	case float64:
-		return int(n)
-	case int:
-		return n
-	case int64:
-		return int(n)
-	}
-	return 0
-}
-
-// logConfig prints the resolved configuration for debugging.
-func (o *Orchestrator) logConfig(target string) {
-	logf("%s config: silence=%v stitchTotal=%d stitchPerCycle=%d measure=%d generationBranch=%q",
-		target, o.cfg.Silence(), o.cfg.Cobbler.MaxStitchIssues, o.cfg.Cobbler.MaxStitchIssuesPerCycle, o.cfg.Cobbler.MaxMeasureIssues, o.cfg.Generation.Branch)
-	if o.cfg.Cobbler.UserPrompt != "" {
-		logf("%s config: userPrompt=%q", target, o.cfg.Cobbler.UserPrompt)
-	}
-}
-
-// worktreeBasePath returns the directory used for stitch worktrees.
-// It uses git rev-parse --git-common-dir to resolve the shared .git directory
-// so the path is identical whether the orchestrator is invoked from the main
-// repo root or from a git worktree of the same repository (prd003 R3.16).
-// Falls back to filepath.Base(os.Getwd()) when git is unavailable.
-func worktreeBasePath() string {
-	out, err := exec.Command("git", "rev-parse", "--git-common-dir").Output()
-	if err == nil {
-		gitDir := filepath.Clean(strings.TrimSpace(string(out)))
-		if !filepath.IsAbs(gitDir) {
-			cwd, _ := os.Getwd()
-			gitDir = filepath.Join(cwd, gitDir)
-		}
-		repoRoot := filepath.Dir(gitDir)
-		return filepath.Join(os.TempDir(), filepath.Base(repoRoot)+"-worktrees")
-	}
-	repoRoot, _ := os.Getwd()
-	return filepath.Join(os.TempDir(), filepath.Base(repoRoot)+"-worktrees")
-}
-
-// hasOpenIssues returns true if there are open orchestrator issues for the
-// current generation on GitHub. Returns an error if the check cannot be
-// performed (API failure, missing repo, etc.) so callers can distinguish
-// "no issues" from "unable to check".
-func (o *Orchestrator) hasOpenIssues() (bool, error) {
-	repoRoot, err := os.Getwd()
-	if err != nil {
-		return false, fmt.Errorf("getwd: %w", err)
-	}
-	ghRepo, err := detectGitHubRepo(repoRoot, o.cfg)
-	if err != nil {
-		return false, fmt.Errorf("detectGitHubRepo: %w", err)
-	}
-	branch, err := gitCurrentBranch(".")
-	if err != nil {
-		return false, fmt.Errorf("gitCurrentBranch: %w", err)
-	}
-	issues, err := listOpenCobblerIssues(ghRepo, branch)
-	if err != nil {
-		return false, fmt.Errorf("listOpenCobblerIssues: %w", err)
-	}
-	return len(issues) > 0, nil
-}
-
-// HistoryClean removes the history subdirectory under the cobbler scratch
-// directory. History is created at the first stitch or measure invocation and
-// survives across resume cycles. It is deleted only at generator:stop or via
-// this explicit call. Calling HistoryClean on a non-existent directory is a
-// no-op.
-func (o *Orchestrator) HistoryClean() error {
-	hdir := o.historyDir()
-	if hdir == "" {
-		return nil
-	}
-	logf("historyClean: removing %s", hdir)
-	if err := os.RemoveAll(hdir); err != nil {
-		return fmt.Errorf("removing history dir %s: %w", hdir, err)
-	}
-	logf("historyClean: done")
-	return nil
-}
-
-// CobblerReset removes the cobbler scratch directory.
-func (o *Orchestrator) CobblerReset() error {
-	logf("cobblerReset: removing %s", o.cfg.Cobbler.Dir)
-	if err := os.RemoveAll(o.cfg.Cobbler.Dir); err != nil {
-		return fmt.Errorf("removing %s: %w", o.cfg.Cobbler.Dir, err)
-	}
-	logf("cobblerReset: done")
-	return nil
-}
-
-// idleTrackingWriter wraps an io.Writer and records the last write timestamp
-// in lastWrite (nanoseconds) so the idle watchdog can detect stalled sessions.
-type idleTrackingWriter struct {
-	w         io.Writer
-	lastWrite *atomic.Int64
-}
-
-func (t *idleTrackingWriter) Write(p []byte) (int, error) {
-	t.lastWrite.Store(time.Now().UnixNano())
-	return t.w.Write(p)
 }

@@ -253,14 +253,7 @@ func gitShowFileContent(ref, path, dir string) ([]byte, error) {
 	return cmdGit(dir, "show", ref+":"+path).Output()
 }
 
-// FileChange holds per-file diff information from git diff --name-status
-// combined with insertion/deletion counts from git diff --numstat.
-type FileChange struct {
-	Path       string `yaml:"path"`
-	Status     string `yaml:"status"`
-	Insertions int    `yaml:"insertions"`
-	Deletions  int    `yaml:"deletions"`
-}
+// FileChange is defined in internal/claude and aliased in cobbler.go.
 
 // diffStat holds parsed output from git diff --shortstat.
 type diffStat struct {
