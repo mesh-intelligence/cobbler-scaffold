@@ -1245,16 +1245,16 @@ func TestNewProgressWriter(t *testing.T) {
 	if pw == nil {
 		t.Fatal("newProgressWriter returned nil")
 	}
-	if pw.buf != &buf {
+	if pw.Buf != &buf {
 		t.Error("buf field not set")
 	}
-	if pw.start != start {
-		t.Errorf("start = %v, want %v", pw.start, start)
+	if pw.Start != start {
+		t.Errorf("start = %v, want %v", pw.Start, start)
 	}
-	if pw.turn != 0 {
-		t.Errorf("turn = %d, want 0", pw.turn)
+	if pw.Turn != 0 {
+		t.Errorf("turn = %d, want 0", pw.Turn)
 	}
-	if pw.gotFirst {
+	if pw.GotFirst {
 		t.Error("gotFirst should be false initially")
 	}
 }
@@ -1282,11 +1282,11 @@ func TestProgressWriter_Write_SetsGotFirst(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	pw := newProgressWriter(&buf, time.Now())
-	if pw.gotFirst {
+	if pw.GotFirst {
 		t.Fatal("gotFirst should be false before first write")
 	}
 	pw.Write([]byte("x"))
-	if !pw.gotFirst {
+	if !pw.GotFirst {
 		t.Error("gotFirst should be true after first write")
 	}
 }
@@ -1297,14 +1297,14 @@ func TestProgressWriter_Write_AccumulatesPartial(t *testing.T) {
 	pw := newProgressWriter(&buf, time.Now())
 	// Write without newline — should accumulate in partial.
 	pw.Write([]byte(`{"type":"sys`))
-	if len(pw.partial) == 0 {
+	if len(pw.Partial) == 0 {
 		t.Error("partial should have accumulated data")
 	}
 	// Complete the line.
 	pw.Write([]byte("tem\"}\n"))
 	// After newline, partial for that line should be consumed.
-	if len(pw.partial) != 0 {
-		t.Errorf("partial should be empty after newline, got %q", string(pw.partial))
+	if len(pw.Partial) != 0 {
+		t.Errorf("partial should be empty after newline, got %q", string(pw.Partial))
 	}
 }
 
@@ -1315,8 +1315,8 @@ func TestProgressWriter_LogLine_EmptyLine(t *testing.T) {
 	var buf bytes.Buffer
 	pw := newProgressWriter(&buf, time.Now())
 	// Should not panic on empty line.
-	pw.logLine(nil)
-	pw.logLine([]byte{})
+	pw.LogLine(nil)
+	pw.LogLine([]byte{})
 }
 
 func TestProgressWriter_LogLine_InvalidJSON(t *testing.T) {
@@ -1324,9 +1324,9 @@ func TestProgressWriter_LogLine_InvalidJSON(t *testing.T) {
 	var buf bytes.Buffer
 	pw := newProgressWriter(&buf, time.Now())
 	// Should not panic on invalid JSON.
-	pw.logLine([]byte("not json"))
-	if pw.turn != 0 {
-		t.Errorf("turn should remain 0 for invalid JSON, got %d", pw.turn)
+	pw.LogLine([]byte("not json"))
+	if pw.Turn != 0 {
+		t.Errorf("turn should remain 0 for invalid JSON, got %d", pw.Turn)
 	}
 }
 
@@ -1344,9 +1344,9 @@ func TestProgressWriter_LogLine_AssistantTurn(t *testing.T) {
 		},
 	}
 	line, _ := json.Marshal(msg)
-	pw.logLine(line)
-	if pw.turn != 1 {
-		t.Errorf("turn = %d, want 1 after assistant message", pw.turn)
+	pw.LogLine(line)
+	if pw.Turn != 1 {
+		t.Errorf("turn = %d, want 1 after assistant message", pw.Turn)
 	}
 }
 
@@ -1364,9 +1364,9 @@ func TestProgressWriter_LogLine_AssistantToolUse(t *testing.T) {
 		},
 	}
 	line, _ := json.Marshal(msg)
-	pw.logLine(line)
-	if pw.turn != 1 {
-		t.Errorf("turn = %d, want 1", pw.turn)
+	pw.LogLine(line)
+	if pw.Turn != 1 {
+		t.Errorf("turn = %d, want 1", pw.Turn)
 	}
 }
 
@@ -1374,7 +1374,7 @@ func TestProgressWriter_LogLine_ResultEvent(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	pw := newProgressWriter(&buf, time.Now())
-	pw.turn = 3
+	pw.Turn = 3
 
 	msg := map[string]any{
 		"type":           "result",
@@ -1387,10 +1387,10 @@ func TestProgressWriter_LogLine_ResultEvent(t *testing.T) {
 		},
 	}
 	line, _ := json.Marshal(msg)
-	pw.logLine(line)
+	pw.LogLine(line)
 	// turn should remain unchanged for result events.
-	if pw.turn != 3 {
-		t.Errorf("turn = %d, want 3", pw.turn)
+	if pw.Turn != 3 {
+		t.Errorf("turn = %d, want 3", pw.Turn)
 	}
 }
 
@@ -1409,9 +1409,9 @@ func TestProgressWriter_LogLine_LongSnippetTruncated(t *testing.T) {
 		},
 	}
 	line, _ := json.Marshal(msg)
-	pw.logLine(line)
-	if pw.turn != 1 {
-		t.Errorf("turn = %d, want 1", pw.turn)
+	pw.LogLine(line)
+	if pw.Turn != 1 {
+		t.Errorf("turn = %d, want 1", pw.Turn)
 	}
 }
 
@@ -1430,8 +1430,8 @@ func TestProgressWriter_TurnCount_MultipleAssistantEvents(t *testing.T) {
 	// Write the stream through progressWriter (simulating cmd.Stdout).
 	pw.Write([]byte(stream))
 
-	if pw.turn != 3 {
-		t.Errorf("pw.turn = %d, want 3", pw.turn)
+	if pw.Turn != 3 {
+		t.Errorf("pw.Turn = %d, want 3", pw.Turn)
 	}
 
 	// Verify parseClaudeTokens gets cost from the same buffer.
@@ -1441,7 +1441,7 @@ func TestProgressWriter_TurnCount_MultipleAssistantEvents(t *testing.T) {
 	}
 
 	// Simulate the propagation that runClaude does.
-	cr.NumTurns = pw.turn
+	cr.NumTurns = pw.Turn
 	if cr.NumTurns != 3 {
 		t.Errorf("NumTurns = %d, want 3", cr.NumTurns)
 	}
@@ -1547,7 +1547,7 @@ func TestIdleTrackingWriter_UpdatesLastWrite(t *testing.T) {
 	before := time.Now().UnixNano()
 	last.Store(before)
 
-	w := &idleTrackingWriter{w: &buf, lastWrite: &last}
+	w := &idleTrackingWriter{W: &buf, LastWrite: &last}
 	time.Sleep(2 * time.Millisecond) // ensure clock advances
 
 	n, err := w.Write([]byte("hello"))
@@ -1572,7 +1572,7 @@ func TestIdleTrackingWriter_DelegatesWriteError(t *testing.T) {
 	last.Store(time.Now().UnixNano())
 
 	// errWriter always returns an error.
-	w := &idleTrackingWriter{w: &errWriter{}, lastWrite: &last}
+	w := &idleTrackingWriter{W: &errWriter{}, LastWrite: &last}
 	_, err := w.Write([]byte("x"))
 	if err == nil {
 		t.Error("expected error from underlying writer, got nil")
