@@ -59,6 +59,12 @@ overview:
     the decomposition or intermediate work is valuable. Both paths share the same GitHub issue
     model and git worktree isolation.
 
+    The YAML specification pipeline (PRDs, use cases, test suites) serves as a semantic model
+    in the sense of Fowler's Domain-Specific Languages: the specs encode behavioral intent,
+    Claude "compiles" them into code, and `mage analyze` acts as the type checker validating
+    model completeness before generation. See eng09-specification-as-semantic-model for the
+    full treatment of this analogy and its limits.
+
 interfaces:
   - name: Orchestrator and Config
     summary: |

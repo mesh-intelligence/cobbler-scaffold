@@ -1,0 +1,164 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: eng09-specification-as-semantic-model
+title: Specification as Semantic Model
+
+introduction: |
+  Martin Fowler's Domain-Specific Languages (2010) describes a compilation
+  pipeline where a DSL populates a semantic model — an in-memory object
+  graph that encodes behavior — and a compiler transforms that model into
+  executable code. The cobbler pipeline follows the same structure with one
+  substitution: the compiler is an LLM.
+
+  In Fowler's pipeline, the semantic model is written in code (classes,
+  structs, interfaces) and a deterministic compiler transforms it. In the
+  cobbler pipeline, the semantic model is written in YAML (PRDs, use cases,
+  test suites, behavioral contracts) and Claude transforms it into Go code,
+  which the Go compiler then makes executable. The YAML specs encode
+  behavioral intent the same way Fowler's code-level semantic model does —
+  they define what the system should do, not how.
+
+  This guideline documents the analogy, where it holds, where it breaks
+  down, and what it means for specification quality and tooling.
+
+sections:
+  - title: The Pipeline Analogy
+    content: |
+      The two pipelines are structurally equivalent:
+
+      ```
+      Fowler:   DSL text → Parser → Semantic Model (code) → Compiler → Executable
+      Cobbler:  YAML spec → Claude (agent) → Go code → Go compiler → Executable
+      ```
+
+      Claude serves as both parser and code generator. It reads the YAML
+      specifications (the DSL), builds an internal representation of what
+      the code should do (the semantic model, held in context), and emits
+      Go source (the compiler output). The Go compiler then produces the
+      binary.
+
+      The YAML specifications are the semantic model in this pipeline.
+      They encode requirements (R-items), acceptance criteria (ACs),
+      success criteria (S-items), test expectations, and behavioral
+      contracts. Together these define the complete behavioral intent of
+      the system. Claude's job is to produce code that satisfies this
+      intent, the same way a traditional compiler's job is to produce
+      machine code that satisfies the semantic model.
+
+  - title: mage analyze as Type Checker
+    content: |
+      A type checker validates that a program is internally consistent
+      before compilation: every variable is declared, every function
+      returns the correct type, every reference resolves. The `mage
+      analyze` command serves the same role for the specification
+      semantic model. It validates completeness and consistency before
+      Claude generates code.
+
+      The mapping between traditional type checking and specification
+      analysis:
+
+      | Type checker guarantee | Specification equivalent |
+      |---|---|
+      | Every variable declared before use | Every R-item covered by at least one AC |
+      | Every function has a return type | Every AC has at least one test case |
+      | Type mismatches caught at compile time | Broken citations and trace references caught before generation |
+      | Linker ensures all symbols resolve | Full traceability chain from R-item through AC to passing test |
+      | Unused variable warnings | Orphaned PRDs, ACs, or test suites with no references |
+
+      The more checks `mage analyze` performs, the fewer gaps the LLM
+      must fill by inference. A richer type system reduces runtime
+      errors; richer specification analysis reduces generation errors.
+
+  - title: Traceability as Model Consistency
+    content: |
+      The traceability chain is the specification semantic model's
+      internal consistency guarantee. Each link in the chain ensures
+      that behavioral intent flows from high-level requirements to
+      verifiable tests without gaps:
+
+      ```
+      R-item ← AC (defines "done" for the requirement)
+                 ← test case (proves the AC)
+                      ← UC S-item (integration-level verification)
+                           ← release grouping (all UCs complete)
+      ```
+
+      A gap anywhere in this chain is a hole in the semantic model.
+      When an R-item has no AC, there is no definition of "done." When
+      an AC has no test case, there is no verification. When a UC
+      S-item has no trace to an AC, the integration-level specification
+      is disconnected from the requirement-level specification.
+
+      These gaps force the LLM to infer intent. A deterministic
+      compiler would reject incomplete input with a compile error. An
+      LLM fills gaps with its best guess, which may or may not match
+      the developer's intent. Closing traceability gaps is equivalent
+      to fixing type errors — it makes the specification unambiguous
+      enough that the "compiler" produces correct output.
+
+  - title: The Semantic Model Spectrum
+    content: |
+      Not all generated code benefits equally from semantic model
+      patterns. The applicability depends on how much of the code's
+      behavior is configurable dispatch versus fixed algorithm.
+
+      | Category | Semantic model fit | Examples |
+      |---|---|---|
+      | Workflow engines | Natural fit — the domain is pluggable behavior | Cobbler orchestrator, agent frameworks, CI/CD pipelines, CoT chains |
+      | Small model, large algorithm | Thin model layer over algorithmic core | Graph algorithms (model: graph + query interface; algorithm: Dijkstra), databases (model: query plan; algorithm: B-tree) |
+      | Pure algorithms | No model — the algorithm is the implementation | Sorting, compression, parsing |
+      | Simple I/O | No model — overhead exceeds value | cat, head, tail, echo |
+
+      Workflow engines are the natural fit because their domain IS
+      pluggable behavior dispatch — the same structure Fowler describes
+      for semantic models. Most code that developers build with coding
+      agents falls into this category: orchestration pipelines, agent
+      loops, DAG executors, rule engines.
+
+      The "small model, large algorithm" category deserves attention.
+      These systems benefit from a thin semantic model at the interface
+      boundary (swap shortest-path algorithms, swap storage engines)
+      without forcing the algorithm itself into a model pattern. The
+      model defines WHAT to compute; the algorithm defines HOW. This
+      separation matches the PRD/implementation split: the PRD
+      specifies what, the generated code implements how.
+
+      Pure algorithms and simple I/O transformations gain nothing from
+      semantic model structure. A 20-line function does not need a
+      composable object graph. Forcing the pattern adds abstraction
+      overhead without improving correctness or composability.
+
+  - title: Where the Analogy Breaks Down
+    content: |
+      The specification-as-semantic-model analogy has three limits.
+
+      First, determinism. A traditional compiler produces the same
+      output for the same input. An LLM does not. Two runs of Claude
+      with the same YAML spec may produce structurally different code.
+      Both may satisfy the spec, or one may miss edge cases. This is
+      why test suites exist in the specification — they serve as the
+      acceptance gate that a deterministic compiler does not need.
+
+      Second, expressiveness. A code-level semantic model (Fowler's
+      version) can express arbitrarily complex behavior because it is
+      written in a general-purpose language. A YAML specification
+      expresses behavior through structured prose, requirement lists,
+      and input/output pairs. Some behaviors are difficult to specify
+      in YAML without becoming as complex as the code itself. When the
+      specification approaches the complexity of the implementation,
+      the abstraction provides no leverage.
+
+      Third, feedback loops. A traditional compiler reports errors
+      immediately: line 42, type mismatch. The LLM "compiler" does
+      not report specification gaps — it silently infers through them.
+      The only feedback comes after generation, when tests fail or
+      code review catches a deviation. This makes pre-generation
+      validation (mage analyze) more valuable than in traditional
+      compilation, where the compiler itself catches most problems.
+
+references:
+  - "Fowler, Martin. Domain-Specific Languages. Addison-Wesley, 2010."
+  - "#1250: Close traceability gaps between PRD ACs, UC success criteria, and test cases"
+  - "#1296: Investigate whether UCs should collapse into PRD ACs with semantic models"
+  - "#1302: Evaluate Fowler-style semantic models in generated code"
