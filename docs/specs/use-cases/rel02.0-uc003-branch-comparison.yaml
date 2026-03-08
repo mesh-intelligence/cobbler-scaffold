@@ -17,9 +17,9 @@ trigger: Developer invokes the Compare Tags command from the Command Palette, or
 flow:
   - F1: "Invoke comparison command: developer opens the Command Palette and selects Mage Orchestrator Compare Tags"
   - F2: "Select first tag: extension presents a quick-pick list of all version tags matching v[REL].[DATE].[REVISION] and the developer selects one"
-  - F3: "Select second tag: extension presents the same list (minus the first selection) and the developer selects the second tag"
-  - F4: "Compute diff: extension runs git diff --name-status between the two selected refs"
-  - F5: "Display file summary: extension opens a TreeDataProvider view showing added, modified, and deleted files grouped by directory"
+  - F3: "Select second tag: extension presents the same list (minus the first selection) and the developer selects the second tag (requires first selection from F2)"
+  - F4: "Compute diff: extension runs git diff --name-status between the two selected refs (requires both tags from F2 and F3)"
+  - F5: "Display file summary: extension opens a TreeDataProvider view showing added, modified, and deleted files grouped by directory (requires diff output from F4)"
   - F6: "Open diff editor: developer clicks a file node and VS Code opens a diff editor showing the file-level changes between the two refs"
   - F7: "Generation branch comparison: developer selects two generation nodes in the Generation Browser tree and invokes the compare context menu action"
   - F8: "Resolve branch refs: extension resolves each generation to its branch ref and repeats F4 through F6"
@@ -37,26 +37,14 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Quick-pick list displays all version tags matching the v[REL].[DATE].[REVISION] pattern
+    criterion: Clicking a file in the summary tree opens a VS Code diff editor showing changes between the two refs (cross-component integration between git diff, TreeDataProvider, and VS Code diff API)
     traces:
       - prd006-vscode-extension AC3
   - id: S2
-    criterion: File summary tree shows added, modified, and deleted files grouped by directory after selecting two tags
+    criterion: Comparison works when one or both refs have been merged or abandoned, using tag refs rather than branches so deleted generation branches do not break the workflow
     traces:
       - prd006-vscode-extension AC3
   - id: S3
-    criterion: Clicking a file in the summary opens a VS Code diff editor showing changes between the two refs
-    traces:
-      - prd006-vscode-extension AC3
-  - id: S4
-    criterion: Generation-to-generation comparison resolves each generation to its branch ref and displays the same file summary
-    traces:
-      - prd006-vscode-extension AC4
-  - id: S5
-    criterion: Comparison works when one or both refs have been merged or abandoned (uses tag refs, not branches)
-    traces:
-      - prd006-vscode-extension AC3
-  - id: S6
     criterion: Empty diff (identical refs) displays an informational message instead of an empty tree
     traces:
       - prd006-vscode-extension AC3

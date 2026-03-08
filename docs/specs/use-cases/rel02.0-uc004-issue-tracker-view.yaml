@@ -19,7 +19,7 @@ trigger: Developer opens the Issue Tracker panel in the VS Code sidebar
 flow:
   - F1: "Open Issue Tracker: developer clicks the mageOrchestrator.issues view in the VS Code sidebar"
   - F2: "Fetch issues: extension calls the GitHub Issues API and builds a tree of all issues"
-  - F3: "Group by status: tree displays three collapsible parent nodes (Open, In Progress, Closed) with issues sorted under the matching group"
+  - F3: "Group by status: tree displays three collapsible parent nodes (Open, In Progress, Closed) with issues sorted under the matching group (requires fetched issues from F2)"
   - F4: "Browse issue list: each issue node displays its title, type (task or epic), and ID"
   - F5: "Expand issue: developer expands an issue node to see child nodes for description, dependencies, and comments"
   - F6: "View InvocationRecord metrics: comments containing InvocationRecord JSON render as formatted child nodes showing tokens (input and output), LOC delta (production and test before/after), duration, and diff stats (files changed, insertions, deletions)"
@@ -39,31 +39,19 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Issue Tracker tree displays Open, In Progress, and Closed as collapsible parent nodes
+    criterion: Expanding an issue reveals description, dependencies, and comments as child nodes, providing multi-layer navigation without leaving the sidebar
     traces:
       - prd006-vscode-extension AC5
   - id: S2
-    criterion: Each issue node shows its title, type, and ID
-    traces:
-      - prd006-vscode-extension AC5
-  - id: S3
-    criterion: Expanding an issue reveals description, dependencies, and comments as child nodes
-    traces:
-      - prd006-vscode-extension AC5
-  - id: S4
-    criterion: InvocationRecord comments display tokens, LOC delta, duration, and diff stats as formatted child nodes
+    criterion: InvocationRecord JSON embedded in issue comments is parsed and displayed as formatted child nodes showing tokens, LOC delta, duration, and diff stats (cross-PRD data from prd005 rendered in prd006 UI)
     traces:
       - prd006-vscode-extension AC6
-  - id: S5
-    criterion: Tree refreshes automatically on the configured polling interval
+  - id: S3
+    criterion: Tree refreshes automatically on the configured polling interval via GitHub Issues API polling
     traces:
       - prd006-vscode-extension AC9
-  - id: S6
-    criterion: Context menu action opens a read-only editor panel with the full issue details
-    traces:
-      - prd006-vscode-extension AC6
-  - id: S7
-    criterion: Tree handles an empty issue list or API error without crashing
+  - id: S4
+    criterion: Tree handles an empty issue list or GitHub API error without crashing, displaying an informational message
     traces:
       - prd006-vscode-extension AC11
 

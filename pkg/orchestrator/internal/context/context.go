@@ -548,6 +548,40 @@ func LoadOODPromptContext() (contracts []OODPackageContractRef, sharedProtocols 
 	return contracts, sharedProtocols
 }
 
+// LoadPRDSemanticModel reads all PRDs under docs/specs/product-requirements/
+// and returns the semantic_model yaml.Node from the first PRD that has one.
+// Returns nil when no PRD contains a semantic_model field.
+//
+// We parse the raw YAML node tree rather than unmarshaling into PRDDoc
+// because yaml.v3 does not populate *yaml.Node fields when unmarshaling
+// into a struct (the node ends up with Kind=0).
+func LoadPRDSemanticModel() *yaml.Node {
+	prdFiles, _ := filepath.Glob("docs/specs/product-requirements/prd*.yaml")
+	for _, path := range prdFiles {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		var doc yaml.Node
+		if err := yaml.Unmarshal(data, &doc); err != nil {
+			continue
+		}
+		if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+			continue
+		}
+		root := doc.Content[0]
+		if root.Kind != yaml.MappingNode {
+			continue
+		}
+		for i := 0; i < len(root.Content)-1; i += 2 {
+			if root.Content[i].Value == "semantic_model" {
+				return root.Content[i+1]
+			}
+		}
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------

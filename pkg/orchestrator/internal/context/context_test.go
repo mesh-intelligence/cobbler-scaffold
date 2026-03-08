@@ -999,3 +999,58 @@ func TestApplyContextBudget_DefaultBudget(t *testing.T) {
 		t.Errorf("expected default budget to remove files, still have %d", len(ctx.SourceCode))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// LoadPRDSemanticModel tests
+// ---------------------------------------------------------------------------
+
+func TestLoadPRDSemanticModel_Present(t *testing.T) {
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	os.Chdir(tmp)
+	defer os.Chdir(orig)
+
+	os.MkdirAll("docs/specs/product-requirements", 0o755)
+	os.WriteFile(filepath.Join("docs/specs/product-requirements", "prd001-core.yaml"), []byte(`id: prd001-core
+title: Core
+semantic_model:
+  entities:
+    - name: Widget
+`), 0o644)
+
+	node := LoadPRDSemanticModel()
+	if node == nil {
+		t.Fatal("expected non-nil semantic model node")
+	}
+}
+
+func TestLoadPRDSemanticModel_Absent(t *testing.T) {
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	os.Chdir(tmp)
+	defer os.Chdir(orig)
+
+	os.MkdirAll("docs/specs/product-requirements", 0o755)
+	os.WriteFile(filepath.Join("docs/specs/product-requirements", "prd001-plain.yaml"), []byte(`id: prd001-plain
+title: Plain
+`), 0o644)
+
+	node := LoadPRDSemanticModel()
+	if node != nil {
+		t.Errorf("expected nil for PRD without semantic_model, got non-nil")
+	}
+}
+
+func TestLoadPRDSemanticModel_NoPRDs(t *testing.T) {
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	os.Chdir(tmp)
+	defer os.Chdir(orig)
+
+	os.MkdirAll("docs/specs/product-requirements", 0o755)
+
+	node := LoadPRDSemanticModel()
+	if node != nil {
+		t.Errorf("expected nil when no PRD files exist, got non-nil")
+	}
+}

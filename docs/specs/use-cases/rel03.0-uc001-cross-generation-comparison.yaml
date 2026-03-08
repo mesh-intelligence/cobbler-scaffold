@@ -15,13 +15,13 @@ trigger: Running mage compare:run <tagA> <tagB> with optional UTILITY environmen
 
 flow:
   - F1: "Parse arguments: resolve tagA and tagB into BinaryResolver instances via ResolverFromArg"
-  - F2: "Load test cases: read YAML test suite files from the specs directory, filter to cases with concrete inputs and expected outputs"
+  - F2: "Load test cases: read YAML test suite files from the specs directory, filter to cases with concrete inputs and expected outputs (requires resolvers from F1 to determine available utilities)"
   - F3: "Filter by utility: if UTILITY is set, restrict test cases to that utility"
-  - F4: "Discover utilities: list available utilities from both resolvers and intersect to find the common set"
-  - F5: "For each common utility: resolve binary paths from both resolvers"
-  - F6: "For each test case: execute both binaries with identical stdin, arguments, and environment"
-  - F7: "Compare outputs: check stdout byte-for-byte, stderr, and exit code; record TestResult"
-  - F8: "Format results: produce structured text output with pass/fail per test case and summary counts"
+  - F4: "Discover utilities: list available utilities from both resolvers and intersect to find the common set (requires both resolvers from F1)"
+  - F5: "For each common utility: resolve binary paths from both resolvers (requires utility intersection from F4)"
+  - F6: "For each test case: execute both binaries with identical stdin, arguments, and environment (requires resolved binary paths from F5)"
+  - F7: "Compare outputs: check stdout byte-for-byte, stderr, and exit code; record TestResult (requires execution output from F6)"
+  - F8: "Format results: produce structured text output with pass/fail per test case and summary counts (requires all TestResults from F7)"
   - F9: "Clean up: invoke cleanup functions for both resolvers (worktrees, temp directories)"
   - F10: "Report: return success if all tests passed, error if any failed"
 
@@ -37,31 +37,17 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Two generation tags can be compared with mage compare:run and produce pass/fail results
+    criterion: The full comparison pipeline (resolve binaries, load test cases, execute both binaries, compare outputs, format results, clean up) completes end-to-end for two git tags
     traces:
       - prd004-differential-comparison AC1
+      - prd004-differential-comparison AC4
+      - prd004-differential-comparison AC5
   - id: S2
-    criterion: The gnu pseudo-tag resolves Homebrew reference binaries with correct g-prefix mapping
+    criterion: The gnu pseudo-tag resolves Homebrew coreutils with g-prefix mapping and moreutils with unprefixed names, enabling comparison against reference implementations
     traces:
       - prd004-differential-comparison AC2
   - id: S3
-    criterion: A directory path resolves pre-built binaries via PathResolver
-    traces:
-      - prd004-differential-comparison AC6
-  - id: S4
-    criterion: Test cases are loaded from YAML spec test suites, not from _test.go files
-    traces:
-      - prd004-differential-comparison AC3
-  - id: S5
-    criterion: Output shows pass/fail per utility per test case with summary counts
-    traces:
-      - prd004-differential-comparison AC4
-  - id: S6
-    criterion: Worktrees and temporary directories are removed after comparison completes
-    traces:
-      - prd004-differential-comparison AC5
-  - id: S7
-    criterion: A single utility can be tested by setting the UTILITY environment variable
+    criterion: A single utility can be tested by setting the UTILITY environment variable, filtering the test case set before execution
     traces:
       - prd004-differential-comparison AC3
 

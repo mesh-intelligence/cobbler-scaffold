@@ -19,8 +19,8 @@ trigger: Developer opens the Specification Browser panel in the VS Code sidebar,
 flow:
   - F1: "Open Specification Browser: developer clicks the mageOrchestrator.specs view in the VS Code sidebar"
   - F2: "Browse top-level nodes: tree displays three parent nodes (Use Cases, PRDs, Test Suites) listing files from docs/specs/"
-  - F3: "Expand use case: developer expands a use case node to see its PRD touchpoints as child nodes, derived from the touchpoints field in the use case YAML"
-  - F4: "Expand PRD requirement: developer expands a touchpoint node to see Go source files under pkg/ that reference the PRD ID"
+  - F3: "Expand use case: developer expands a use case node to see its PRD touchpoints as child nodes, derived from the touchpoints field in the use case YAML (requires YAML parsing of the use case file)"
+  - F4: "Expand PRD requirement: developer expands a touchpoint node to see Go source files under pkg/ that reference the PRD ID (requires source file scanning triggered by node expansion)"
   - F5: "Open file: developer clicks a node to open the corresponding YAML (for specs) or Go file (for source references) in the editor"
   - F6: "Auto-refresh: tree refreshes when files under docs/specs/ change, detected via FileSystemWatcher"
   - F7: "Open annotated Go file: developer opens a Go source file containing // prd: or // uc: comments"
@@ -43,35 +43,19 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Specification Browser tree displays Use Cases, PRDs, and Test Suites as top-level nodes populated from docs/specs/
+    criterion: Expanding a use case node shows PRD touchpoints, and expanding a touchpoint shows Go source files under pkg/ that reference the PRD ID, providing three-level spec-to-code navigation
     traces:
       - prd006-vscode-extension AC13
   - id: S2
-    criterion: Expanding a use case node shows its PRD touchpoints as child nodes
+    criterion: Expanding a PRD requirement node discovers implementing source files by searching for the pattern prd[NNN] in Go files (cross-artifact discovery between spec YAML and Go source)
     traces:
       - prd006-vscode-extension AC13
   - id: S3
-    criterion: Expanding a PRD requirement node shows Go source files under pkg/ that reference the PRD ID
-    traces:
-      - prd006-vscode-extension AC13
-  - id: S4
-    criterion: Clicking any tree node opens the corresponding YAML or Go file in the editor
-    traces:
-      - prd006-vscode-extension AC13
-  - id: S5
-    criterion: Tree refreshes automatically when files under docs/specs/ are added, modified, or deleted
+    criterion: Tree refreshes automatically when files under docs/specs/ are added, modified, or deleted via FileSystemWatcher
     traces:
       - prd006-vscode-extension AC9
-  - id: S6
-    criterion: CodeLens appears above prd-annotation comments in Go files with a View Requirement action
-    traces:
-      - prd006-vscode-extension AC14
-  - id: S7
-    criterion: CodeLens appears above uc-annotation comments in Go files with a View Requirement action
-    traces:
-      - prd006-vscode-extension AC14
-  - id: S8
-    criterion: Activating a CodeLens opens the correct specification YAML in the editor
+  - id: S4
+    criterion: CodeLens appears above both prd-annotation and uc-annotation comments in Go files, and activating the CodeLens opens the correct specification YAML resolved from docs/specs/
     traces:
       - prd006-vscode-extension AC14
 
