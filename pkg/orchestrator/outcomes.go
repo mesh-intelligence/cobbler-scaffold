@@ -1,161 +1,45 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
+// outcomes.go delegates outcome reporting to the internal/stats sub-package.
+
 package orchestrator
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
-	"text/tabwriter"
+	st "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/stats"
 )
 
-// outcomeSep delimits commit blocks in the git log output used by Outcomes.
-const outcomeSep = "==OUTCOME=="
-
 // OutcomeRecord holds parsed outcome trailer data from a single task commit.
-type OutcomeRecord struct {
-	TaskBranch          string
-	TokensInput         int
-	TokensOutput        int
-	TokensCacheCreation int
-	TokensCacheRead     int
-	TokensCostUSD       float64
-	LocProdBefore       int
-	LocProdAfter        int
-	LocTestBefore       int
-	LocTestAfter        int
-	DurationSeconds     int
-}
+type OutcomeRecord = st.OutcomeRecord
+
+// outcomeSep delimits commit blocks in the git log output used by Outcomes.
+const outcomeSep = st.OutcomeSep
 
 // Outcomes scans all git branches for commits that carry outcome trailers
-// written by appendOutcomeTrailers and prints a summary table to stdout.
-// Returns nil (with a message) if no trailers are found.
+// and prints a summary table to stdout.
 func (o *Orchestrator) Outcomes() error {
-	format := outcomeSep + "%n%D%n%(trailers:only)"
-	out, err := exec.Command(binGit, "log", "--all", "--format="+format).Output()
-	if err != nil {
-		return fmt.Errorf("git log: %w", err)
-	}
-
-	records := parseOutcomeRecords(string(out))
-	if len(records) == 0 {
-		fmt.Println("no outcome records found")
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "Branch\tTokens-In\tTokens-Out\tCost-USD\tLOC-Prod-Δ\tLOC-Test-Δ\tDuration")
-	for _, r := range records {
-		prodDelta := r.LocProdAfter - r.LocProdBefore
-		testDelta := r.LocTestAfter - r.LocTestBefore
-		dur := formatDuration(r.DurationSeconds)
-		fmt.Fprintf(w, "%s\t%d\t%d\t$%.4f\t%+d\t%+d\t%s\n",
-			r.TaskBranch, r.TokensInput, r.TokensOutput, r.TokensCostUSD,
-			prodDelta, testDelta, dur)
-	}
-	return w.Flush()
+	return st.PrintOutcomes(st.OutcomesDeps{
+		Log:    logf,
+		GitBin: binGit,
+	})
 }
 
-// parseOutcomeRecords splits a git log output (using outcomeSep as block
-// delimiter) into individual commit blocks and returns all that contain
-// at least one recognized outcome trailer key.
+// parseOutcomeRecords delegates to the internal/stats package.
 func parseOutcomeRecords(logOutput string) []OutcomeRecord {
-	var records []OutcomeRecord
-	for _, block := range strings.Split(logOutput, outcomeSep+"\n") {
-		if strings.TrimSpace(block) == "" {
-			continue
-		}
-		if rec := parseOneOutcomeBlock(block); rec != nil {
-			records = append(records, *rec)
-		}
-	}
-	return records
+	return st.ParseOutcomeRecords(logOutput)
 }
 
-// parseOneOutcomeBlock parses a single commit block (refs line followed by
-// trailer lines) into an OutcomeRecord. Returns nil if no trailer keys are
-// recognized.
+// parseOneOutcomeBlock delegates to the internal/stats package.
 func parseOneOutcomeBlock(block string) *OutcomeRecord {
-	parts := strings.SplitN(block, "\n", 2)
-	if len(parts) < 2 {
-		return nil
-	}
-	refsLine := strings.TrimSpace(parts[0])
-	trailerBlock := parts[1]
-
-	if !strings.Contains(trailerBlock, "Tokens-Input:") {
-		return nil
-	}
-
-	rec := &OutcomeRecord{
-		TaskBranch: extractBranchFromRefs(refsLine),
-	}
-	for _, line := range strings.Split(trailerBlock, "\n") {
-		key, val, ok := strings.Cut(line, ": ")
-		if !ok {
-			continue
-		}
-		val = strings.TrimSpace(val)
-		parseI := func(dest *int) {
-			n, err := strconv.Atoi(val)
-			if err != nil {
-				logf("outcomes: warning: parsing %s=%q: %v", key, val, err)
-				return
-			}
-			*dest = n
-		}
-		switch key {
-		case "Tokens-Input":
-			parseI(&rec.TokensInput)
-		case "Tokens-Output":
-			parseI(&rec.TokensOutput)
-		case "Tokens-Cache-Creation":
-			parseI(&rec.TokensCacheCreation)
-		case "Tokens-Cache-Read":
-			parseI(&rec.TokensCacheRead)
-		case "Tokens-Cost-USD":
-			f, err := strconv.ParseFloat(val, 64)
-			if err != nil {
-				logf("outcomes: warning: parsing %s=%q: %v", key, val, err)
-			} else {
-				rec.TokensCostUSD = f
-			}
-		case "Loc-Prod-Before":
-			parseI(&rec.LocProdBefore)
-		case "Loc-Prod-After":
-			parseI(&rec.LocProdAfter)
-		case "Loc-Test-Before":
-			parseI(&rec.LocTestBefore)
-		case "Loc-Test-After":
-			parseI(&rec.LocTestAfter)
-		case "Duration-Seconds":
-			parseI(&rec.DurationSeconds)
-		}
-	}
-	return rec
+	return st.ParseOneOutcomeBlock(block)
 }
 
-// extractBranchFromRefs returns the first local branch name from a %D
-// refs string (e.g. "HEAD -> task/main-abc, origin/task/main-abc").
+// extractBranchFromRefs delegates to the internal/stats package.
 func extractBranchFromRefs(refs string) string {
-	if idx := strings.Index(refs, " -> "); idx >= 0 {
-		rest := refs[idx+4:]
-		if i := strings.Index(rest, ","); i >= 0 {
-			return strings.TrimSpace(rest[:i])
-		}
-		return strings.TrimSpace(rest)
-	}
-	parts := strings.SplitN(refs, ",", 2)
-	return strings.TrimSpace(parts[0])
+	return st.ExtractBranchFromRefs(refs)
 }
 
-// formatDuration converts seconds to a human-readable "Xm Ys" string.
+// formatDuration delegates to the internal/stats package.
 func formatDuration(seconds int) string {
-	if seconds < 60 {
-		return fmt.Sprintf("%ds", seconds)
-	}
-	return fmt.Sprintf("%dm%ds", seconds/60, seconds%60)
+	return st.FormatDuration(seconds)
 }

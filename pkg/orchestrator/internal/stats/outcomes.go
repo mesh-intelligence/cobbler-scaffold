@@ -1,0 +1,164 @@
+// Copyright (c) 2026 Petar Djukic. All rights reserved.
+// SPDX-License-Identifier: MIT
+
+package stats
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"text/tabwriter"
+)
+
+// OutcomeSep delimits commit blocks in the git log output used by Outcomes.
+const OutcomeSep = "==OUTCOME=="
+
+// OutcomeRecord holds parsed outcome trailer data from a single task commit.
+type OutcomeRecord struct {
+	TaskBranch          string
+	TokensInput         int
+	TokensOutput        int
+	TokensCacheCreation int
+	TokensCacheRead     int
+	TokensCostUSD       float64
+	LocProdBefore       int
+	LocProdAfter        int
+	LocTestBefore       int
+	LocTestAfter        int
+	DurationSeconds     int
+}
+
+// OutcomesDeps holds dependencies for outcome scanning.
+type OutcomesDeps struct {
+	Log    Logger
+	GitBin string
+}
+
+// PrintOutcomes scans all git branches for commits that carry outcome trailers
+// written by appendOutcomeTrailers and prints a summary table to stdout.
+// Returns nil (with a message) if no trailers are found.
+func PrintOutcomes(deps OutcomesDeps) error {
+	format := OutcomeSep + "%n%D%n%(trailers:only)"
+	out, err := exec.Command(deps.GitBin, "log", "--all", "--format="+format).Output()
+	if err != nil {
+		return fmt.Errorf("git log: %w", err)
+	}
+
+	records := ParseOutcomeRecords(string(out))
+	if len(records) == 0 {
+		fmt.Println("no outcome records found")
+		return nil
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "Branch\tTokens-In\tTokens-Out\tCost-USD\tLOC-Prod-Δ\tLOC-Test-Δ\tDuration")
+	for _, r := range records {
+		prodDelta := r.LocProdAfter - r.LocProdBefore
+		testDelta := r.LocTestAfter - r.LocTestBefore
+		dur := FormatDuration(r.DurationSeconds)
+		fmt.Fprintf(w, "%s\t%d\t%d\t$%.4f\t%+d\t%+d\t%s\n",
+			r.TaskBranch, r.TokensInput, r.TokensOutput, r.TokensCostUSD,
+			prodDelta, testDelta, dur)
+	}
+	return w.Flush()
+}
+
+// ParseOutcomeRecords splits a git log output (using OutcomeSep as block
+// delimiter) into individual commit blocks and returns all that contain
+// at least one recognized outcome trailer key.
+func ParseOutcomeRecords(logOutput string) []OutcomeRecord {
+	var records []OutcomeRecord
+	for _, block := range strings.Split(logOutput, OutcomeSep+"\n") {
+		if strings.TrimSpace(block) == "" {
+			continue
+		}
+		if rec := ParseOneOutcomeBlock(block); rec != nil {
+			records = append(records, *rec)
+		}
+	}
+	return records
+}
+
+// ParseOneOutcomeBlock parses a single commit block (refs line followed by
+// trailer lines) into an OutcomeRecord. Returns nil if no trailer keys are
+// recognized.
+func ParseOneOutcomeBlock(block string) *OutcomeRecord {
+	parts := strings.SplitN(block, "\n", 2)
+	if len(parts) < 2 {
+		return nil
+	}
+	refsLine := strings.TrimSpace(parts[0])
+	trailerBlock := parts[1]
+
+	if !strings.Contains(trailerBlock, "Tokens-Input:") {
+		return nil
+	}
+
+	rec := &OutcomeRecord{
+		TaskBranch: ExtractBranchFromRefs(refsLine),
+	}
+	for _, line := range strings.Split(trailerBlock, "\n") {
+		key, val, ok := strings.Cut(line, ": ")
+		if !ok {
+			continue
+		}
+		val = strings.TrimSpace(val)
+		parseI := func(dest *int) {
+			n, err := strconv.Atoi(val)
+			if err != nil {
+				return
+			}
+			*dest = n
+		}
+		switch key {
+		case "Tokens-Input":
+			parseI(&rec.TokensInput)
+		case "Tokens-Output":
+			parseI(&rec.TokensOutput)
+		case "Tokens-Cache-Creation":
+			parseI(&rec.TokensCacheCreation)
+		case "Tokens-Cache-Read":
+			parseI(&rec.TokensCacheRead)
+		case "Tokens-Cost-USD":
+			f, err := strconv.ParseFloat(val, 64)
+			if err == nil {
+				rec.TokensCostUSD = f
+			}
+		case "Loc-Prod-Before":
+			parseI(&rec.LocProdBefore)
+		case "Loc-Prod-After":
+			parseI(&rec.LocProdAfter)
+		case "Loc-Test-Before":
+			parseI(&rec.LocTestBefore)
+		case "Loc-Test-After":
+			parseI(&rec.LocTestAfter)
+		case "Duration-Seconds":
+			parseI(&rec.DurationSeconds)
+		}
+	}
+	return rec
+}
+
+// FormatDuration converts seconds to a human-readable "Xm Ys" string.
+func FormatDuration(seconds int) string {
+	if seconds < 60 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+	return fmt.Sprintf("%dm%ds", seconds/60, seconds%60)
+}
+
+// ExtractBranchFromRefs returns the first local branch name from a %D
+// refs string (e.g. "HEAD -> task/main-abc, origin/task/main-abc").
+func ExtractBranchFromRefs(refs string) string {
+	if idx := strings.Index(refs, " -> "); idx >= 0 {
+		rest := refs[idx+4:]
+		if i := strings.Index(rest, ","); i >= 0 {
+			return strings.TrimSpace(rest[:i])
+		}
+		return strings.TrimSpace(rest)
+	}
+	parts := strings.SplitN(refs, ",", 2)
+	return strings.TrimSpace(parts[0])
+}
