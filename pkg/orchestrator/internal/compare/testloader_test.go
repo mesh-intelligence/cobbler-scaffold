@@ -1,16 +1,16 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-package orchestrator
+package compare
 
 import "testing"
 
-// --- extractCompareCase ---
+// --- ExtractCompareCase ---
 
 func TestExtractCompareCase_NilInputs(t *testing.T) {
 	t.Parallel()
 	raw := compareTestCaseRaw{Name: "test", Inputs: nil, Expected: map[string]any{"stdout": "x"}}
-	_, ok := extractCompareCase(raw)
+	_, ok := ExtractCompareCase(raw)
 	if ok {
 		t.Error("expected false when Inputs is nil")
 	}
@@ -19,7 +19,7 @@ func TestExtractCompareCase_NilInputs(t *testing.T) {
 func TestExtractCompareCase_NilExpected(t *testing.T) {
 	t.Parallel()
 	raw := compareTestCaseRaw{Name: "test", Inputs: map[string]any{"utility": "cat"}, Expected: nil}
-	_, ok := extractCompareCase(raw)
+	_, ok := ExtractCompareCase(raw)
 	if ok {
 		t.Error("expected false when Expected is nil")
 	}
@@ -32,7 +32,7 @@ func TestExtractCompareCase_MissingUtility(t *testing.T) {
 		Inputs:   map[string]any{"stdin": "hello"},
 		Expected: map[string]any{"stdout": "hello"},
 	}
-	_, ok := extractCompareCase(raw)
+	_, ok := ExtractCompareCase(raw)
 	if ok {
 		t.Error("expected false when utility is missing")
 	}
@@ -45,7 +45,7 @@ func TestExtractCompareCase_MissingStdinAndArgs(t *testing.T) {
 		Inputs:   map[string]any{"utility": "cat"},
 		Expected: map[string]any{"stdout": "hello"},
 	}
-	_, ok := extractCompareCase(raw)
+	_, ok := ExtractCompareCase(raw)
 	if ok {
 		t.Error("expected false when both stdin and args are missing")
 	}
@@ -59,7 +59,7 @@ func TestExtractCompareCase_WithStdin(t *testing.T) {
 		Inputs:   map[string]any{"utility": "cat", "stdin": "hello world"},
 		Expected: map[string]any{"stdout": "hello world"},
 	}
-	tc, ok := extractCompareCase(raw)
+	tc, ok := ExtractCompareCase(raw)
 	if !ok {
 		t.Fatal("expected true for valid stdin case")
 	}
@@ -84,7 +84,7 @@ func TestExtractCompareCase_WithArgs(t *testing.T) {
 		Inputs:   map[string]any{"utility": "echo", "args": []any{"hello", "world"}},
 		Expected: map[string]any{"stdout": "hello world\n"},
 	}
-	tc, ok := extractCompareCase(raw)
+	tc, ok := ExtractCompareCase(raw)
 	if !ok {
 		t.Fatal("expected true for valid args case")
 	}
@@ -100,7 +100,7 @@ func TestExtractCompareCase_ArgsAsString(t *testing.T) {
 		Inputs:   map[string]any{"utility": "echo", "args": "-n hello"},
 		Expected: map[string]any{"stdout": "hello"},
 	}
-	tc, ok := extractCompareCase(raw)
+	tc, ok := ExtractCompareCase(raw)
 	if !ok {
 		t.Fatal("expected true for string args case")
 	}
@@ -116,7 +116,7 @@ func TestExtractCompareCase_WithStderrAndExitCode(t *testing.T) {
 		Inputs:   map[string]any{"utility": "false", "args": []any{"x"}},
 		Expected: map[string]any{"stderr": "error msg", "exit_code": 1},
 	}
-	tc, ok := extractCompareCase(raw)
+	tc, ok := ExtractCompareCase(raw)
 	if !ok {
 		t.Fatal("expected true")
 	}
@@ -135,7 +135,7 @@ func TestExtractCompareCase_ExitCodeAsFloat(t *testing.T) {
 		Inputs:   map[string]any{"utility": "cmd", "stdin": "x"},
 		Expected: map[string]any{"exit_code": float64(2)},
 	}
-	tc, ok := extractCompareCase(raw)
+	tc, ok := ExtractCompareCase(raw)
 	if !ok {
 		t.Fatal("expected true")
 	}
