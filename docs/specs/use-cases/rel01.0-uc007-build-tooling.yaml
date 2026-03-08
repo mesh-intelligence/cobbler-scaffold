@@ -23,27 +23,15 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Build produces a binary at {BinaryDir}/{BinaryName} when MainPackage is set
+    criterion: Build produces a binary at {BinaryDir}/{BinaryName} when MainPackage is set, and propagates go build errors on failure
     traces:
       - prd001-orchestrator-core AC1
   - id: S2
-    criterion: Build exits zero on success and propagates go build errors on failure
+    criterion: Build and Install skip silently and return nil when MainPackage is empty, avoiding errors for library-only projects
     traces:
       - prd001-orchestrator-core AC1
   - id: S3
-    criterion: Lint runs golangci-lint and exits zero when no lint errors are found
-    traces:
-      - prd001-orchestrator-core AC1
-  - id: S4
-    criterion: Install places the binary in GOPATH/bin and exits zero on success
-    traces:
-      - prd001-orchestrator-core AC1
-  - id: S5
-    criterion: Clean removes BinaryDir without error, including when it does not exist
-    traces:
-      - prd001-orchestrator-core AC1
-  - id: S6
-    criterion: Build and Install skip silently and return nil when MainPackage is empty
+    criterion: Clean followed by Build produces a fresh binary (no stale artifacts from previous builds)
     traces:
       - prd001-orchestrator-core AC1
 

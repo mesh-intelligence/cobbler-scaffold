@@ -13,14 +13,14 @@ trigger: Running mage generator:resume after an interrupted generator:run
 
 flow:
   - F1: "Resolve branch: determine the generation branch from Config.GenerationBranch or auto-detect"
-  - F2: "Save state: commit any uncommitted work on the current branch"
-  - F3: "Switch: check out the generation branch"
+  - F2: "Save state: commit any uncommitted work on the current branch (must complete before branch switch in F3)"
+  - F3: "Switch: check out the generation branch (requires branch resolution from F1)"
   - F4: "Prune worktrees: remove stale git worktrees and the worktree base directory"
-  - F5: "Recover tasks: scan for stale task branches, remove them, reset their issues to ready"
-  - F6: "Reset orphans: find in_progress issues without task branches and reset them to ready"
+  - F5: "Recover tasks: scan for stale task branches, remove them, reset their issues to ready (requires worktree pruning from F4)"
+  - F6: "Reset orphans: find in_progress issues without task branches and reset them to ready (requires task recovery from F5)"
   - F7: "Reset scratch: clear the cobbler scratch directory"
-  - F8: "Drain ready: execute stitch on any existing ready issues before starting new cycles"
-  - F9: "Continue: run the requested number of measure+stitch cycles"
+  - F8: "Drain ready: execute stitch on any existing ready issues before starting new cycles (requires orphan reset from F6 so recovered tasks are eligible)"
+  - F9: "Continue: run the requested number of measure+stitch cycles (requires drain from F8 to avoid duplicate proposals)"
 
 touchpoints:
   - T1: "GeneratorResume: prd002-generation-lifecycle R4"
@@ -30,30 +30,19 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Resume resolves the correct generation branch
+    criterion: Resume resolves the correct generation branch using explicit Config, auto-detect from a single generation branch, or current-branch fallback
     traces:
       - prd002-generation-lifecycle AC4
       - prd002-generation-lifecycle AC10
   - id: S2
-    criterion: Uncommitted work is saved before switching branches
+    criterion: Existing ready issues are drained via stitch before new measure+stitch cycles begin, preventing duplicate task proposals
     traces:
       - prd002-generation-lifecycle AC4
   - id: S3
-    criterion: Stale worktrees and task branches are removed
-    traces:
-      - prd003-cobbler-workflows AC3
-  - id: S4
-    criterion: Orphaned in_progress issues are reset to ready
-    traces:
-      - prd003-cobbler-workflows AC3
-  - id: S5
-    criterion: Existing ready issues are executed before new cycles start
+    criterion: After recovery, the generation continues from the last committed state without data loss (no orphaned worktrees, no stuck in_progress issues, no stale scratch files)
     traces:
       - prd002-generation-lifecycle AC4
-  - id: S6
-    criterion: Generation continues without data loss
-    traces:
-      - prd002-generation-lifecycle AC4
+      - prd003-cobbler-workflows AC3
 
 out_of_scope:
   - Initial generation start (see rel01.0-uc002)

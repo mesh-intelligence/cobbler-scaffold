@@ -5,6 +5,7 @@ package orchestrator
 
 import (
 	ctx "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/context"
+	"gopkg.in/yaml.v3"
 )
 
 // ---------------------------------------------------------------------------
@@ -286,6 +287,10 @@ func summarizeCustom(command, filePath, fullContent string) string {
 
 func loadOODPromptContext() ([]OODPackageContractRef, []ArchSharedProtocol) {
 	return ctx.LoadOODPromptContext()
+}
+
+func loadPRDSemanticModel() *yaml.Node {
+	return ctx.LoadPRDSemanticModel()
 }
 
 // safeCountLines stays in prompt_files.go (not delegated here).

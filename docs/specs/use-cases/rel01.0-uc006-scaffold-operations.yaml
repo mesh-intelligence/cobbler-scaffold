@@ -18,11 +18,11 @@ flow:
   - F2: "Write constitutions: copy design.yaml, planning.yaml, execution.yaml, and go-style.yaml to docs/constitutions/"
   - F3: "Write prompts: copy measure.yaml and stitch.yaml to docs/prompts/"
   - F4: "Write phase context files: write measure_context.yaml and stitch_context.yaml to .cobbler/"
-  - F5: "Detect structure: read go.mod for module path; scan for main package, source directories, and binary name"
-  - F6: "Generate configuration.yaml: write a Config with detected values and constitution/prompt path references"
-  - F7: "Write seed template: if a main package is found, write a version.go seed template to magefiles/ and reference it in SeedFiles"
-  - F8: "Wire go.mod: update magefiles/go.mod with the orchestrator module dependency"
-  - F9: "Verify: run mage -l to confirm the wired magefiles compile; retry with a local replace directive if verification fails"
+  - F5: "Detect structure: read go.mod for module path; scan for main package, source directories, and binary name (requires magefiles from F1)"
+  - F6: "Generate configuration.yaml: write a Config with detected values and constitution/prompt path references (requires detected structure from F5)"
+  - F7: "Write seed template: if a main package is found, write a version.go seed template to magefiles/ and reference it in SeedFiles (requires detected structure from F5)"
+  - F8: "Wire go.mod: update magefiles/go.mod with the orchestrator module dependency (requires magefiles from F1)"
+  - F9: "Verify: run mage -l to confirm the wired magefiles compile; retry with a local replace directive if verification fails (requires all artifacts from F1-F8)"
   - F10: "Uninstall: remove magefiles/orchestrator.go, docs/constitutions/, docs/prompts/, and configuration.yaml; remove orchestrator replace directive from magefiles/go.mod; run go mod tidy"
 
 touchpoints:
@@ -32,31 +32,18 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Scaffold writes magefiles/orchestrator.go from the embedded template
-    traces:
-      - prd001-orchestrator-core AC7
-  - id: S2
-    criterion: docs/constitutions/ contains design.yaml, planning.yaml, execution.yaml, and go-style.yaml
-    traces:
-      - prd001-orchestrator-core AC4
-  - id: S3
-    criterion: docs/prompts/ contains measure.yaml and stitch.yaml
-    traces:
-      - prd001-orchestrator-core AC4
-  - id: S4
-    criterion: configuration.yaml exists at the repository root with detected values filled in
-    traces:
-      - prd001-orchestrator-core AC3
-  - id: S5
-    criterion: magefiles/go.mod references the orchestrator module
+    criterion: After scaffold, mage -l succeeds in the target repository, confirming that magefiles/orchestrator.go, magefiles/go.mod, configuration.yaml, constitutions, and prompts are all correctly wired
     traces:
       - prd001-orchestrator-core AC1
-  - id: S6
-    criterion: mage -l succeeds in the target repository after scaffolding
+      - prd001-orchestrator-core AC3
+      - prd001-orchestrator-core AC4
+      - prd001-orchestrator-core AC7
+  - id: S2
+    criterion: configuration.yaml contains auto-detected values for module_path, binary_name, main_package, and go_source_dirs derived from the target repository structure
     traces:
       - prd001-orchestrator-core AC3
-  - id: S7
-    criterion: Uninstall removes all scaffold artifacts and mage -l succeeds without orchestrator targets
+  - id: S3
+    criterion: Uninstall removes all scaffold artifacts (orchestrator.go, constitutions, prompts, configuration.yaml) and mage -l succeeds without orchestrator targets
     traces:
       - prd001-orchestrator-core AC6
 

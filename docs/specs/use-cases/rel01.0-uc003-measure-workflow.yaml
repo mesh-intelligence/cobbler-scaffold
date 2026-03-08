@@ -15,11 +15,11 @@ flow:
   - F1: "Verify preconditions: confirm cobbler scratch directory exists and resolve the target branch"
   - F2: "Query state: list existing GitHub issues as JSON context"
   - F3: "Clean scratch: remove old proposed-issues files from the cobbler directory"
-  - F4: "Build prompt: render the measure template with existing issues, task limit, output path, and user input"
-  - F5: "Invoke Claude: run Claude with the prompt, capturing token usage"
-  - F6: "Parse output: read the JSON file written by Claude"
-  - F7: "Import issues: create GitHub issues for each proposed task"
-  - F8: "Wire dependencies: link dependent issues on GitHub"
+  - F4: "Build prompt: render the measure template with existing issues, task limit, output path, and user input (requires issue list from F2)"
+  - F5: "Invoke Claude: run Claude with the prompt, capturing token usage (requires rendered prompt from F4)"
+  - F6: "Parse output: read the JSON file written by Claude (requires Claude invocation from F5)"
+  - F7: "Import issues: create GitHub issues for each proposed task (requires parsed output from F6)"
+  - F8: "Wire dependencies: link dependent issues on GitHub (requires created issues from F7)"
   - F9: "Record metrics: store token usage in history"
 
 touchpoints:
@@ -31,24 +31,21 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Measure queries existing GitHub issues and includes them in the prompt
+    criterion: Existing GitHub issues are fetched, serialized into the prompt context, and passed to Claude so the measure agent sees current project state before proposing new tasks
     traces:
       - prd003-cobbler-workflows AC1
-  - id: S2
-    criterion: Claude receives a well-formed prompt with project context
-    traces:
       - prd003-cobbler-workflows AC4
-  - id: S3
-    criterion: Proposed issues are created on GitHub with correct titles and descriptions
+  - id: S2
+    criterion: Proposed issues are created on GitHub with dependency ordering preserved (prerequisites created before dependents so GitHub issue references resolve)
     traces:
       - prd003-cobbler-workflows AC1
       - prd003-cobbler-workflows AC6
-  - id: S4
-    criterion: Dependencies between issues are wired correctly
+  - id: S3
+    criterion: When EnforceMeasureValidation is true and a proposed task exceeds MaxRequirementsPerTask, the task is rejected and Claude is re-prompted up to MaxMeasureRetries times
     traces:
-      - prd003-cobbler-workflows AC1
-  - id: S5
-    criterion: Token usage is recorded in the history directory
+      - prd003-cobbler-workflows AC6
+  - id: S4
+    criterion: Token usage and invocation duration are recorded in the history directory for every measure invocation, including failed or retried ones
     traces:
       - prd005-metrics-collection AC1
 

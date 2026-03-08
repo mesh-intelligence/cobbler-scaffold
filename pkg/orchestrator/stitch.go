@@ -460,6 +460,12 @@ func (o *Orchestrator) buildStitchPrompt(task stitchTask) (string, error) {
 		logf("buildStitchPrompt: injecting %d package_contracts", len(oodContracts))
 	}
 
+	// Load semantic model from PRD (informational context for stitch).
+	semanticModel := loadPRDSemanticModel()
+	if semanticModel != nil {
+		logf("buildStitchPrompt: injecting semantic_model from PRD")
+	}
+
 	doc := StitchPromptDoc{
 		Role:                  tmpl.Role,
 		RepositoryFiles:       repoFiles,
@@ -470,6 +476,7 @@ func (o *Orchestrator) buildStitchPrompt(task stitchTask) (string, error) {
 		Task:                  tmpl.Task,
 		Constraints:           tmpl.Constraints,
 		Description:           task.Description,
+		SemanticModel:         semanticModel,
 		SharedProtocols:       oodProtocols,
 		PackageContracts:      oodContracts,
 	}

@@ -29,16 +29,13 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Benchmarks complete without error for each limit value
+    criterion: Wall-clock time and issue counts are reported per sub-benchmark via testing.B, enabling regression detection across limit values
     traces:
       - prd003-cobbler-workflows AC1
       - prd003-cobbler-workflows AC2
-  - id: S2
-    criterion: Wall-clock time and issue counts are reported per sub-benchmark
-    traces:
       - prd005-metrics-collection AC1
-  - id: S3
-    criterion: Benchmarks are isolated from functional tests (run via separate mage target)
+  - id: S2
+    criterion: Benchmarks are gated behind the benchmark build tag and run only via mage test:benchmark, preventing interference with functional tests
     traces:
       - prd003-cobbler-workflows AC1
 

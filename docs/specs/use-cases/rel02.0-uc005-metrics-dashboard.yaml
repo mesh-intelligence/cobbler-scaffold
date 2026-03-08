@@ -19,8 +19,8 @@ flow:
   - F1: "Open Command Palette: developer presses Cmd+Shift+P and selects 'Mage Orchestrator: Cobbler Measure' or accesses the dashboard directly"
   - F2: "Show dashboard: extension creates a webview panel titled 'Metrics Dashboard' in the active editor column"
   - F3: "Fetch invocation records: GitHubStore fetches GitHub issues and extracts InvocationRecord data from issue comments"
-  - F4: "Aggregate metrics: aggregateMetrics computes totals for tokens (input, output, cache creation, cache read), cost, duration, and diff stats across all records"
-  - F5: "Render HTML: renderDashboardHtml produces an HTML document with a summary table and a per-invocation details table styled with VS Code theme variables"
+  - F4: "Aggregate metrics: aggregateMetrics computes totals for tokens (input, output, cache creation, cache read), cost, duration, and diff stats across all records (requires fetched records from F3)"
+  - F5: "Render HTML: renderDashboardHtml produces an HTML document with a summary table and a per-invocation details table styled with VS Code theme variables (requires aggregated data from F4)"
   - F6: "Display summary: the summary section shows invocation count, token breakdown, estimated cost, total duration, and diff statistics (files changed, insertions, deletions)"
   - F7: "Display per-invocation details: a table lists each invocation with caller, date, duration, input/output/total tokens, LOC progression (production and test), diff stats, and issue ID"
   - F8: "Handle empty state: when no invocation records exist, the dashboard shows an informational message instead of empty tables"
@@ -40,35 +40,23 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Dashboard command opens a webview panel with aggregated metrics from GitHub issue comments
+    criterion: Dashboard aggregates InvocationRecord data from multiple GitHub issue comments into a summary showing total token breakdown, cost, duration, and diff statistics (cross-PRD data aggregation)
     traces:
       - prd006-vscode-extension AC7
   - id: S2
-    criterion: Summary section shows total invocation count, token breakdown (input, output, cache creation, cache read), estimated cost, and total duration
+    criterion: Per-invocation table shows caller, date, duration, tokens, LOC progression, diff stats, and issue ID, enabling developers to trace metrics back to specific tasks
     traces:
       - prd006-vscode-extension AC7
   - id: S3
-    criterion: Summary section shows diff statistics (files changed, insertions, deletions) when records contain diff data
+    criterion: When no invocation records exist, an informational empty-state message appears instead of empty tables
     traces:
       - prd006-vscode-extension AC7
   - id: S4
-    criterion: Per-invocation table shows caller, date, duration, input/output/total tokens, LOC progression, diff stats, and issue ID for each record
+    criterion: Re-invoking the dashboard command when the panel is visible refreshes content rather than creating a new panel (singleton behavior)
     traces:
       - prd006-vscode-extension AC7
   - id: S5
-    criterion: Dashboard renders with VS Code theme colors (foreground, background, borders)
-    traces:
-      - prd006-vscode-extension AC7
-  - id: S6
-    criterion: When no invocation records exist, an informational empty-state message appears
-    traces:
-      - prd006-vscode-extension AC7
-  - id: S7
-    criterion: Re-invoking the dashboard command when the panel is visible refreshes content rather than creating a new panel
-    traces:
-      - prd006-vscode-extension AC7
-  - id: S8
-    criterion: Dashboard refreshes automatically on the configured polling interval
+    criterion: Dashboard refreshes automatically on the configured polling interval, keeping metrics current during active generation runs
     traces:
       - prd006-vscode-extension AC9
 

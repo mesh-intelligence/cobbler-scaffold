@@ -18,9 +18,9 @@ trigger: Developer invokes a lifecycle command from VS Code Command Palette (Cmd
 flow:
   - F1: "Open Command Palette: developer presses Cmd+Shift+P and types 'Mage Orchestrator'"
   - F2: "Select command: developer chooses one of the lifecycle commands (Start, Run, Resume, Stop, Reset, Switch)"
-  - F3: "Validate state: extension checks git state and disables invalid commands (e.g., Start is disabled when already on a generation branch)"
-  - F4: "Confirm if destructive: commands that alter state (Start, Stop, Reset) show a confirmation dialog before proceeding"
-  - F5: "Execute mage target: extension creates or reuses an integrated terminal and runs the corresponding mage command (e.g., 'mage generator:start')"
+  - F3: "Validate state: extension checks git state and disables invalid commands (must complete before command execution in F5)"
+  - F4: "Confirm if destructive: commands that alter state (Start, Stop, Reset) show a confirmation dialog before proceeding (must complete before execution in F5)"
+  - F5: "Execute mage target: extension creates or reuses an integrated terminal and runs the corresponding mage command (requires validation from F3 and confirmation from F4)"
   - F6: "Show output: terminal output appears in the integrated terminal panel"
   - F7: "Refresh views: extension refreshes generation browser and issue tracker views after command completes"
 
@@ -35,34 +35,18 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: All six lifecycle commands appear in Command Palette when configuration.yaml exists in workspace
+    criterion: Destructive commands (Start, Stop, Reset) show a confirmation dialog and abort when the developer cancels, preventing accidental state changes
     traces:
       - prd006-vscode-extension AC1
-      - prd006-vscode-extension AC10
   - id: S2
-    criterion: Each command executes the correct mage target in an integrated terminal
+    criterion: Commands that are invalid for the current git state are disabled (e.g., Start disabled on a generation branch, Resume disabled on main), preventing confusing error messages
     traces:
       - prd006-vscode-extension AC1
   - id: S3
-    criterion: Start, Stop, and Reset commands show confirmation dialogs before executing
+    criterion: All extension views (generation browser, issue tracker, metrics dashboard) refresh automatically after a lifecycle command completes, keeping the UI consistent with git state
     traces:
       - prd006-vscode-extension AC1
-  - id: S4
-    criterion: Switch command shows a quick-pick list of available generation branches
-    traces:
-      - prd006-vscode-extension AC1
-  - id: S5
-    criterion: Invalid commands are disabled (e.g., Start disabled when on generation branch, Resume disabled when not on generation branch)
-    traces:
-      - prd006-vscode-extension AC1
-  - id: S6
-    criterion: All extension views refresh automatically after a command completes
-    traces:
       - prd006-vscode-extension AC9
-  - id: S7
-    criterion: Terminal output is visible and can be interacted with (scroll, copy)
-    traces:
-      - prd006-vscode-extension AC1
 
 out_of_scope:
   - Real-time streaming of Claude agent output (see prd006 non-goals)

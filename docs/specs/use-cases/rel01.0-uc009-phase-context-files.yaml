@@ -17,10 +17,10 @@ trigger: Running mage cobbler:measure or mage cobbler:stitch
 
 flow:
   - F1: "Resolve context file path: join CobblerConfig.Dir with measure_context.yaml or stitch_context.yaml"
-  - F2: "Load context file: call loadPhaseContext with the resolved path"
+  - F2: "Load context file: call loadPhaseContext with the resolved path (requires path from F1)"
   - F3: "Handle missing file: if loadPhaseContext returns nil, proceed with ProjectConfig defaults"
   - F4: "Handle malformed file: if loadPhaseContext returns an error, abort the invocation and report the error"
-  - F5: "Override context settings: pass the PhaseContext to buildProjectContext, which uses non-empty PhaseContext fields instead of the corresponding ProjectConfig fields"
+  - F5: "Override context settings: pass the PhaseContext to buildProjectContext, which uses non-empty PhaseContext fields instead of the corresponding ProjectConfig fields (requires parsed PhaseContext from F2)"
   - F6: "Assemble context: buildProjectContext expands globs, applies excludes, loads documents and source code using the effective settings"
   - F7: "Log context source: log whether a phase context file was used or fallback to Config applied"
   - F8: "Continue phase: measure or stitch proceeds with the assembled ProjectContext"
@@ -35,29 +35,22 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: When measure_context.yaml exists, measure uses its include, exclude, sources, and release fields instead of ProjectConfig equivalents
+    criterion: When context files do not exist, both measure and stitch use ProjectConfig fields unchanged (backward compatible with pre-context-file projects)
     traces:
-      - prd003-cobbler-workflows AC8
+      - prd003-cobbler-workflows AC9
   - id: S2
-    criterion: When stitch_context.yaml exists, stitch uses its include, exclude, sources, and release fields instead of ProjectConfig equivalents
+    criterion: When a context file is malformed YAML, the invocation aborts with a descriptive error rather than silently falling back to defaults
     traces:
       - prd003-cobbler-workflows AC8
   - id: S3
-    criterion: When context files do not exist, both phases use ProjectConfig fields unchanged (backward compatible)
+    criterion: Modifying a context file between two consecutive measure invocations changes the assembled ProjectContext on the second invocation (invocation-time loading, not cached)
     traces:
-      - prd003-cobbler-workflows AC9
+      - prd003-cobbler-workflows AC8
   - id: S4
-    criterion: When a context file is malformed, the invocation aborts with a descriptive error
+    criterion: PhaseContext SourceMode and SummarizeCommand fields override the config-level MeasureSourceMode when present, enabling per-invocation summarization control
     traces:
       - prd003-cobbler-workflows AC8
-  - id: S5
-    criterion: Log output indicates which context source was used for each invocation
-    traces:
-      - prd003-cobbler-workflows AC8
-  - id: S6
-    criterion: Changes to context files between invocations are visible to the next invocation (invocation-time loading)
-    traces:
-      - prd003-cobbler-workflows AC8
+      - prd003-cobbler-workflows AC12
 
 out_of_scope:
   - Auto-updating context files after stitch creates new files

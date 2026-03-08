@@ -21,8 +21,8 @@ flow:
   - F1: "Create worktree: developer runs git worktree add .claude/worktrees/feature-branch -b feature-branch from the main repo"
   - F2: "Chdir into worktree: developer opens a terminal in the worktree directory"
   - F3: "Run stitch: developer invokes mage cobbler:stitch from inside the worktree"
-  - F4: "Resolve base path: worktreeBasePath runs git rev-parse --git-common-dir, resolves the shared .git directory, derives the repo root, and returns filepath.Join(os.TempDir(), repoName+'-worktrees')"
-  - F5: "Create task worktrees: stitch creates task worktrees under the stable base path derived from the repo name, not the worktree directory name"
+  - F4: "Resolve base path: worktreeBasePath runs git rev-parse --git-common-dir, resolves the shared .git directory, derives the repo root, and returns filepath.Join(os.TempDir(), repoName+'-worktrees') (must resolve before task worktree creation in F5)"
+  - F5: "Create task worktrees: stitch creates task worktrees under the stable base path derived from the repo name, not the worktree directory name (requires base path from F4)"
   - F6: "Complete stitch: tasks execute, merge, and task worktrees are cleaned up"
   - F7: "Run resume from worktree: developer invokes mage generator:resume from inside the worktree"
   - F8: "Find stale worktrees: GeneratorResume calls worktreeBasePath, resolves the same stable base path, and finds any stale task worktrees left from interrupted runs"
@@ -36,19 +36,15 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: worktreeBasePath returns the same temp directory path when called from the main repo root and from any of its git worktrees
+    criterion: worktreeBasePath returns the same temp directory path when called from the main repo root and from any of its git worktrees, ensuring task worktrees land under a single stable location
     traces:
       - prd003-cobbler-workflows AC2
   - id: S2
-    criterion: Task worktrees created by stitch invoked from a git worktree land under the same base path as a main-repo stitch run
-    traces:
-      - prd003-cobbler-workflows AC2
-  - id: S3
-    criterion: mage generator:resume invoked from a git worktree finds and removes stale task worktrees created by a previous run from a different directory
+    criterion: mage generator:resume invoked from a git worktree finds and removes stale task worktrees created by a previous run from a different directory (cross-directory recovery)
     traces:
       - prd003-cobbler-workflows AC3
-  - id: S4
-    criterion: worktreeBasePath falls back to filepath.Base(os.Getwd()) when git rev-parse --git-common-dir fails
+  - id: S3
+    criterion: worktreeBasePath falls back to filepath.Base(os.Getwd()) when git rev-parse --git-common-dir fails, maintaining functionality outside git repositories
     traces:
       - prd003-cobbler-workflows AC2
 

@@ -39,6 +39,7 @@ type StitchPromptDoc struct {
 	Task                  string                   `yaml:"task"`
 	Constraints           string                   `yaml:"constraints"`
 	Description           string                   `yaml:"description"`
+	SemanticModel         *yaml.Node              `yaml:"semantic_model,omitempty"`
 	SharedProtocols       []ArchSharedProtocol     `yaml:"shared_protocols,omitempty"`
 	PackageContracts      []OODPackageContractRef  `yaml:"package_contracts,omitempty"`
 }

@@ -41,31 +41,16 @@ touchpoints:
 
 success_criteria:
   - id: S1
-    criterion: Tree lists all generations discovered from git tags matching {GenPrefix}*-start
+    criterion: Tree discovers all generations from git tags, derives lifecycle state from tag suffixes, and displays version tags when present, combining git tag parsing with VS Code tree rendering
     traces:
       - prd006-vscode-extension AC2
   - id: S2
-    criterion: Each generation node displays the correct lifecycle state (started, finished, merged, or abandoned)
+    criterion: The generation matching the active git branch is visually distinct, and the indicator updates when branches change
     traces:
       - prd006-vscode-extension AC2
+      - prd006-vscode-extension AC9
   - id: S3
-    criterion: Version tags appear on generation nodes when a v[REL].[DATE].[REVISION] tag exists for that generation
-    traces:
-      - prd006-vscode-extension AC2
-  - id: S4
-    criterion: The generation matching the active git branch is visually distinct from inactive generations
-    traces:
-      - prd006-vscode-extension AC2
-  - id: S5
-    criterion: Expanding a generation node reveals child nodes for lifecycle tags and version tags
-    traces:
-      - prd006-vscode-extension AC2
-  - id: S6
-    criterion: The Switch to Generation context menu action changes the active branch to the selected generation
-    traces:
-      - prd006-vscode-extension AC2
-  - id: S7
-    criterion: The tree refreshes automatically when git refs change (new tags, branch switches, merges)
+    criterion: The tree refreshes automatically when git refs change (new tags, branch switches, merges) via FileSystemWatcher on .git/refs/
     traces:
       - prd006-vscode-extension AC9
 

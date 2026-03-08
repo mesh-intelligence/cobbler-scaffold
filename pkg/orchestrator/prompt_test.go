@@ -535,6 +535,65 @@ package_contract:
 	}
 }
 
+// --- Semantic model injection in buildStitchPrompt ---
+
+func TestBuildStitchPrompt_SemanticModelPresent(t *testing.T) {
+	// Not parallel: uses os.Chdir.
+	// When a PRD has a semantic_model, the stitch prompt includes it.
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(orig)
+
+	os.MkdirAll("docs/specs/product-requirements", 0o755)
+	os.WriteFile(filepath.Join("docs/specs/product-requirements", "prd001-core.yaml"), []byte(`id: prd001-core
+title: Core
+semantic_model:
+  entities:
+    - name: Widget
+      attributes:
+        - name: id
+          type: string
+`), 0o644)
+
+	o := New(Config{})
+	task := stitchTask{ID: "t-sm-1", Title: "impl widget", IssueType: "code"}
+	out, err := o.buildStitchPrompt(task)
+	if err != nil {
+		t.Fatalf("buildStitchPrompt: %v", err)
+	}
+	if !strings.Contains(out, "semantic_model:") {
+		t.Errorf("stitch prompt missing semantic_model key; output:\n%s", out)
+	}
+	if !strings.Contains(out, "Widget") {
+		t.Errorf("stitch prompt missing Widget entity from semantic_model; output:\n%s", out)
+	}
+}
+
+func TestBuildStitchPrompt_SemanticModelAbsent(t *testing.T) {
+	// Not parallel: uses os.Chdir.
+	// When no PRD has a semantic_model, the field is omitted from the prompt.
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(orig)
+
+	os.MkdirAll("docs/specs/product-requirements", 0o755)
+	os.WriteFile(filepath.Join("docs/specs/product-requirements", "prd001-plain.yaml"), []byte(`id: prd001-plain
+title: Plain PRD
+`), 0o644)
+
+	o := New(Config{})
+	task := stitchTask{ID: "t-sm-2", Title: "impl plain", IssueType: "code"}
+	out, err := o.buildStitchPrompt(task)
+	if err != nil {
+		t.Fatalf("buildStitchPrompt: %v", err)
+	}
+	if strings.Contains(out, "semantic_model:") {
+		t.Errorf("stitch prompt should omit semantic_model when no PRD has one; output:\n%s", out)
+	}
+}
+
 // --- OOD injection in buildMeasurePrompt ---
 
 func TestBuildMeasurePrompt_OODContractsHeaders(t *testing.T) {
