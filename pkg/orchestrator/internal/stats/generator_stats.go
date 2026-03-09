@@ -624,18 +624,51 @@ func ParseStitchComment(body string) StitchCommentData {
 	return d
 }
 
-// CountDescriptionReqs counts the number of requirements in a task description
-// by parsing the YAML requirements list.
+// reSubReq matches individual sub-requirement references like R1.2, R2.3.
+var reSubReq = regexp.MustCompile(`R\d+\.\d+`)
+
+// CountDescriptionReqs counts the number of sub-requirements in a task
+// description. It counts explicit sub-requirement references (R1.1, R2.3)
+// across all requirement lines. When no sub-requirement references are
+// found, falls back to counting requirement lines.
 func CountDescriptionReqs(description string) int {
 	var parsed struct {
 		Requirements []struct {
-			ID string `yaml:"id"`
+			Text string `yaml:"text"`
 		} `yaml:"requirements"`
 	}
 	if err := yaml.Unmarshal([]byte(description), &parsed); err != nil {
-		return 0
+		// Fallback: try list-of-strings format.
+		var alt struct {
+			Requirements []string `yaml:"requirements"`
+		}
+		if err2 := yaml.Unmarshal([]byte(description), &alt); err2 != nil {
+			return 0
+		}
+		total := 0
+		for _, r := range alt.Requirements {
+			refs := reSubReq.FindAllString(r, -1)
+			if len(refs) > 0 {
+				total += len(refs)
+			} else {
+				total++
+			}
+		}
+		return total
 	}
-	return len(parsed.Requirements)
+	total := 0
+	for _, r := range parsed.Requirements {
+		refs := reSubReq.FindAllString(r.Text, -1)
+		if len(refs) > 0 {
+			total += len(refs)
+		} else {
+			total++
+		}
+	}
+	if total == 0 {
+		return len(parsed.Requirements)
+	}
+	return total
 }
 
 // reRelease matches release patterns like "rel01.0" or "rel02.1" in text.
