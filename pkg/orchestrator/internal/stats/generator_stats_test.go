@@ -347,9 +347,24 @@ func TestCountDescriptionReqs(t *testing.T) {
 		want int
 	}{
 		{
-			name: "three requirements",
+			name: "three requirements no subreqs",
 			desc: "title: some task\nrequirements:\n  - id: R1\n    text: first\n  - id: R2\n    text: second\n  - id: R3\n    text: third\n",
 			want: 3,
+		},
+		{
+			name: "sub-requirement references counted",
+			desc: "requirements:\n  - \"R1: Implement per prd003 R2.1, R2.2, R2.3\"\n  - \"R2: Add tests per prd003 R3.1\"\n",
+			want: 4,
+		},
+		{
+			name: "mixed lines with and without subreq refs",
+			desc: "requirements:\n  - \"R1: Implement per prd003 R1.1\"\n  - \"R2: General cleanup\"\n",
+			want: 2,
+		},
+		{
+			name: "structured format with subreq refs",
+			desc: "requirements:\n  - id: R1\n    text: \"Implement per prd003 R2.1, R2.2\"\n  - id: R2\n    text: \"Add per prd003 R3.1, R3.2, R3.3\"\n",
+			want: 5,
 		},
 		{
 			name: "no requirements key",
