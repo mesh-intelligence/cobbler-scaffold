@@ -440,6 +440,18 @@ func (o *Orchestrator) RunCycles(label string) error {
 			consecutiveZeroLOC = 0
 		}
 
+		// Validate UC implementation after stitch so measure sees which UCs
+		// are done and skips their requirements (GH-1361). Only marks UCs
+		// whose tests exist and pass — unlike the old blanket marking.
+		if totalStitched > 0 {
+			o.validateAndMarkUCs()
+		}
+
+		// Check if the current release is complete and auto-advance if so.
+		if advanced, ver := o.checkAutoAdvanceRelease(); advanced {
+			logf("generator %s: cycle %d — auto-advanced release %s", label, cycle, ver)
+		}
+
 		// Skip measure if open issues remain — stitch should drain them first (GH-1352).
 		if openBefore, err := o.hasOpenIssues(); err == nil && openBefore {
 			logf("generator %s: cycle %d — skipping measure, open issues remain", label, cycle)
@@ -448,20 +460,6 @@ func (o *Orchestrator) RunCycles(label string) error {
 			if err := o.RunMeasure(); err != nil {
 				return fmt.Errorf("cycle %d measure: %w", cycle, err)
 			}
-		}
-
-		// Validate UC implementation after measure has had a chance to propose
-		// remaining work. Only mark individual UCs whose tests exist and pass
-		// (GH-1361). Previous code marked ALL UCs when no open issues remained,
-		// which was premature — a single completed task would mark the entire
-		// release as done before measure could propose work for other UCs.
-		if totalStitched > 0 {
-			o.validateAndMarkUCs()
-		}
-
-		// Check if the current release is complete and auto-advance if so.
-		if advanced, ver := o.checkAutoAdvanceRelease(); advanced {
-			logf("generator %s: cycle %d — auto-advanced release %s", label, cycle, ver)
 		}
 
 		open, err := o.hasOpenIssues()
