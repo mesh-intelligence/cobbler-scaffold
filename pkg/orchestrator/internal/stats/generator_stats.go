@@ -303,8 +303,17 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 	if totalPromptBytes > 0 {
 		fmt.Printf("Prompt total: %s\n", FormatBytes(totalPromptBytes))
 	}
-	if totalInputTokens > 0 || totalOutputTokens > 0 {
-		fmt.Printf("Tokens: %s in, %s out\n", FormatTokens(totalInputTokens), FormatTokens(totalOutputTokens))
+	combinedIn := totalInputTokens + totalMeasureIn
+	combinedOut := totalOutputTokens + totalMeasureOut
+	if combinedIn > 0 || combinedOut > 0 {
+		if totalMeasureIn > 0 {
+			fmt.Printf("Tokens: %s in, %s out (stitch %s in, %s out + measure %s in, %s out)\n",
+				FormatTokens(combinedIn), FormatTokens(combinedOut),
+				FormatTokens(totalInputTokens), FormatTokens(totalOutputTokens),
+				FormatTokens(totalMeasureIn), FormatTokens(totalMeasureOut))
+		} else {
+			fmt.Printf("Tokens: %s in, %s out\n", FormatTokens(combinedIn), FormatTokens(combinedOut))
+		}
 	}
 
 	// Per-release breakdown.
