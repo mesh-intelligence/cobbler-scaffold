@@ -508,6 +508,10 @@ func (o *Orchestrator) closeStitchTask(task stitchTask, rec InvocationRecord) {
 	// Update requirement states before closing (GH-1378).
 	if err := generate.UpdateRequirementsFile(o.cfg.Cobbler.Dir, task.Description, task.GhNumber); err != nil {
 		logf("closeStitchTask: warning updating requirements: %v", err)
+	} else if gitHasChanges(".") {
+		// Commit requirement state immediately so it survives interruptions (GH-1385).
+		_ = gitStageAll(".")
+		_ = gitCommit(fmt.Sprintf("Update requirement states after #%d", task.GhNumber), ".")
 	}
 
 	if err := closeCobblerIssue(task.Repo, task.GhNumber, task.Generation); err != nil {
