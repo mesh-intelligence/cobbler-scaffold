@@ -428,7 +428,7 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 	for i, m := range measureEntries {
 		mid := fmt.Sprintf("M%d", i+1)
 		if m.TaskID != "" {
-			mid = "#" + m.TaskID
+			mid = m.TaskID
 		}
 		tr := tableRow{
 			ID:       mid,
@@ -466,7 +466,7 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 	// Add in-progress measure rows from active [measuring] GitHub issues (GH-1365).
 	for _, iss := range activeMeasureIssues {
 		tr := tableRow{
-			ID:     fmt.Sprintf("#%d", iss.Number),
+			ID:     strconv.Itoa(iss.Number),
 			Status: "in-progress",
 			Rel:    "-",
 			Reqs:   "-",
