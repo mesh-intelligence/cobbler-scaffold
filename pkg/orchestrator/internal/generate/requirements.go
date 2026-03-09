@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -186,6 +187,93 @@ func findPRDRequirements(reqs map[string]map[string]RequirementState, stem strin
 		}
 	}
 	return nil
+}
+
+// UCRequirementsComplete checks whether all R-items cited by a use case's
+// touchpoints are marked "complete" in requirements.yaml. Returns true when
+// every cited R-group's sub-items are complete, and the list of any remaining
+// ready items. If requirements.yaml is missing, returns false with no items.
+func UCRequirementsComplete(cobblerDir string, touchpoints []string) (bool, []string) {
+	reqPath := filepath.Join(cobblerDir, RequirementsFileName)
+	data, err := os.ReadFile(reqPath)
+	if err != nil {
+		return false, nil
+	}
+
+	var rf RequirementsFile
+	if err := yaml.Unmarshal(data, &rf); err != nil || len(rf.Requirements) == 0 {
+		return false, nil
+	}
+
+	// Extract PRD citations from touchpoints (e.g. "prd001-core R1, R2").
+	citations := extractTouchpointCitations(touchpoints)
+	if len(citations) == 0 {
+		return false, nil
+	}
+
+	var remaining []string
+	for _, cite := range citations {
+		prdReqs := findPRDRequirements(rf.Requirements, cite.prdID)
+		if prdReqs == nil {
+			// PRD not in requirements file — cannot verify.
+			remaining = append(remaining, fmt.Sprintf("%s (missing)", cite.prdID))
+			continue
+		}
+		for _, group := range cite.groups {
+			prefix := group + "."
+			for key, st := range prdReqs {
+				if strings.HasPrefix(key, prefix) && st.Status != "complete" {
+					remaining = append(remaining, fmt.Sprintf("%s %s", cite.prdID, key))
+				}
+			}
+		}
+	}
+
+	sort.Strings(remaining)
+	return len(remaining) == 0, remaining
+}
+
+// touchpointCitation holds a PRD reference and its cited R-groups from a
+// use case touchpoint.
+type touchpointCitation struct {
+	prdID  string   // e.g. "prd001-orchestrator-core"
+	groups []string // e.g. ["R1", "R2"]
+}
+
+// touchpointPRDRefRe matches PRD + R-group references in touchpoint text.
+var touchpointPRDRefRe = regexp.MustCompile(`(prd\d+[-\w]*)\s+(R\d+(?:\s*,\s*R\d+)*)`)
+
+// extractTouchpointCitations parses touchpoint strings to extract PRD
+// citations with their requirement groups.
+func extractTouchpointCitations(touchpoints []string) []touchpointCitation {
+	var citations []touchpointCitation
+	seen := make(map[string]map[string]bool) // prdID → set of groups
+	for _, tp := range touchpoints {
+		matches := touchpointPRDRefRe.FindAllStringSubmatch(tp, -1)
+		for _, m := range matches {
+			prdID := m[1]
+			groupStr := m[2]
+			if seen[prdID] == nil {
+				seen[prdID] = make(map[string]bool)
+			}
+			for _, g := range strings.Split(groupStr, ",") {
+				g = strings.TrimSpace(g)
+				if g != "" {
+					seen[prdID][g] = true
+				}
+			}
+		}
+	}
+	for prdID, groups := range seen {
+		var gs []string
+		for g := range groups {
+			gs = append(gs, g)
+		}
+		sort.Strings(gs)
+		citations = append(citations, touchpointCitation{prdID: prdID, groups: gs})
+	}
+	sort.Slice(citations, func(i, j int) bool { return citations[i].prdID < citations[j].prdID })
+	return citations
 }
 
 // extractRItems reads a PRD YAML file and returns all R-item IDs (e.g.

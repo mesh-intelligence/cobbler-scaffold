@@ -316,6 +316,127 @@ func TestUpdateRequirementsFile(t *testing.T) {
 	})
 }
 
+func TestUCRequirementsComplete(t *testing.T) {
+	t.Run("all requirements complete", func(t *testing.T) {
+		tmp := t.TempDir()
+		cobblerDir := filepath.Join(tmp, ".cobbler")
+		os.MkdirAll(cobblerDir, 0o755)
+
+		initial := RequirementsFile{
+			Requirements: map[string]map[string]RequirementState{
+				"prd001-core": {
+					"R1.1": {Status: "complete", Issue: 10},
+					"R1.2": {Status: "complete", Issue: 11},
+				},
+			},
+		}
+		data, _ := yaml.Marshal(initial)
+		os.WriteFile(filepath.Join(cobblerDir, RequirementsFileName), data, 0o644)
+
+		touchpoints := []string{
+			"T1: Config struct per prd001-core R1",
+		}
+
+		complete, remaining := UCRequirementsComplete(cobblerDir, touchpoints)
+		if !complete {
+			t.Errorf("expected complete, got remaining: %v", remaining)
+		}
+	})
+
+	t.Run("partial completion", func(t *testing.T) {
+		tmp := t.TempDir()
+		cobblerDir := filepath.Join(tmp, ".cobbler")
+		os.MkdirAll(cobblerDir, 0o755)
+
+		initial := RequirementsFile{
+			Requirements: map[string]map[string]RequirementState{
+				"prd001-core": {
+					"R1.1": {Status: "complete", Issue: 10},
+					"R1.2": {Status: "ready"},
+				},
+			},
+		}
+		data, _ := yaml.Marshal(initial)
+		os.WriteFile(filepath.Join(cobblerDir, RequirementsFileName), data, 0o644)
+
+		touchpoints := []string{
+			"T1: Config struct per prd001-core R1",
+		}
+
+		complete, remaining := UCRequirementsComplete(cobblerDir, touchpoints)
+		if complete {
+			t.Error("expected incomplete")
+		}
+		if len(remaining) != 1 {
+			t.Errorf("expected 1 remaining, got %d: %v", len(remaining), remaining)
+		}
+	})
+
+	t.Run("missing requirements file", func(t *testing.T) {
+		complete, remaining := UCRequirementsComplete("/nonexistent", []string{"T1: prd001 R1"})
+		if complete {
+			t.Error("expected incomplete for missing file")
+		}
+		if len(remaining) != 0 {
+			t.Errorf("expected no remaining items, got %v", remaining)
+		}
+	})
+
+	t.Run("no touchpoints", func(t *testing.T) {
+		tmp := t.TempDir()
+		complete, _ := UCRequirementsComplete(tmp, nil)
+		if complete {
+			t.Error("expected incomplete for no touchpoints")
+		}
+	})
+}
+
+func TestExtractTouchpointCitations(t *testing.T) {
+	t.Run("single PRD single group", func(t *testing.T) {
+		tps := []string{"T1: Config struct per prd001-core R1"}
+		citations := extractTouchpointCitations(tps)
+		if len(citations) != 1 {
+			t.Fatalf("expected 1 citation, got %d", len(citations))
+		}
+		if citations[0].prdID != "prd001-core" {
+			t.Errorf("prdID = %q, want prd001-core", citations[0].prdID)
+		}
+		if len(citations[0].groups) != 1 || citations[0].groups[0] != "R1" {
+			t.Errorf("groups = %v, want [R1]", citations[0].groups)
+		}
+	})
+
+	t.Run("multiple groups", func(t *testing.T) {
+		tps := []string{"T1: per prd002-lifecycle R1, R3"}
+		citations := extractTouchpointCitations(tps)
+		if len(citations) != 1 {
+			t.Fatalf("expected 1 citation, got %d", len(citations))
+		}
+		if len(citations[0].groups) != 2 {
+			t.Errorf("groups = %v, want [R1, R3]", citations[0].groups)
+		}
+	})
+
+	t.Run("multiple PRDs across touchpoints", func(t *testing.T) {
+		tps := []string{
+			"T1: per prd001-core R1",
+			"T2: per prd002-lifecycle R2",
+		}
+		citations := extractTouchpointCitations(tps)
+		if len(citations) != 2 {
+			t.Fatalf("expected 2 citations, got %d", len(citations))
+		}
+	})
+
+	t.Run("no PRD references", func(t *testing.T) {
+		tps := []string{"T1: some generic touchpoint"}
+		citations := extractTouchpointCitations(tps)
+		if len(citations) != 0 {
+			t.Errorf("expected 0 citations, got %d", len(citations))
+		}
+	})
+}
+
 func readReqFile(t *testing.T, path string) RequirementsFile {
 	t.Helper()
 	data, err := os.ReadFile(path)
