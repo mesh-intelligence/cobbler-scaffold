@@ -14,6 +14,7 @@ import (
 	"text/tabwriter"
 
 	cl "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/claude"
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/generate"
 	gh "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/github"
 	"gopkg.in/yaml.v3"
 )
@@ -43,6 +44,7 @@ type GeneratorStatsDeps struct {
 	DetectGitHubRepo       func() (string, error)
 	ListAllIssues          func(repo, generation string) ([]gh.CobblerIssue, error)
 	HistoryDir string // path to .cobbler/history for local stats files
+	CobblerDir string // path to .cobbler directory for requirements.yaml
 }
 
 // LoadHistoryStats reads all *-stats.yaml files from dir and returns the
@@ -532,13 +534,19 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 		}
 	}
 
-	// Requirements progress.
-	total, byPRD := CountTotalPRDRequirements()
+	// Requirements progress: count actual non-ready R-items from
+	// requirements.yaml rather than all R-items in any touched PRD (GH-1437).
+	total, _ := CountTotalPRDRequirements()
 	if total > 0 {
 		addressed := 0
-		for prd, status := range prdStatus {
-			if status == "done" || status == "in-progress" {
-				addressed += byPRD[prd]
+		if deps.CobblerDir != "" {
+			reqStates := generate.LoadRequirementStates(deps.CobblerDir)
+			for _, prdReqs := range reqStates {
+				for _, st := range prdReqs {
+					if st.Status != "ready" {
+						addressed++
+					}
+				}
 			}
 		}
 		pct := 0

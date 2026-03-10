@@ -32,6 +32,7 @@ func (o *Orchestrator) GeneratorStats() error {
 			return listAllCobblerIssues(repo, generation)
 		},
 		HistoryDir: o.historyDir(),
+		CobblerDir: o.cfg.Cobbler.Dir,
 	})
 }
 
