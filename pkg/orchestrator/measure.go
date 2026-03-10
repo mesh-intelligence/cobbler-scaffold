@@ -216,6 +216,12 @@ func (o *Orchestrator) RunMeasure() error {
 			totalTokens.CacheReadTokens += tokens.CacheReadTokens
 			totalTokens.CostUSD += tokens.CostUSD
 
+			// Build taskID once for both success and failure paths (GH-1438).
+			taskID := ""
+			if placeholderNum > 0 {
+				taskID = fmt.Sprintf("%d", placeholderNum)
+			}
+
 			if err != nil {
 				logf("Claude failed on iteration %d after %s: %v",
 					i+1, iterDuration.Round(time.Second), err)
@@ -223,7 +229,7 @@ func (o *Orchestrator) RunMeasure() error {
 				o.saveHistoryLog(historyTS, "measure", tokens.RawOutput)
 				o.saveHistoryStats(historyTS, "measure", HistoryStats{
 					Caller:        "measure",
-					TaskID:        fmt.Sprintf("%d", placeholderNum),
+					TaskID:        taskID,
 					Status:        "failed",
 					Error:         fmt.Sprintf("claude failure (iteration %d/%d): %v", i+1, totalIssues, err),
 					StartedAt:     iterStart.UTC().Format(time.RFC3339),
@@ -245,7 +251,7 @@ func (o *Orchestrator) RunMeasure() error {
 			o.saveHistory(historyTS, tokens.RawOutput, outputFile)
 			o.saveHistoryStats(historyTS, "measure", HistoryStats{
 				Caller:        "measure",
-				TaskID:        fmt.Sprintf("%d", placeholderNum),
+				TaskID:        taskID,
 				Status:        "success",
 				StartedAt:     iterStart.UTC().Format(time.RFC3339),
 				Duration:      iterDuration.Round(time.Second).String(),

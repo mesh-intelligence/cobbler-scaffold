@@ -429,7 +429,7 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 	})
 	for i, m := range measureEntries {
 		mid := fmt.Sprintf("M%d", i+1)
-		if m.TaskID != "" {
+		if m.TaskID != "" && m.TaskID != "0" {
 			mid = m.TaskID
 		}
 		tr := tableRow{
