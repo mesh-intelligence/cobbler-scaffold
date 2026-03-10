@@ -4,10 +4,13 @@
 package stats
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/generate"
 	gh "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/github"
 )
 
@@ -777,5 +780,102 @@ num_turns: 3
 	err := PrintGeneratorStats(deps)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestRequirementsCountUsesPerItemState verifies that the "Requirements: X/Y"
+// line counts actual non-ready R-items from requirements.yaml, not all R-items
+// in any touched PRD (GH-1437).
+func TestRequirementsCountUsesPerItemState(t *testing.T) {
+	// Uses os.Chdir — do NOT use t.Parallel()
+	dir := t.TempDir()
+
+	// Create a PRD with 6 R-items across 2 groups.
+	prdDir := filepath.Join(dir, "docs", "specs", "product-requirements")
+	os.MkdirAll(prdDir, 0o755)
+	prdYAML := `id: prd001-testutils
+requirements:
+  R1:
+    title: "Group 1"
+    items:
+      - R1.1: "first"
+      - R1.2: "second"
+      - R1.3: "third"
+  R2:
+    title: "Group 2"
+    items:
+      - R2.1: "fourth"
+      - R2.2: "fifth"
+      - R2.3: "sixth"
+`
+	os.WriteFile(filepath.Join(prdDir, "prd001-testutils.yaml"), []byte(prdYAML), 0o644)
+
+	// Create requirements.yaml with only 2 of 6 R-items completed.
+	cobblerDir := filepath.Join(dir, ".cobbler")
+	os.MkdirAll(cobblerDir, 0o755)
+	reqYAML := `requirements:
+  prd001-testutils:
+    R1.1:
+      status: complete
+      issue: 100
+    R1.2:
+      status: complete
+      issue: 100
+    R1.3:
+      status: ready
+    R2.1:
+      status: ready
+    R2.2:
+      status: ready
+    R2.3:
+      status: ready
+`
+	os.WriteFile(filepath.Join(cobblerDir, generate.RequirementsFileName), []byte(reqYAML), 0o644)
+
+	orig, _ := os.Getwd()
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(dir)
+
+	// Capture stdout.
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	deps := GeneratorStatsDeps{
+		Log: func(format string, args ...any) {},
+		ListGenerationBranches: func() []string { return []string{"generation-main"} },
+		GenerationBranch:       "generation-main",
+		DetectGitHubRepo:       func() (string, error) { return "owner/repo", nil },
+		ListAllIssues: func(repo, generation string) ([]gh.CobblerIssue, error) {
+			return []gh.CobblerIssue{
+				{
+					Number:      100,
+					Title:       "implement R1.1-R1.2 (prd001-testutils)",
+					State:       "closed",
+					Labels:      []string{"cobbler-task"},
+					Description: "requirements:\n  - text: \"prd001-testutils R1.1\"\n    source: test\n",
+				},
+			}, nil
+		},
+		HistoryDir: filepath.Join(cobblerDir, "history"),
+		CobblerDir: cobblerDir,
+	}
+
+	err := PrintGeneratorStats(deps)
+	w.Close()
+	captured, _ := io.ReadAll(r)
+	os.Stdout = oldStdout
+	output := string(captured)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should report 2/6, not 6/6.
+	if !strings.Contains(output, "Requirements: 2/6") {
+		t.Errorf("expected 'Requirements: 2/6' in output, got:\n%s", output)
+	}
+	if strings.Contains(output, "Requirements: 6/6") {
+		t.Errorf("bug not fixed: output still shows 6/6 (all R-items in touched PRD):\n%s", output)
 	}
 }
