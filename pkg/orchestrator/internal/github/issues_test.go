@@ -657,6 +657,11 @@ func TestCreateMeasuringPlaceholder_FakeRepo_Error(t *testing.T) {
 	if err == nil {
 		t.Error("CreateMeasuringPlaceholder with fake repo must return an error")
 	}
+	// GH-1438: error must include stderr from the gh CLI when available.
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "stderr:") && !strings.Contains(errMsg, "exit status") {
+		t.Errorf("error should contain stderr or exit status, got: %s", errMsg)
+	}
 }
 
 // TestCloseMeasuringPlaceholder_FakeRepo_NoOp verifies CloseMeasuringPlaceholder

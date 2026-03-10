@@ -879,3 +879,69 @@ requirements:
 		t.Errorf("bug not fixed: output still shows 6/6 (all R-items in touched PRD):\n%s", output)
 	}
 }
+
+// TestMeasureTaskIDZeroDisplaysAsMN verifies that a measure entry with
+// TaskID "0" (from a failed placeholder creation) displays as "M1" in the
+// stats table, not as "0" (GH-1438).
+func TestMeasureTaskIDZeroDisplaysAsMN(t *testing.T) {
+	// Uses os.Chdir — do NOT use t.Parallel()
+	dir := t.TempDir()
+
+	histDir := filepath.Join(dir, "history")
+	os.MkdirAll(histDir, 0o755)
+
+	// Simulate a measure stats file with task_id "0" (placeholder failure).
+	measureYAML := `caller: measure
+started_at: "2026-03-09T18:00:04Z"
+duration: "56s"
+duration_s: 56
+task_id: "0"
+tokens:
+  input: 48000
+  output: 2000
+  cache_creation: 0
+  cache_read: 0
+cost_usd: 0.31
+num_turns: 2
+`
+	os.WriteFile(filepath.Join(histDir, "2026-03-09-18-00-04-measure-stats.yaml"), []byte(measureYAML), 0o644)
+
+	orig, _ := os.Getwd()
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(dir)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	deps := GeneratorStatsDeps{
+		Log: func(format string, args ...any) {},
+		ListGenerationBranches: func() []string { return []string{"generation-main"} },
+		GenerationBranch:       "generation-main",
+		DetectGitHubRepo:       func() (string, error) { return "owner/repo", nil },
+		ListAllIssues: func(repo, generation string) ([]gh.CobblerIssue, error) {
+			return []gh.CobblerIssue{
+				{Number: 100, Title: "test task", State: "closed", Labels: []string{"cobbler-task"}},
+			}, nil
+		},
+		HistoryDir: histDir,
+	}
+
+	err := PrintGeneratorStats(deps)
+	w.Close()
+	captured, _ := io.ReadAll(r)
+	os.Stdout = oldStdout
+	output := string(captured)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The measure row should show "M1", not "0".
+	if strings.Contains(output, "\n0 ") || strings.Contains(output, "\n0\t") {
+		t.Errorf("measure row should display as M1, not 0:\n%s", output)
+	}
+	if !strings.Contains(output, "M1") {
+		t.Errorf("expected M1 in output:\n%s", output)
+	}
+}

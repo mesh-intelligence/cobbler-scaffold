@@ -8,6 +8,7 @@ package github
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -490,6 +491,14 @@ func (t *GitHubTracker) CreateMeasuringPlaceholder(repo, generation string, iter
 		"--body", body,
 	).Output()
 	if err != nil {
+		stderr := ""
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			stderr = strings.TrimSpace(string(exitErr.Stderr))
+		}
+		if stderr != "" {
+			return 0, fmt.Errorf("gh issue create placeholder: %w (stderr: %s)", err, stderr)
+		}
 		return 0, fmt.Errorf("gh issue create placeholder: %w", err)
 	}
 	number, err := ParseIssueURL(string(out))
