@@ -33,6 +33,9 @@ func (o *Orchestrator) GeneratorStats() error {
 		},
 		HistoryDir: o.historyDir(),
 		CobblerDir: o.cfg.Cobbler.Dir,
+		ReadBranchFile: func(branch, path string) ([]byte, error) {
+			return gitShowFileContent(branch, path, ".")
+		},
 	})
 }
 
