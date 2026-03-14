@@ -43,8 +43,9 @@ type GeneratorStatsDeps struct {
 	CurrentBranch          string // current git branch, used to prefer the active generation
 	DetectGitHubRepo       func() (string, error)
 	ListAllIssues          func(repo, generation string) ([]gh.CobblerIssue, error)
-	HistoryDir string // path to .cobbler/history for local stats files
-	CobblerDir string // path to .cobbler directory for requirements.yaml
+	HistoryDir    string                                  // path to .cobbler/history for local stats files
+	CobblerDir    string                                  // path to .cobbler directory for requirements.yaml
+	ReadBranchFile func(branch, path string) ([]byte, error) // read a file from a git branch; nil means unavailable
 }
 
 // LoadHistoryStats reads all *-stats.yaml files from dir and returns the
@@ -543,16 +544,16 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 
 	// Requirements progress: count actual non-ready R-items from
 	// requirements.yaml rather than all R-items in any touched PRD (GH-1437).
+	// When on the wrong branch, read requirements.yaml from the generation
+	// branch via git to avoid stale CWD data (GH-1445).
 	total, _ := CountTotalPRDRequirements()
 	if total > 0 {
 		addressed := 0
-		if deps.CobblerDir != "" {
-			reqStates := generate.LoadRequirementStates(deps.CobblerDir)
-			for _, prdReqs := range reqStates {
-				for _, st := range prdReqs {
-					if st.Status != "ready" {
-						addressed++
-					}
+		reqStates := loadRequirementStatesForStats(deps, genBranch)
+		for _, prdReqs := range reqStates {
+			for _, st := range prdReqs {
+				if st.Status != "ready" {
+					addressed++
 				}
 			}
 		}
@@ -563,6 +564,30 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 		fmt.Printf("\nRequirements: %d/%d addressed by this generation (%d%%)\n", addressed, total, pct)
 	}
 
+	return nil
+}
+
+// loadRequirementStatesForStats returns requirement states for the generation.
+// When the caller is on the generation branch, it reads from the local cobbler
+// dir. When on a different branch (e.g. main), it reads requirements.yaml from
+// the generation branch via git to avoid stale CWD data (GH-1445).
+func loadRequirementStatesForStats(deps GeneratorStatsDeps, genBranch string) map[string]map[string]generate.RequirementState {
+	onCorrectBranch := deps.CurrentBranch == "" || deps.CurrentBranch == genBranch
+
+	// When on the wrong branch, try reading from the generation branch via git.
+	if !onCorrectBranch && deps.ReadBranchFile != nil {
+		reqPath := filepath.Join(deps.CobblerDir, generate.RequirementsFileName)
+		if data, err := deps.ReadBranchFile(genBranch, reqPath); err == nil {
+			if states := generate.ParseRequirementStates(data); states != nil {
+				return states
+			}
+		}
+	}
+
+	// Default: read from CWD (correct branch or no ReadBranchFile available).
+	if deps.CobblerDir != "" {
+		return generate.LoadRequirementStates(deps.CobblerDir)
+	}
 	return nil
 }
 

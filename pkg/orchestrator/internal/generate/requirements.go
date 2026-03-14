@@ -36,6 +36,12 @@ func LoadRequirementStates(cobblerDir string) map[string]map[string]RequirementS
 	if err != nil {
 		return nil
 	}
+	return ParseRequirementStates(data)
+}
+
+// ParseRequirementStates parses requirements.yaml content from raw bytes.
+// Returns nil if the data cannot be parsed.
+func ParseRequirementStates(data []byte) map[string]map[string]RequirementState {
 	var rf RequirementsFile
 	if err := yaml.Unmarshal(data, &rf); err != nil {
 		return nil

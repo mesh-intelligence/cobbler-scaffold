@@ -4,6 +4,7 @@
 package stats
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -968,6 +969,185 @@ func TestPrintGeneratorStats_NoWarnWhenOnCorrectBranch(t *testing.T) {
 
 	if strings.Contains(stderr, "warning") {
 		t.Errorf("expected no warning when on correct branch, got: %q", stderr)
+	}
+}
+
+// TestPrintGeneratorStats_ReqsFromBranch verifies that when on the wrong
+// branch, requirements.yaml is read from the generation branch via
+// ReadBranchFile instead of from stale CWD data (GH-1445).
+func TestPrintGeneratorStats_ReqsFromBranch(t *testing.T) {
+	// Uses os.Chdir — do NOT use t.Parallel()
+	dir := t.TempDir()
+
+	// Create a PRD with 4 R-items.
+	prdDir := filepath.Join(dir, "docs", "specs", "product-requirements")
+	os.MkdirAll(prdDir, 0o755)
+	prdYAML := `id: prd001-test
+requirements:
+  R1:
+    title: "Group"
+    items:
+      - R1.1: "first"
+      - R1.2: "second"
+      - R1.3: "third"
+      - R1.4: "fourth"
+`
+	os.WriteFile(filepath.Join(prdDir, "prd001-test.yaml"), []byte(prdYAML), 0o644)
+
+	// Stale CWD requirements.yaml: shows 3 of 4 addressed (wrong).
+	cobblerDir := filepath.Join(dir, ".cobbler")
+	os.MkdirAll(cobblerDir, 0o755)
+	staleReqYAML := `requirements:
+  prd001-test:
+    R1.1:
+      status: complete
+    R1.2:
+      status: complete
+    R1.3:
+      status: complete
+    R1.4:
+      status: ready
+`
+	os.WriteFile(filepath.Join(cobblerDir, generate.RequirementsFileName), []byte(staleReqYAML), 0o644)
+
+	// Fresh requirements from generation branch: only 1 addressed.
+	freshReqYAML := `requirements:
+  prd001-test:
+    R1.1:
+      status: complete
+    R1.2:
+      status: ready
+    R1.3:
+      status: ready
+    R1.4:
+      status: ready
+`
+
+	orig, _ := os.Getwd()
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(dir)
+
+	// Capture stdout, discard stderr (warning from GH-1444).
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	_, stderrW, _ := os.Pipe()
+	os.Stderr = stderrW
+
+	deps := GeneratorStatsDeps{
+		Log:                    func(format string, args ...any) {},
+		ListGenerationBranches: func() []string { return []string{"generation-main"} },
+		GenerationBranch:       "generation-main",
+		CurrentBranch:          "main", // wrong branch — triggers ReadBranchFile
+		DetectGitHubRepo:       func() (string, error) { return "owner/repo", nil },
+		ListAllIssues: func(repo, generation string) ([]gh.CobblerIssue, error) {
+			return []gh.CobblerIssue{
+				{Number: 100, Title: "test task", State: "open", Labels: []string{"cobbler-task"}},
+			}, nil
+		},
+		HistoryDir: filepath.Join(cobblerDir, "history"),
+		CobblerDir: cobblerDir,
+		ReadBranchFile: func(branch, path string) ([]byte, error) {
+			if branch == "generation-main" {
+				return []byte(freshReqYAML), nil
+			}
+			return nil, fmt.Errorf("branch not found")
+		},
+	}
+
+	err := PrintGeneratorStats(deps)
+	w.Close()
+	stderrW.Close()
+	captured, _ := io.ReadAll(r)
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+	output := string(captured)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should report 1/4 (from branch), not 3/4 (from stale CWD).
+	if !strings.Contains(output, "Requirements: 1/4") {
+		t.Errorf("expected 'Requirements: 1/4' (from branch), got:\n%s", output)
+	}
+	if strings.Contains(output, "Requirements: 3/4") {
+		t.Errorf("bug: still reading stale CWD requirements (3/4):\n%s", output)
+	}
+}
+
+// TestPrintGeneratorStats_ReqsFallbackToCWD verifies that when ReadBranchFile
+// is nil (not available), requirements are still read from CWD.
+func TestPrintGeneratorStats_ReqsFallbackToCWD(t *testing.T) {
+	// Uses os.Chdir — do NOT use t.Parallel()
+	dir := t.TempDir()
+
+	prdDir := filepath.Join(dir, "docs", "specs", "product-requirements")
+	os.MkdirAll(prdDir, 0o755)
+	prdYAML := `id: prd001-test
+requirements:
+  R1:
+    title: "Group"
+    items:
+      - R1.1: "first"
+      - R1.2: "second"
+`
+	os.WriteFile(filepath.Join(prdDir, "prd001-test.yaml"), []byte(prdYAML), 0o644)
+
+	cobblerDir := filepath.Join(dir, ".cobbler")
+	os.MkdirAll(cobblerDir, 0o755)
+	reqYAML := `requirements:
+  prd001-test:
+    R1.1:
+      status: complete
+    R1.2:
+      status: ready
+`
+	os.WriteFile(filepath.Join(cobblerDir, generate.RequirementsFileName), []byte(reqYAML), 0o644)
+
+	orig, _ := os.Getwd()
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(dir)
+
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	_, stderrW, _ := os.Pipe()
+	os.Stderr = stderrW
+
+	deps := GeneratorStatsDeps{
+		Log:                    func(format string, args ...any) {},
+		ListGenerationBranches: func() []string { return []string{"generation-main"} },
+		GenerationBranch:       "generation-main",
+		CurrentBranch:          "generation-main", // correct branch
+		DetectGitHubRepo:       func() (string, error) { return "owner/repo", nil },
+		ListAllIssues: func(repo, generation string) ([]gh.CobblerIssue, error) {
+			return []gh.CobblerIssue{
+				{Number: 100, Title: "test task", State: "open", Labels: []string{"cobbler-task"}},
+			}, nil
+		},
+		HistoryDir:     filepath.Join(cobblerDir, "history"),
+		CobblerDir:     cobblerDir,
+		ReadBranchFile: nil, // not available
+	}
+
+	err := PrintGeneratorStats(deps)
+	w.Close()
+	stderrW.Close()
+	captured, _ := io.ReadAll(r)
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+	output := string(captured)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should still show 1/2 from CWD.
+	if !strings.Contains(output, "Requirements: 1/2") {
+		t.Errorf("expected 'Requirements: 1/2' from CWD fallback, got:\n%s", output)
 	}
 }
 
