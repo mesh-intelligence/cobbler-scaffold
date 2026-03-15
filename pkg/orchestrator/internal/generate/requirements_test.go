@@ -1289,6 +1289,196 @@ files:
 	}
 }
 
+// --- isRequirementComplete with skip status (GH-1451) ---
+
+func TestIsRequirementComplete_SkipStatus(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		status string
+		want   bool
+	}{
+		{"complete", true},
+		{"complete_with_failures", true},
+		{"skip", true},
+		{"ready", false},
+		{"", false},
+		{"unknown", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.status, func(t *testing.T) {
+			t.Parallel()
+			if got := isRequirementComplete(tc.status); got != tc.want {
+				t.Errorf("isRequirementComplete(%q) = %v, want %v", tc.status, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUCRequirementsComplete_SkipStatus(t *testing.T) {
+	t.Run("skip counts as complete for UC validation", func(t *testing.T) {
+		tmp := t.TempDir()
+		cobblerDir := filepath.Join(tmp, ".cobbler")
+		os.MkdirAll(cobblerDir, 0o755)
+
+		initial := RequirementsFile{
+			Requirements: map[string]map[string]RequirementState{
+				"prd011-magefiles": {
+					"R1.1": {Status: "skip"},
+					"R2.1": {Status: "complete", Issue: 42},
+					"R3.1": {Status: "skip"},
+				},
+			},
+		}
+		data, _ := yaml.Marshal(initial)
+		os.WriteFile(filepath.Join(cobblerDir, RequirementsFileName), data, 0o644)
+
+		touchpoints := []string{
+			"T1: Magefiles per prd011-magefiles R1, R2, R3",
+		}
+
+		complete, remaining := UCRequirementsComplete(cobblerDir, touchpoints)
+		if !complete {
+			t.Errorf("expected complete (skip+complete), got remaining: %v", remaining)
+		}
+	})
+
+	t.Run("skip plus ready is incomplete", func(t *testing.T) {
+		tmp := t.TempDir()
+		cobblerDir := filepath.Join(tmp, ".cobbler")
+		os.MkdirAll(cobblerDir, 0o755)
+
+		initial := RequirementsFile{
+			Requirements: map[string]map[string]RequirementState{
+				"prd011-magefiles": {
+					"R1.1": {Status: "skip"},
+					"R2.1": {Status: "ready"},
+				},
+			},
+		}
+		data, _ := yaml.Marshal(initial)
+		os.WriteFile(filepath.Join(cobblerDir, RequirementsFileName), data, 0o644)
+
+		touchpoints := []string{
+			"T1: per prd011-magefiles R1, R2",
+		}
+
+		complete, remaining := UCRequirementsComplete(cobblerDir, touchpoints)
+		if complete {
+			t.Error("expected incomplete (R2.1 still ready)")
+		}
+		if len(remaining) != 1 {
+			t.Errorf("expected 1 remaining, got %d: %v", len(remaining), remaining)
+		}
+	})
+}
+
+func TestCrossBatchDuplicatePrevention_SkipStatus(t *testing.T) {
+	reqStates := map[string]map[string]RequirementState{
+		"prd011-magefiles": {
+			"R1.1": {Status: "skip"},
+			"R2.1": {Status: "ready"},
+		},
+	}
+
+	makeDesc := func(reqText string) string {
+		return `deliverable_type: code
+requirements:
+  - id: R1
+    text: "` + reqText + `"
+  - id: R2
+    text: "General work"
+  - id: R3
+    text: "More work"
+  - id: R4
+    text: "Even more"
+  - id: R5
+    text: "Last one"
+acceptance_criteria:
+  - id: AC1
+    text: ac1
+  - id: AC2
+    text: ac2
+  - id: AC3
+    text: ac3
+  - id: AC4
+    text: ac4
+  - id: AC5
+    text: ac5
+design_decisions:
+  - id: DD1
+    text: dd1
+  - id: DD2
+    text: dd2
+  - id: DD3
+    text: dd3
+files:
+  - path: magefiles/magefile.go`
+	}
+
+	t.Run("rejects proposal targeting skipped R-item", func(t *testing.T) {
+		desc := makeDesc("prd011-magefiles R1.1 — implement mage target")
+		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
+		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		found := false
+		for _, e := range result.Errors {
+			if strings.Contains(e, "R1.1") && strings.Contains(e, "already complete") {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected rejection for skipped R1.1, got errors: %v", result.Errors)
+		}
+	})
+
+	t.Run("accepts proposal targeting ready R-item alongside skip", func(t *testing.T) {
+		desc := makeDesc("prd011-magefiles R2.1 — implement something")
+		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
+		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		for _, e := range result.Errors {
+			if strings.Contains(e, "R2.1") && strings.Contains(e, "complete") {
+				t.Errorf("R2.1 is ready, should not be rejected: %s", e)
+			}
+		}
+	})
+}
+
+func TestGenerateRequirementsFile_PreservesSkipStatus(t *testing.T) {
+	tmp := t.TempDir()
+	prdDir := filepath.Join(tmp, "prds")
+	cobblerDir := filepath.Join(tmp, ".cobbler")
+	os.MkdirAll(prdDir, 0o755)
+	os.MkdirAll(cobblerDir, 0o755)
+
+	prd := `requirements:
+  R1:
+    title: "Mage targets"
+    items:
+      - R1.1: "build target"
+      - R1.2: "test target"
+`
+	os.WriteFile(filepath.Join(prdDir, "prd011-magefiles.yaml"), []byte(prd), 0o644)
+
+	existing := RequirementsFile{
+		Requirements: map[string]map[string]RequirementState{
+			"prd011-magefiles": {
+				"R1.1": {Status: "skip"},
+				"R1.2": {Status: "ready"},
+			},
+		},
+	}
+	data, _ := yaml.Marshal(existing)
+	os.WriteFile(filepath.Join(cobblerDir, RequirementsFileName), data, 0o644)
+
+	path, err := GenerateRequirementsFile(prdDir, cobblerDir, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	result := readReqFile(t, path)
+	assertReqState(t, result, "prd011-magefiles", "R1.1", "skip", 0)
+	assertReqState(t, result, "prd011-magefiles", "R1.2", "ready", 0)
+}
+
 func readReqFile(t *testing.T, path string) RequirementsFile {
 	t.Helper()
 	data, err := os.ReadFile(path)
