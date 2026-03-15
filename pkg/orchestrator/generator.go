@@ -953,12 +953,16 @@ func (o *Orchestrator) mergeGeneration(branch, baseBranch string) error {
 // resetImplementedReleases loads road-map.yaml, finds all releases with
 // status "implemented", and calls ReleaseClear for each to reset them to
 // "spec_complete" and repopulate configuration.yaml (GH-1021).
+// Also reverts individual UC statuses that were marked "implemented" by
+// validateAndMarkUCs even when the release itself is not yet implemented
+// (GH-1469).
 func (o *Orchestrator) resetImplementedReleases() error {
 	rm := loadYAML[RoadmapDoc]("docs/road-map.yaml")
 	if rm == nil {
 		return nil
 	}
 	var cleared []string
+	var revertedUCs []string
 	for _, rel := range rm.Releases {
 		if strings.EqualFold(rel.Status, "implemented") {
 			if err := o.ReleaseClear(rel.Version); err != nil {
@@ -966,17 +970,37 @@ func (o *Orchestrator) resetImplementedReleases() error {
 				continue
 			}
 			cleared = append(cleared, rel.Version)
+			continue
+		}
+		// Revert individual UC statuses even when the release itself is
+		// not yet implemented (GH-1469). validateAndMarkUCs promotes UCs
+		// one at a time during the run; generator:stop must undo them.
+		for _, uc := range rel.UseCases {
+			if ucStatusDone(uc.Status) {
+				if err := updateRoadmapSingleUCStatus(rel.Version, uc.ID, "spec_complete"); err != nil {
+					logf("resetImplementedReleases: revert UC %s in %s failed: %v", uc.ID, rel.Version, err)
+					continue
+				}
+				revertedUCs = append(revertedUCs, uc.ID)
+			}
 		}
 	}
-	if len(cleared) == 0 {
+	if len(cleared) == 0 && len(revertedUCs) == 0 {
 		return nil
 	}
 	_ = gitStageAll(".")
-	msg := fmt.Sprintf("Reset releases to spec_complete after generator:stop\n\nCleared: %s", strings.Join(cleared, ", "))
+	var parts []string
+	if len(cleared) > 0 {
+		parts = append(parts, fmt.Sprintf("Releases: %s", strings.Join(cleared, ", ")))
+	}
+	if len(revertedUCs) > 0 {
+		parts = append(parts, fmt.Sprintf("UCs: %s", strings.Join(revertedUCs, ", ")))
+	}
+	msg := fmt.Sprintf("Reset statuses to spec_complete after generator:stop\n\n%s", strings.Join(parts, "\n"))
 	if err := gitCommit(msg, "."); err != nil {
 		return fmt.Errorf("commit release reset: %w", err)
 	}
-	logf("resetImplementedReleases: cleared %d release(s): %s", len(cleared), strings.Join(cleared, ", "))
+	logf("resetImplementedReleases: cleared %d release(s), reverted %d UC(s)", len(cleared), len(revertedUCs))
 	return nil
 }
 

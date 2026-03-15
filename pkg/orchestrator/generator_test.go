@@ -1837,6 +1837,57 @@ func TestGeneratorStop_CommitsHistoryBeforeTag(t *testing.T) {
 	}
 }
 
+// TestResetImplementedReleases_RevertsUCStatuses verifies that individual
+// UC statuses are reverted to spec_complete even when the release itself
+// is not yet marked implemented (GH-1469).
+func TestResetImplementedReleases_RevertsUCStatuses(t *testing.T) {
+	// Uses os.Chdir — do NOT use t.Parallel()
+	dir := initTestGitRepo(t)
+
+	// Create road-map.yaml with a release that has some UCs implemented
+	// but the release itself is still spec_complete.
+	docsDir := filepath.Join(dir, "docs")
+	os.MkdirAll(docsDir, 0o755)
+	roadmap := `releases:
+  - version: "00.0"
+    name: "Foundation"
+    status: spec_complete
+    use_cases:
+      - id: rel00.0-uc001-format
+        status: implemented
+      - id: rel00.0-uc002-sys
+        status: implemented
+      - id: rel00.0-uc003-testutils
+        status: spec_complete
+`
+	os.WriteFile(filepath.Join(docsDir, "road-map.yaml"), []byte(roadmap), 0o644)
+
+	cmd := exec.Command("git", "add", "-A")
+	cmd.Dir = dir
+	cmd.CombinedOutput()
+	cmd = exec.Command("git", "commit", "-m", "add roadmap")
+	cmd.Dir = dir
+	cmd.CombinedOutput()
+
+	o := &Orchestrator{cfg: Config{}}
+	if err := o.resetImplementedReleases(); err != nil {
+		t.Fatalf("resetImplementedReleases error: %v", err)
+	}
+
+	// Read the road-map.yaml and verify UC statuses were reverted.
+	data, err := os.ReadFile(filepath.Join(docsDir, "road-map.yaml"))
+	if err != nil {
+		t.Fatalf("cannot read road-map.yaml: %v", err)
+	}
+	content := string(data)
+
+	// Both implemented UCs should now be spec_complete.
+	// The file should not contain "implemented" for any UC.
+	if strings.Contains(content, "implemented") {
+		t.Errorf("road-map.yaml still contains 'implemented' after reset:\n%s", content)
+	}
+}
+
 func TestResetImplementedReleases_NoRoadmap(t *testing.T) {
 	initTestGitRepo(t)
 
