@@ -204,9 +204,11 @@ func UpdateRequirementsFile(cobblerDir, description string, issueNumber int, tes
 }
 
 // isRequirementComplete returns true if the status represents a completed
-// R-item, including items completed with test failures.
+// or skipped R-item. Skipped items are requirements that cannot be fulfilled
+// by the generator (e.g. manual Magefile authoring) and are treated as
+// complete for UC validation and measure filtering (GH-1451).
 func isRequirementComplete(status string) bool {
-	return status == "complete" || status == "complete_with_failures"
+	return status == "complete" || status == "complete_with_failures" || status == "skip"
 }
 
 // AllRefsAlreadyComplete checks whether every PRD requirement reference in
