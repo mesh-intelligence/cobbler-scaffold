@@ -32,9 +32,6 @@ import (
 // package timeout.
 const ClaudeTestTimeout = 5 * time.Minute
 
-// ClaudeImage is the container image used for Claude in E2E tests.
-const ClaudeImage = "localhost/cobbler-scaffold:latest"
-
 // SetupRepo copies the global snapshot to a fresh temp directory, initialises
 // a new git repo inside it, and registers t.Cleanup to remove the directory.
 // Each test gets an isolated, fully-scaffolded repo in a few seconds.
@@ -451,7 +448,7 @@ func IssueHasLabel(t testing.TB, dir, issueNumber, label string) bool {
 }
 
 // SetupClaude extracts Claude credentials into the test repo and configures
-// the podman image in configuration.yaml. It also registers a cleanup that
+// the idle timeout in configuration.yaml. It also registers a cleanup that
 // closes any GitHub issues created for this test's generation so that
 // stale issues do not accumulate in the repository.
 func SetupClaude(t testing.TB, dir string) {
@@ -460,7 +457,6 @@ func SetupClaude(t testing.TB, dir string) {
 		t.Fatalf("SetupClaude: mage credentials: %v", err)
 	}
 	WriteConfigOverride(t, dir, func(cfg *orchestrator.Config) {
-		cfg.Podman.Image = ClaudeImage
 		// Use a 120s idle timeout so back-to-back Claude sessions are not killed
 		// by rate limiting that causes the API to delay responding for >60s.
 		cfg.Cobbler.IdleTimeoutSeconds = 120
