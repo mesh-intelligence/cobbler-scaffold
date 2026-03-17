@@ -143,6 +143,13 @@ type CobblerConfig struct {
 	// measure pass (default 1).
 	MaxMeasureIssues int `yaml:"max_measure_issues"`
 
+	// MeasureTasksPerCall is the number of tasks Claude should propose in
+	// a single measure call. Higher values reduce cost by amortizing prompt
+	// tokens across multiple tasks, but may increase per-call latency.
+	// MaxMeasureIssues remains the total cap; the measure loop issues
+	// ceiling(MaxMeasureIssues / MeasureTasksPerCall) calls. Default 1.
+	MeasureTasksPerCall int `yaml:"measure_tasks_per_call"`
+
 	// UserPrompt provides additional context for the measure prompt.
 	UserPrompt string `yaml:"user_prompt"`
 

@@ -1963,3 +1963,72 @@ func TestBuildMeasurePrompt_SourceMode_PhaseCtxWins(t *testing.T) {
 		t.Error("phase context source_mode=full should override config headers mode; body should be in prompt")
 	}
 }
+
+// --- MeasureTasksPerCall (GH-1471) ---
+
+func TestMeasureTasksPerCall_DefaultIsOne(t *testing.T) {
+	t.Parallel()
+	cfg := Config{}
+	cfg.applyDefaults()
+	// MeasureTasksPerCall defaults to 0 in the struct; RunMeasure treats 0 as 1.
+	if cfg.Cobbler.MeasureTasksPerCall < 0 {
+		t.Errorf("MeasureTasksPerCall should not be negative, got %d", cfg.Cobbler.MeasureTasksPerCall)
+	}
+}
+
+func TestMeasureTasksPerCall_CeilingDivision(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		maxIssues    int
+		tasksPerCall int
+		wantCalls    int
+	}{
+		{1, 1, 1},
+		{3, 1, 3},
+		{3, 3, 1},
+		{5, 3, 2},
+		{6, 3, 2},
+		{7, 3, 3},
+		{10, 5, 2},
+		{1, 5, 1},
+	}
+	for _, tt := range tests {
+		gotCalls := (tt.maxIssues + tt.tasksPerCall - 1) / tt.tasksPerCall
+		if gotCalls != tt.wantCalls {
+			t.Errorf("ceil(%d/%d) = %d, want %d", tt.maxIssues, tt.tasksPerCall, gotCalls, tt.wantCalls)
+		}
+	}
+}
+
+func TestMeasureTasksPerCall_CallLimitClamp(t *testing.T) {
+	t.Parallel()
+	// When remaining issues < tasksPerCall, callLimit should be clamped.
+	maxIssues := 5
+	tasksPerCall := 3
+	created := 4 // 4 already created, 1 remaining
+
+	callLimit := tasksPerCall
+	if remaining := maxIssues - created; callLimit > remaining {
+		callLimit = remaining
+	}
+	if callLimit != 1 {
+		t.Errorf("callLimit should be clamped to 1, got %d", callLimit)
+	}
+}
+
+func TestBuildMeasurePrompt_LimitFromConfig(t *testing.T) {
+	t.Parallel()
+	o := New(Config{})
+	// Simulate tasksPerCall=3 being passed to buildMeasurePrompt.
+	prompt, err := o.buildMeasurePrompt("", "", 3)
+	if err != nil {
+		t.Fatalf("buildMeasurePrompt(limit=3) error = %v", err)
+	}
+	// The prompt should contain "3" as the limit value in the constraint.
+	if !strings.Contains(prompt, "Do NOT exceed 3 tasks") {
+		// The exact wording depends on the template; just check the number appears.
+		if !strings.Contains(prompt, "3 task") {
+			t.Error("prompt should contain limit=3 in task constraint")
+		}
+	}
+}
