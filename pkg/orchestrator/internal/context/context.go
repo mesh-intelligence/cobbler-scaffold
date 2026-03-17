@@ -756,11 +756,20 @@ type DesignDocType struct {
 type ExecutionDoc struct {
 	Articles          []ConstitutionArticle `yaml:"articles"`
 	CodingStandards   ExecCodingStandards   `yaml:"coding_standards"`
+	BuildAndTest      ExecBuildAndTest      `yaml:"build_and_test"`
 	Traceability      ExecTraceability      `yaml:"traceability"`
 	SessionCompletion ExecSessionCompletion `yaml:"session_completion"`
 	Technology        ExecTechnology        `yaml:"technology"`
 	GitConventions    ExecGitConventions    `yaml:"git_conventions"`
 	Sections          []ConstitutionSection `yaml:"sections,omitempty"`
+}
+
+// ExecBuildAndTest holds the build_and_test section.
+type ExecBuildAndTest struct {
+	BuildWithinModule string `yaml:"build_within_module"`
+	TestPlanning      string `yaml:"test_planning"`
+	NegativeTests     string `yaml:"negative_tests"`
+	RepositoryNotes   string `yaml:"repository_notes"`
 }
 
 // ExecCodingStandards holds the coding_standards section.
