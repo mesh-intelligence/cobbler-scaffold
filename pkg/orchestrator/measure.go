@@ -148,8 +148,14 @@ func (o *Orchestrator) RunMeasure() error {
 	locBefore := o.captureLOC()
 	logf("locBefore prod=%d test=%d", locBefore.Production, locBefore.Test)
 
-	// Iterative measure: call Claude once per issue with limit=1.
-	totalIssues := o.cfg.Cobbler.MaxMeasureIssues
+	// Measure loop: call Claude with limit=tasksPerCall, up to maxIssues total.
+	maxIssues := o.cfg.Cobbler.MaxMeasureIssues
+	tasksPerCall := o.cfg.Cobbler.MeasureTasksPerCall
+	if tasksPerCall <= 0 {
+		tasksPerCall = 1
+	}
+	totalCalls := (maxIssues + tasksPerCall - 1) / tasksPerCall // ceiling division
+	logf("measure: maxIssues=%d tasksPerCall=%d totalCalls=%d", maxIssues, tasksPerCall, totalCalls)
 	var allCreatedIDs []string
 	var totalTokens ClaudeResult
 	maxRetries := o.cfg.Cobbler.MaxMeasureRetries
@@ -173,8 +179,13 @@ func (o *Orchestrator) RunMeasure() error {
 		taskID = fmt.Sprintf("%d", placeholderNum)
 	}
 
-	for i := 0; i < totalIssues; i++ {
-		logf("--- iteration %d/%d ---", i+1, totalIssues)
+	for i := 0; i < totalCalls && len(allCreatedIDs) < maxIssues; i++ {
+		// Clamp the per-call limit so we don't exceed maxIssues.
+		callLimit := tasksPerCall
+		if remaining := maxIssues - len(allCreatedIDs); callLimit > remaining {
+			callLimit = remaining
+		}
+		logf("--- iteration %d/%d (limit=%d, created so far=%d) ---", i+1, totalCalls, callLimit, len(allCreatedIDs))
 
 		// Refresh existing issues from GitHub before each call (except the first).
 		if i > 0 {
@@ -201,7 +212,7 @@ func (o *Orchestrator) RunMeasure() error {
 			outputFile := filepath.Join(o.cfg.Cobbler.Dir, fmt.Sprintf("measure-%s.yaml", timestamp))
 			lastOutputFile = outputFile
 
-			prompt, promptErr := o.buildMeasurePrompt(o.cfg.Cobbler.UserPrompt, existingIssues, 1, lastValidationErrors...)
+			prompt, promptErr := o.buildMeasurePrompt(o.cfg.Cobbler.UserPrompt, existingIssues, callLimit, lastValidationErrors...)
 			if promptErr != nil {
 				return promptErr
 			}
@@ -230,7 +241,7 @@ func (o *Orchestrator) RunMeasure() error {
 					Caller:        "measure",
 					TaskID:        taskID,
 					Status:        "failed",
-					Error:         fmt.Sprintf("claude failure (iteration %d/%d): %v", i+1, totalIssues, err),
+					Error:         fmt.Sprintf("claude failure (iteration %d/%d): %v", i+1, totalCalls, err),
 					StartedAt:     iterStart.UTC().Format(time.RFC3339),
 					Duration:      iterDuration.Round(time.Second).String(),
 					DurationS:     int(iterDuration.Seconds()),
@@ -242,7 +253,7 @@ func (o *Orchestrator) RunMeasure() error {
 					LOCBefore:     locBefore,
 					LOCAfter:      o.captureLOC(),
 				})
-				return fmt.Errorf("running Claude (iteration %d/%d): %w", i+1, totalIssues, err)
+				return fmt.Errorf("running Claude (iteration %d/%d): %w", i+1, totalCalls, err)
 			}
 			logf("iteration %d Claude completed in %s", i+1, iterDuration.Round(time.Second))
 
@@ -327,7 +338,11 @@ func (o *Orchestrator) RunMeasure() error {
 		timestamp := time.Now().Format("20060102-150405")
 		outputFile := filepath.Join(o.cfg.Cobbler.Dir, fmt.Sprintf("measure-%s.yaml", timestamp))
 
-		prompt, promptErr := o.buildMeasurePrompt(o.cfg.Cobbler.UserPrompt, existingIssues, 1)
+		retryLimit := tasksPerCall
+		if retryLimit > maxIssues {
+			retryLimit = maxIssues
+		}
+		prompt, promptErr := o.buildMeasurePrompt(o.cfg.Cobbler.UserPrompt, existingIssues, retryLimit)
 		if promptErr == nil {
 			historyTS := time.Now().Format("2006-01-02-15-04-05")
 			o.saveHistoryPrompt(historyTS, "measure", prompt)
@@ -382,7 +397,7 @@ func (o *Orchestrator) RunMeasure() error {
 				childNums = append(childNums, v)
 			}
 		}
-		comment := fmt.Sprintf("Measure completed. %d iteration(s), %d issue(s) created.", totalIssues, len(allCreatedIDs))
+		comment := fmt.Sprintf("Measure completed. limit=%d/call, %d issue(s) created.", tasksPerCall, len(allCreatedIDs))
 		if totalTokens.CostUSD > 0 {
 			comment += fmt.Sprintf("\nCost: $%.2f, Tokens: %din %dout",
 				totalTokens.CostUSD, totalTokens.InputTokens, totalTokens.OutputTokens)
@@ -391,7 +406,7 @@ func (o *Orchestrator) RunMeasure() error {
 	}
 
 	logf("completed %d iteration(s), %d issue(s) created in %s",
-		totalIssues, len(allCreatedIDs), time.Since(measureStart).Round(time.Second))
+		totalCalls, len(allCreatedIDs), time.Since(measureStart).Round(time.Second))
 	return nil
 }
 
