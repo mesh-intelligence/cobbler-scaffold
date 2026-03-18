@@ -37,6 +37,11 @@ var (
 // generation was started from, stored inside the cobbler directory.
 const BaseBranchFile = "base-branch"
 
+// RepoRootFile is the name of the file that records the main repository
+// root path, stored inside the cobbler directory. GeneratorStart writes
+// this when it creates a worktree so GeneratorStop can find the main repo.
+const RepoRootFile = "repo-root"
+
 // TagSuffixes lists the lifecycle tag suffixes in order.
 var TagSuffixes = []string{"-start", "-finished", "-merged", "-abandoned"}
 
