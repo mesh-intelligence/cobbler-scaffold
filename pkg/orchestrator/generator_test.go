@@ -813,6 +813,174 @@ func TestGeneratorStart_AddsBinToGitignore(t *testing.T) {
 	}
 }
 
+// --- GeneratorStart worktree lifecycle (git, NOT parallel, GH-1608) ---
+
+// TestGeneratorStart_CreatesWorktree verifies that GeneratorStart creates a
+// sibling worktree and leaves the main repo on the original branch.
+func TestGeneratorStart_CreatesWorktree(t *testing.T) {
+	repoDir := initTestGitRepo(t)
+
+	o := &Orchestrator{cfg: Config{
+		Generation: GenerationConfig{
+			Prefix:          "generation-",
+			Name:            "wt-test",
+			PreserveSources: true,
+		},
+		Project: ProjectConfig{MagefilesDir: "magefiles"},
+		Cobbler: CobblerConfig{Dir: ".cobbler/"},
+	}}
+
+	if err := o.GeneratorStart(); err != nil {
+		t.Fatalf("GeneratorStart() error = %v", err)
+	}
+
+	// After GeneratorStart, CWD should be inside the worktree.
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	worktreeDir := filepath.Join(filepath.Dir(repoDir), "generation-wt-test")
+	// Resolve symlinks for macOS /private/var/folders vs /var/folders.
+	cwdReal, _ := filepath.EvalSymlinks(cwd)
+	wtReal, _ := filepath.EvalSymlinks(worktreeDir)
+	if cwdReal != wtReal {
+		t.Errorf("CWD = %q, want worktree %q", cwdReal, wtReal)
+	}
+
+	// The worktree should be on the generation branch.
+	branch, err := gitCurrentBranch("")
+	if err != nil {
+		t.Fatalf("gitCurrentBranch in worktree: %v", err)
+	}
+	if branch != "generation-wt-test" {
+		t.Errorf("worktree branch = %q, want %q", branch, "generation-wt-test")
+	}
+
+	// The main repo should still be on main.
+	mainBranch, err := gitCurrentBranch(repoDir)
+	if err != nil {
+		t.Fatalf("gitCurrentBranch in main repo: %v", err)
+	}
+	if mainBranch != "main" {
+		t.Errorf("main repo branch = %q, want %q", mainBranch, "main")
+	}
+
+	// The repo-root file should record the main repo path.
+	repoRoot := o.readRepoRoot()
+	repoRootReal, _ := filepath.EvalSymlinks(repoRoot)
+	repoDirReal, _ := filepath.EvalSymlinks(repoDir)
+	if repoRootReal != repoDirReal {
+		t.Errorf("readRepoRoot() = %q, want %q", repoRootReal, repoDirReal)
+	}
+}
+
+// TestGeneratorStart_WorktreeRecordsRepoRoot verifies that writeRepoRoot and
+// readRepoRoot round-trip correctly.
+func TestGeneratorStart_WorktreeRecordsRepoRoot(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	o := &Orchestrator{cfg: Config{
+		Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")},
+	}}
+
+	if err := o.writeRepoRoot("/some/path"); err != nil {
+		t.Fatalf("writeRepoRoot: %v", err)
+	}
+	got := o.readRepoRoot()
+	if got != "/some/path" {
+		t.Errorf("readRepoRoot() = %q, want %q", got, "/some/path")
+	}
+}
+
+// TestGeneratorStart_WorktreeReadRepoRoot_Missing verifies readRepoRoot
+// returns "" when the file is absent (pre-worktree generations).
+func TestGeneratorStart_WorktreeReadRepoRoot_Missing(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	o := &Orchestrator{cfg: Config{
+		Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")},
+	}}
+	got := o.readRepoRoot()
+	if got != "" {
+		t.Errorf("readRepoRoot() = %q, want empty string", got)
+	}
+}
+
+// TestGeneratorStop_CleansUpWorktree verifies the full start→stop lifecycle:
+// GeneratorStart creates a worktree, GeneratorStop merges and removes it.
+func TestGeneratorStop_CleansUpWorktree(t *testing.T) {
+	repoDir := initTestGitRepo(t)
+
+	o := &Orchestrator{cfg: Config{
+		Generation: GenerationConfig{
+			Prefix:          "generation-",
+			Name:            "stop-test",
+			PreserveSources: true,
+		},
+		Project: ProjectConfig{MagefilesDir: "magefiles"},
+		Cobbler: CobblerConfig{Dir: ".cobbler/"},
+	}}
+
+	if err := o.GeneratorStart(); err != nil {
+		t.Fatalf("GeneratorStart() error = %v", err)
+	}
+
+	worktreeDir := filepath.Join(filepath.Dir(repoDir), "generation-stop-test")
+
+	// Verify worktree exists.
+	if _, err := os.Stat(worktreeDir); os.IsNotExist(err) {
+		t.Fatalf("worktree directory does not exist after GeneratorStart")
+	}
+
+	// Create a file in the worktree to verify it gets merged.
+	testFile := filepath.Join(worktreeDir, "test-output.txt")
+	if err := os.WriteFile(testFile, []byte("generated\n"), 0o644); err != nil {
+		t.Fatalf("writing test file: %v", err)
+	}
+	_ = gitStageAll(".")
+	_ = gitCommit("Add test output", ".")
+
+	if err := o.GeneratorStop(); err != nil {
+		t.Fatalf("GeneratorStop() error = %v", err)
+	}
+
+	// After stop, CWD should be back in the main repo.
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	cwdReal, _ := filepath.EvalSymlinks(cwd)
+	repoDirReal, _ := filepath.EvalSymlinks(repoDir)
+	if cwdReal != repoDirReal {
+		t.Errorf("CWD after stop = %q, want main repo %q", cwdReal, repoDirReal)
+	}
+
+	// The main repo should be on the base branch.
+	branch, err := gitCurrentBranch("")
+	if err != nil {
+		t.Fatalf("gitCurrentBranch: %v", err)
+	}
+	if branch != "main" {
+		t.Errorf("branch after stop = %q, want %q", branch, "main")
+	}
+
+	// The worktree directory should be removed.
+	if _, err := os.Stat(worktreeDir); !os.IsNotExist(err) {
+		t.Errorf("worktree directory still exists after GeneratorStop")
+	}
+
+	// The generation branch should be deleted.
+	if gitBranchExists("generation-stop-test", "") {
+		t.Errorf("generation branch still exists after GeneratorStop")
+	}
+
+	// The test file should be present via merge.
+	merged := filepath.Join(repoDir, "test-output.txt")
+	if _, err := os.Stat(merged); os.IsNotExist(err) {
+		t.Errorf("test-output.txt not present on main after merge")
+	}
+}
+
 // --- appendToGitignore (parallel-safe, no git) ---
 
 func TestAppendToGitignore_CreatesFileWhenMissing(t *testing.T) {

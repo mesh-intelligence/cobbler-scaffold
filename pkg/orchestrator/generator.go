@@ -65,6 +65,10 @@ var errTaskReset = generate.ErrTaskReset
 // generation was started from, stored inside the cobbler directory.
 const baseBranchFile = generate.BaseBranchFile
 
+// repoRootFile records the main repository root path so GeneratorStop
+// can find the main repo when running inside a worktree.
+const repoRootFile = generate.RepoRootFile
+
 // tagSuffixes lists the lifecycle tag suffixes in order.
 var tagSuffixes = generate.TagSuffixes
 
@@ -711,10 +715,35 @@ func (o *Orchestrator) GeneratorStart() error {
 		return fmt.Errorf("tagging base branch: %w", err)
 	}
 
-	// Create and switch to generation branch.
-	logf("generator:start: creating branch")
-	if err := gitCheckoutNew(genName, "."); err != nil {
+	// Resolve the main repo root before creating the worktree. All
+	// subsequent operations will run inside the worktree via os.Chdir.
+	repoRoot, err := filepath.Abs(".")
+	if err != nil {
+		return fmt.Errorf("resolving repo root: %w", err)
+	}
+
+	// Create a sibling worktree for the generation branch. The main repo
+	// stays on the base branch so generator:stop does not accidentally
+	// merge into the wrong place (GH-1608).
+	worktreeDir := filepath.Join(filepath.Dir(repoRoot), genName)
+	logf("generator:start: creating worktree at %s", worktreeDir)
+
+	if err := gitCreateBranch(genName, "."); err != nil {
 		return fmt.Errorf("creating branch: %w", err)
+	}
+	cmd := gitWorktreeAdd(worktreeDir, genName, ".")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		// Clean up the branch if worktree creation fails.
+		_ = gitDeleteBranch(genName, ".")
+		return fmt.Errorf("creating worktree: %w", err)
+	}
+
+	// Switch into the worktree so all subsequent operations (source reset,
+	// squash, etc.) run there rather than in the main repo.
+	if err := os.Chdir(worktreeDir); err != nil {
+		return fmt.Errorf("switching to worktree: %w", err)
 	}
 
 	// Record branch point so intermediate commits can be squashed.
@@ -727,6 +756,12 @@ func (o *Orchestrator) GeneratorStart() error {
 	// (prd002 R2.8).
 	if err := o.writeBaseBranch(baseBranch); err != nil {
 		return fmt.Errorf("recording base branch: %w", err)
+	}
+
+	// Record the main repo root so GeneratorStop can find it from the
+	// worktree (GH-1608).
+	if err := o.writeRepoRoot(repoRoot); err != nil {
+		return fmt.Errorf("recording repo root: %w", err)
 	}
 
 	// Ensure bin/ is ignored on the generation branch so compiled binaries
@@ -776,7 +811,8 @@ func (o *Orchestrator) GeneratorStart() error {
 		return fmt.Errorf("committing clean state: %w", err)
 	}
 
-	logf("generator:start: done, run mage generator:run to begin building")
+	logf("generator:start: done, worktree is at %s", worktreeDir)
+	logf("generator:start: run mage generator:run to begin building")
 	return nil
 }
 
@@ -787,6 +823,26 @@ func (o *Orchestrator) writeBaseBranch(branch string) error {
 		return fmt.Errorf("creating %s: %w", dir, err)
 	}
 	return os.WriteFile(filepath.Join(dir, baseBranchFile), []byte(branch+"\n"), 0o644)
+}
+
+// writeRepoRoot writes the main repository root path to .cobbler/repo-root.
+// GeneratorStop reads this to locate the main repo when running inside a worktree.
+func (o *Orchestrator) writeRepoRoot(root string) error {
+	dir := o.cfg.Cobbler.Dir
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("creating %s: %w", dir, err)
+	}
+	return os.WriteFile(filepath.Join(dir, repoRootFile), []byte(root+"\n"), 0o644)
+}
+
+// readRepoRoot reads the main repository root from .cobbler/repo-root.
+// Returns "" if the file does not exist (pre-worktree generations).
+func (o *Orchestrator) readRepoRoot() string {
+	data, err := os.ReadFile(filepath.Join(o.cfg.Cobbler.Dir, repoRootFile))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
 
 // readBaseBranch reads the base branch from .cobbler/base-branch on the
@@ -807,6 +863,10 @@ func (o *Orchestrator) readBaseBranch() string {
 // GeneratorStop completes a generation trail and merges it into the base branch.
 // Reads the base branch from .cobbler/base-branch (falls back to "main").
 // Uses Config.GenerationBranch, current branch, or auto-detects.
+//
+// When running inside a worktree created by GeneratorStart (GH-1608), the
+// function tags the generation in the worktree, switches to the main repo for
+// the merge, and removes the worktree afterward.
 func (o *Orchestrator) GeneratorStop() error {
 	branch := o.cfg.Generation.Branch
 	if branch != "" {
@@ -841,6 +901,18 @@ func (o *Orchestrator) GeneratorStop() error {
 
 	logf("generator:stop: beginning")
 
+	// Detect whether we are inside a worktree created by GeneratorStart.
+	repoRoot := o.readRepoRoot()
+	var worktreeDir string
+	if repoRoot != "" {
+		var err error
+		worktreeDir, err = filepath.Abs(".")
+		if err != nil {
+			return fmt.Errorf("resolving worktree directory: %w", err)
+		}
+		logf("generator:stop: running in worktree %s (main repo: %s)", worktreeDir, repoRoot)
+	}
+
 	// Capture the caller's branch before switching to the generation branch.
 	callerBranch, err := gitCurrentBranch(".")
 	if err != nil {
@@ -854,9 +926,13 @@ func (o *Orchestrator) GeneratorStop() error {
 
 	// Determine the merge target (GH-523).
 	recordedBase := o.readBaseBranch()
-	baseBranch := resolveStopTarget(callerBranch, branch, recordedBase)
-	if baseBranch != recordedBase {
-		logf("generator:stop: caller was on %s; using it as merge target instead of recorded base %s", callerBranch, recordedBase)
+	baseBranch := recordedBase
+	if repoRoot == "" {
+		// Legacy path (no worktree): respect caller branch override.
+		baseBranch = resolveStopTarget(callerBranch, branch, recordedBase)
+		if baseBranch != recordedBase {
+			logf("generator:stop: caller was on %s; using it as merge target instead of recorded base %s", callerBranch, recordedBase)
+		}
 	}
 
 	// Commit any uncommitted history files (orchestrator logs, late stats)
@@ -873,10 +949,18 @@ func (o *Orchestrator) GeneratorStop() error {
 		return fmt.Errorf("tagging generation: %w", err)
 	}
 
-	// Switch to the base branch.
-	logf("generator:stop: switching to %s", baseBranch)
-	if err := gitCheckout(baseBranch, "."); err != nil {
-		return fmt.Errorf("checking out %s: %w", baseBranch, err)
+	// If running in a worktree, switch to the main repo for the merge.
+	if repoRoot != "" {
+		logf("generator:stop: switching to main repo at %s", repoRoot)
+		if err := os.Chdir(repoRoot); err != nil {
+			return fmt.Errorf("switching to main repo: %w", err)
+		}
+	} else {
+		// Legacy path: switch to the base branch in the current repo.
+		logf("generator:stop: switching to %s", baseBranch)
+		if err := gitCheckout(baseBranch, "."); err != nil {
+			return fmt.Errorf("checking out %s: %w", baseBranch, err)
+		}
 	}
 
 	// Clean up untracked history files on the base branch so they don't
@@ -884,6 +968,18 @@ func (o *Orchestrator) GeneratorStop() error {
 	// finished tag above (GH-1452).
 	if err := o.HistoryClean(); err != nil {
 		logf("generator:stop: warning clearing history: %v", err)
+	}
+
+	// Remove the worktree before merging so the generation branch is not
+	// locked by the worktree checkout. mergeGeneration deletes the branch
+	// after a successful merge; git refuses to delete a branch that is
+	// checked out in any worktree (GH-1608).
+	if worktreeDir != "" {
+		logf("generator:stop: removing worktree %s", worktreeDir)
+		if err := gitWorktreeRemove(worktreeDir, "."); err != nil {
+			logf("generator:stop: worktree remove warning: %v", err)
+		}
+		_ = gitWorktreePrune(".")
 	}
 
 	if err := o.mergeGeneration(branch, baseBranch); err != nil {
