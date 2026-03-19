@@ -54,6 +54,12 @@ func cobblerGenLabel(generation string) string {
 	return gh.GenLabel(generation)
 }
 
+// CobblerGenLabel returns the GitHub label name for a generation. Exported
+// for use by e2e tests that need label-safe generation names (GH-1644).
+func CobblerGenLabel(generation string) string {
+	return gh.GenLabel(generation)
+}
+
 func formatIssueFrontMatter(generation string, index, dependsOn int) string {
 	return gh.FormatIssueFrontMatter(generation, index, dependsOn)
 }
