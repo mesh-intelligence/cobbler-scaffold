@@ -1215,3 +1215,21 @@ func TestCommitWorktreeChanges_InvalidDir(t *testing.T) {
 		t.Error("expected error for non-existent directory")
 	}
 }
+
+// --- sweepCompletedTasks ---
+
+func TestSweepCompletedTasks_EmptyRequirements(t *testing.T) {
+	t.Parallel()
+	// With no requirements.yaml (empty cobbler dir), sweep should return
+	// immediately without calling any GitHub API.
+	o := New(Config{Cobbler: CobblerConfig{Dir: t.TempDir()}})
+	o.sweepCompletedTasks("fake/repo", "test-gen") // must not panic
+}
+
+func TestSweepCompletedTasks_NoCobblerDir(t *testing.T) {
+	t.Parallel()
+	// With a nonexistent cobbler dir, LoadRequirementStates returns nil
+	// and sweep returns immediately.
+	o := New(Config{Cobbler: CobblerConfig{Dir: "/nonexistent/dir/xyz"}})
+	o.sweepCompletedTasks("fake/repo", "test-gen") // must not panic
+}
