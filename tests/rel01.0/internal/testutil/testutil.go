@@ -460,17 +460,20 @@ func CreateIssue(t testing.TB, dir, title string) string {
 	}
 	generation := GitBranch(t, dir)
 
+	// Use GenLabel to get the label-safe generation name (handles 50-char GitHub limit).
+	genLabel := orchestrator.CobblerGenLabel(generation)
+
 	// Ensure all required labels exist before creating the issue.
 	ensureGitHubLabel(repo, "cobbler-ready", "0075ca", "Cobbler task ready to be picked by stitch")
 	ensureGitHubLabel(repo, "cobbler-in-progress", "e4e669", "Cobbler task currently being worked on")
-	ensureGitHubLabel(repo, "cobbler-gen-"+generation, "ededed", "Cobbler generation "+generation)
+	ensureGitHubLabel(repo, genLabel, "ededed", "Cobbler generation "+generation)
 
 	body := fmt.Sprintf("---\ncobbler_generation: %s\ncobbler_index: 0\n---\n\ncreated by e2e test",
 		generation)
 	cmd := exec.Command("gh", "issue", "create",
 		"--repo", repo,
 		"--title", title,
-		"--label", "cobbler-gen-"+generation,
+		"--label", genLabel,
 		"--label", "cobbler-ready",
 		"--body", body)
 	out, err := cmd.CombinedOutput()
