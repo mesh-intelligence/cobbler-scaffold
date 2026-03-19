@@ -104,7 +104,7 @@ func (o *Orchestrator) RunStitchN(limit int) (int, error) {
 	worktreeBase := worktreeBasePath()
 	logf("worktreeBase=%s", worktreeBase)
 
-	baseBranch, err := gitCurrentBranch(".")
+	baseBranch, err := defaultGitOps.CurrentBranch(".")
 	if err != nil {
 		return 0, fmt.Errorf("getting current branch: %w", err)
 	}
@@ -184,7 +184,7 @@ func (o *Orchestrator) recoverStaleTasks(baseBranch, worktreeBase, repo, generat
 	orphanedIssues := resetOrphanedIssues(baseBranch, repo, generation)
 
 	logf("recoverStaleTasks: pruning worktrees")
-	if err := gitWorktreePrune("."); err != nil {
+	if err := defaultGitOps.WorktreePrune("."); err != nil {
 		logf("recoverStaleTasks: worktree prune warning: %v", err)
 	}
 
@@ -317,7 +317,7 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 	}
 
 	// Capture pre-merge HEAD for diffstat.
-	preMergeRef, err := gitRevParseHEAD(".")
+	preMergeRef, err := defaultGitOps.RevParseHEAD(".")
 	if err != nil {
 		logf("doOneTask: warning getting pre-merge ref: %v", err)
 	}
@@ -346,12 +346,12 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 	logf("doOneTask: merge completed in %s", time.Since(mergeStart).Round(time.Second))
 
 	// Capture per-file diff stats.
-	diff, diffErr := gitDiffShortstat(preMergeRef, ".")
+	diff, diffErr := defaultGitOps.DiffShortstat(preMergeRef, ".")
 	if diffErr != nil {
 		logf("doOneTask: warning getting diff shortstat: %v", diffErr)
 	}
 	logf("doOneTask: diff files=%d ins=%d del=%d", diff.FilesChanged, diff.Insertions, diff.Deletions)
-	fileChanges, fcErr := gitDiffNameStatus(preMergeRef, ".")
+	fileChanges, fcErr := diffNameStatus(preMergeRef, ".")
 	if fcErr != nil {
 		logf("doOneTask: warning getting file changes: %v", fcErr)
 	}
@@ -523,7 +523,7 @@ func (o *Orchestrator) buildStitchPrompt(task stitchTask) (string, error) {
 	taskContext := fmt.Sprintf("Task ID: %s\nType: %s\nTitle: %s",
 		task.ID, task.IssueType, task.Title)
 
-	repoFiles := gitLsFiles(task.WorktreeDir)
+	repoFiles := defaultGitOps.LsFiles(task.WorktreeDir)
 
 	// Load OOD context.
 	oodContracts, oodProtocols := loadOODPromptContext()
@@ -585,10 +585,10 @@ func (o *Orchestrator) closeStitchTask(task stitchTask, rec InvocationRecord, te
 	// Pass test result so failures are tracked as complete_with_failures (GH-1388).
 	if err := generate.UpdateRequirementsFile(o.cfg.Cobbler.Dir, task.Description, task.GhNumber, testsPassed); err != nil {
 		logf("closeStitchTask: warning updating requirements: %v", err)
-	} else if gitHasChanges(".") {
+	} else if defaultGitOps.HasChanges(".") {
 		// Commit requirement state immediately so it survives interruptions (GH-1385).
-		_ = gitStageAll(".")
-		_ = gitCommit(fmt.Sprintf("Update requirement states after #%d", task.GhNumber), ".")
+		_ = defaultGitOps.StageAll(".")
+		_ = defaultGitOps.Commit(fmt.Sprintf("Update requirement states after #%d", task.GhNumber), ".")
 	}
 
 	if err := closeCobblerIssue(task.Repo, task.GhNumber, task.Generation); err != nil {
@@ -663,7 +663,7 @@ func (o *Orchestrator) resetTask(task stitchTask, reason string) {
 		logf("resetTask: skipping force branch delete for %s (worktree not removed)", task.BranchName)
 		return
 	}
-	if err := gitForceDeleteBranch(task.BranchName, "."); err != nil {
+	if err := defaultGitOps.ForceDeleteBranch(task.BranchName, "."); err != nil {
 		logf("resetTask: WARNING force branch delete failed for %s: %v", task.BranchName, err)
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/gitops"
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/gitops" // diffStat alias, diffNameStatus conversion
 )
 
 // Binary names.
@@ -66,88 +66,13 @@ func init() {
 	}
 }
 
-// Git helpers.
-// Each function accepts a dir string parameter; when dir is non-empty it is
-// forwarded to exec.Cmd.Dir so the command runs in that directory rather than
-// the process-wide working directory. Pass "" to use the existing CWD (the
-// original behaviour, preserved for callers that rely on os.Chdir).
-//
-// All git functions delegate to the defaultGitOps instance.
-
-func gitCheckout(branch, dir string) error        { return defaultGitOps.Checkout(branch, dir) }
-func gitCheckoutNew(branch, dir string) error      { return defaultGitOps.CheckoutNew(branch, dir) }
-func gitCreateBranch(name, dir string) error       { return defaultGitOps.CreateBranch(name, dir) }
-func gitDeleteBranch(name, dir string) error       { return defaultGitOps.DeleteBranch(name, dir) }
-func gitForceDeleteBranch(name, dir string) error  { return defaultGitOps.ForceDeleteBranch(name, dir) }
-func gitBranchExists(name, dir string) bool        { return defaultGitOps.BranchExists(name, dir) }
-func gitListBranches(pattern, dir string) []string { return defaultGitOps.ListBranches(pattern, dir) }
-func gitTag(name, dir string) error                { return defaultGitOps.Tag(name, dir) }
-func gitDeleteTag(name, dir string) error          { return defaultGitOps.DeleteTag(name, dir) }
-func gitListTags(pattern, dir string) []string     { return defaultGitOps.ListTags(pattern, dir) }
-func gitLsFiles(dir string) []string               { return defaultGitOps.LsFiles(dir) }
-func gitStageAll(dir string) error                 { return defaultGitOps.StageAll(dir) }
-func gitStageDir(path, dir string) error           { return defaultGitOps.StageDir(path, dir) }
-func gitUnstageAll(dir string) error               { return defaultGitOps.UnstageAll(dir) }
-func gitHasChanges(dir string) bool                { return defaultGitOps.HasChanges(dir) }
-func gitStash(msg, dir string) error               { return defaultGitOps.Stash(msg, dir) }
-func gitCommit(msg, dir string) error              { return defaultGitOps.Commit(msg, dir) }
-func gitCommitAllowEmpty(msg, dir string) error    { return defaultGitOps.CommitAllowEmpty(msg, dir) }
-func gitResetSoft(ref, dir string) error           { return defaultGitOps.ResetSoft(ref, dir) }
-func gitWorktreePrune(dir string) error            { return defaultGitOps.WorktreePrune(dir) }
-
-// gitTagAt creates a tag pointing at the given ref (commit, tag, or branch).
-func gitTagAt(name, ref, dir string) error { return defaultGitOps.TagAt(name, ref, dir) }
-
-// gitRenameTag creates newName at the same commit as oldName, then
-// deletes oldName. Returns an error if the new tag cannot be created.
-func gitRenameTag(oldName, newName, dir string) error {
-	return defaultGitOps.RenameTag(oldName, newName, dir)
-}
-
-func gitRevParseHEAD(dir string) (string, error) { return defaultGitOps.RevParseHEAD(dir) }
-
-func gitMergeCmd(branch, dir string) *exec.Cmd { return defaultGitOps.MergeCmd(branch, dir) }
-
-// gitWorktreeAdd returns a Cmd that adds a worktree at worktreeDir on branch.
-// dir is the repository root used as cmd.Dir (empty means process CWD).
-func gitWorktreeAdd(worktreeDir, branch, dir string) *exec.Cmd {
-	return defaultGitOps.WorktreeAdd(worktreeDir, branch, dir)
-}
-
-// gitWorktreeRemove removes the worktree at worktreeDir.
-// dir is the repository root used as cmd.Dir (empty means process CWD).
-func gitWorktreeRemove(worktreeDir, dir string) error {
-	return defaultGitOps.WorktreeRemove(worktreeDir, dir)
-}
-
-func gitCurrentBranch(dir string) (string, error) { return defaultGitOps.CurrentBranch(dir) }
-
-// gitLsTreeFiles returns the list of file paths tracked at the given ref.
-func gitLsTreeFiles(ref, dir string) ([]string, error) {
-	return defaultGitOps.LsTreeFiles(ref, dir)
-}
-
-// gitShowFileContent returns the raw content of a file at the given ref.
-func gitShowFileContent(ref, path, dir string) ([]byte, error) {
-	return defaultGitOps.ShowFileContent(ref, path, dir)
-}
-
-// FileChange is defined in internal/claude and aliased in cobbler.go.
-
 // diffStat holds parsed output from git diff --shortstat.
 type diffStat = gitops.DiffStat
 
-// gitDiffShortstat runs git diff --shortstat against the given ref and
-// parses the output (e.g. "5 files changed, 100 insertions(+), 20 deletions(-)").
-func gitDiffShortstat(ref, dir string) (diffStat, error) {
-	return defaultGitOps.DiffShortstat(ref, dir)
-}
-
-// gitDiffNameStatus runs git diff --name-status and --numstat against the
-// given ref and returns per-file entries with path, status, insertions, and
-// deletions. The two commands are combined to produce complete file-level
-// change records.
-func gitDiffNameStatus(ref, dir string) ([]FileChange, error) {
+// diffNameStatus runs git diff --name-status and returns per-file entries,
+// converting from gitops.FileChange to claude.FileChange (aliased as
+// FileChange in cobbler.go).
+func diffNameStatus(ref, dir string) ([]FileChange, error) {
 	gfc, err := defaultGitOps.DiffNameStatus(ref, dir)
 	if err != nil {
 		return nil, err
@@ -162,28 +87,6 @@ func gitDiffNameStatus(ref, dir string) ([]FileChange, error) {
 		}
 	}
 	return files, nil
-}
-
-// parseBranchList parses the output of git branch --list or git tag --list.
-func parseBranchList(output string) []string {
-	return gitops.ParseBranchList(output)
-}
-
-// parseDiffShortstat extracts file/insertion/deletion counts from
-// git diff --shortstat output.
-func parseDiffShortstat(s string) diffStat {
-	return gitops.ParseDiffShortstat(s)
-}
-
-// parseNumstat parses git diff --numstat output into a map keyed by file path.
-func parseNumstat(output string) map[string]gitops.NumstatEntry {
-	return gitops.ParseNumstat(output)
-}
-
-// parseNameStatus parses git diff --name-status output and merges it with
-// numstat data to produce FileChange entries.
-func parseNameStatus(output string, numMap map[string]gitops.NumstatEntry) []gitops.FileChange {
-	return gitops.ParseNameStatus(output, numMap)
 }
 
 // Go helpers.

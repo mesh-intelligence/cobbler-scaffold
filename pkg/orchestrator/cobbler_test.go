@@ -20,6 +20,7 @@ import (
 	"time"
 
 	claudetypes "github.com/schlunsen/claude-agent-sdk-go/types"
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/gitops"
 	"gopkg.in/yaml.v3"
 )
 
@@ -87,8 +88,8 @@ func TestParseNameStatus_AddedModifiedDeleted(t *testing.T) {
 	nsOutput := "A\tpkg/new.go\nM\tpkg/existing.go\nD\tpkg/removed.go\n"
 	numOutput := "50\t0\tpkg/new.go\n10\t5\tpkg/existing.go\n0\t30\tpkg/removed.go\n"
 
-	numMap := parseNumstat(numOutput)
-	files := parseNameStatus(nsOutput, numMap)
+	numMap := gitops.ParseNumstat(numOutput)
+	files := gitops.ParseNameStatus(nsOutput, numMap)
 
 	if len(files) != 3 {
 		t.Fatalf("got %d files, want 3", len(files))
@@ -125,8 +126,8 @@ func TestParseNameStatus_Renamed(t *testing.T) {
 	nsOutput := "R100\told/path.go\tnew/path.go\n"
 	numOutput := "5\t3\tnew/path.go\n"
 
-	numMap := parseNumstat(numOutput)
-	files := parseNameStatus(nsOutput, numMap)
+	numMap := gitops.ParseNumstat(numOutput)
+	files := gitops.ParseNameStatus(nsOutput, numMap)
 
 	if len(files) != 1 {
 		t.Fatalf("got %d files, want 1", len(files))
@@ -143,7 +144,7 @@ func TestParseNameStatus_Renamed(t *testing.T) {
 }
 
 func TestParseNameStatus_EmptyInput(t *testing.T) {
-	files := parseNameStatus("", nil)
+	files := gitops.ParseNameStatus("", nil)
 	if len(files) != 0 {
 		t.Errorf("got %d files, want 0", len(files))
 	}
@@ -151,7 +152,7 @@ func TestParseNameStatus_EmptyInput(t *testing.T) {
 
 func TestParseNumstat_BinaryFile(t *testing.T) {
 	output := "-\t-\timage.png\n10\t2\tREADME.md\n"
-	m := parseNumstat(output)
+	m := gitops.ParseNumstat(output)
 
 	if entry, ok := m["image.png"]; !ok {
 		t.Error("missing entry for image.png")
@@ -167,7 +168,7 @@ func TestParseNumstat_BinaryFile(t *testing.T) {
 }
 
 func TestParseNumstat_EmptyInput(t *testing.T) {
-	m := parseNumstat("")
+	m := gitops.ParseNumstat("")
 	if len(m) != 0 {
 		t.Errorf("got %d entries, want 0", len(m))
 	}
@@ -175,7 +176,7 @@ func TestParseNumstat_EmptyInput(t *testing.T) {
 
 func TestParseNumstat_ShortLine(t *testing.T) {
 	t.Parallel()
-	m := parseNumstat("10\n")
+	m := gitops.ParseNumstat("10\n")
 	if len(m) != 0 {
 		t.Errorf("got %d entries, want 0 for short line", len(m))
 	}
@@ -184,7 +185,7 @@ func TestParseNumstat_ShortLine(t *testing.T) {
 func TestParseNameStatus_Copied(t *testing.T) {
 	t.Parallel()
 	nsOutput := "C100\told/file.go\tnew/file.go\n"
-	files := parseNameStatus(nsOutput, nil)
+	files := gitops.ParseNameStatus(nsOutput, nil)
 	if len(files) != 1 {
 		t.Fatalf("got %d files, want 1", len(files))
 	}
@@ -198,7 +199,7 @@ func TestParseNameStatus_Copied(t *testing.T) {
 
 func TestParseNameStatus_ShortLine(t *testing.T) {
 	t.Parallel()
-	files := parseNameStatus("M\n", nil)
+	files := gitops.ParseNameStatus("M\n", nil)
 	if len(files) != 0 {
 		t.Errorf("got %d files, want 0 for line with no tab-separated path", len(files))
 	}

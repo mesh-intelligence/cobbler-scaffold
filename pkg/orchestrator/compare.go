@@ -25,7 +25,7 @@ func (o *Orchestrator) Compare(argA, argB, utility string) error {
 		Log:            logf,
 		GitBin:         binGit,
 		GoBin:          binGo,
-		RemoveWorktree: gitWorktreeRemove,
+		RemoveWorktree: defaultGitOps.WorktreeRemove,
 	}
 	return compare.Run(argA, argB, utility, deps)
 }

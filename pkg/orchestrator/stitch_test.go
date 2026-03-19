@@ -613,8 +613,8 @@ func TestCreateWorktree_CreatesWorktreeAndBranch(t *testing.T) {
 		t.Fatalf("createWorktree() error = %v", err)
 	}
 	t.Cleanup(func() {
-		gitWorktreeRemove(task.WorktreeDir, "")
-		gitDeleteBranch(task.BranchName, "")
+		defaultGitOps.WorktreeRemove(task.WorktreeDir, "")
+		defaultGitOps.DeleteBranch(task.BranchName, "")
 	})
 
 	// Verify the worktree directory exists.
@@ -623,7 +623,7 @@ func TestCreateWorktree_CreatesWorktreeAndBranch(t *testing.T) {
 	}
 
 	// Verify the branch was created.
-	if !gitBranchExists(task.BranchName, "") {
+	if !defaultGitOps.BranchExists(task.BranchName, "") {
 		t.Errorf("branch %q should exist after createWorktree()", task.BranchName)
 	}
 }
@@ -758,7 +758,7 @@ func TestRecoverStaleBranches_WithStaleBranch(t *testing.T) {
 	branchName := "task/main-99999"
 	gitRun(t, "branch", branchName)
 
-	if !gitBranchExists(branchName, "") {
+	if !defaultGitOps.BranchExists(branchName, "") {
 		t.Fatal("setup: branch should exist")
 	}
 
@@ -769,7 +769,7 @@ func TestRecoverStaleBranches_WithStaleBranch(t *testing.T) {
 	}
 
 	// The stale branch should have been force-deleted.
-	if gitBranchExists(branchName, "") {
+	if defaultGitOps.BranchExists(branchName, "") {
 		t.Error("stale branch should have been deleted after recovery")
 	}
 }
@@ -792,7 +792,7 @@ func TestRecoverStaleBranches_WithWorktree(t *testing.T) {
 	}
 
 	// Worktree and branch should be cleaned up.
-	if gitBranchExists(branchName, "") {
+	if defaultGitOps.BranchExists(branchName, "") {
 		t.Error("stale branch should have been deleted")
 	}
 	if _, err := os.Stat(worktreeDir); !os.IsNotExist(err) {
@@ -837,7 +837,7 @@ func TestRecoverStaleTasks_WithStaleBranch(t *testing.T) {
 	}
 
 	// Branch should have been cleaned up.
-	if gitBranchExists(branchName, "") {
+	if defaultGitOps.BranchExists(branchName, "") {
 		t.Error("stale branch should have been recovered")
 	}
 }
@@ -883,7 +883,7 @@ func TestResetTask_WithRealWorktree(t *testing.T) {
 	if _, err := os.Stat(worktreeDir); !os.IsNotExist(err) {
 		t.Error("worktree directory should have been removed")
 	}
-	if gitBranchExists(branchName, "") {
+	if defaultGitOps.BranchExists(branchName, "") {
 		t.Error("branch should have been force-deleted")
 	}
 }
@@ -925,8 +925,8 @@ func TestCreateWorktree_ExistingBranch(t *testing.T) {
 		t.Fatalf("createWorktree() with existing branch error = %v", err)
 	}
 	t.Cleanup(func() {
-		gitWorktreeRemove(task.WorktreeDir, "")
-		gitDeleteBranch(task.BranchName, "")
+		defaultGitOps.WorktreeRemove(task.WorktreeDir, "")
+		defaultGitOps.DeleteBranch(task.BranchName, "")
 	})
 
 	if _, err := os.Stat(task.WorktreeDir); os.IsNotExist(err) {
@@ -962,7 +962,7 @@ func TestCleanupWorktree_RealWorktree(t *testing.T) {
 		t.Error("worktree directory should have been removed")
 	}
 	// Branch should be deleted.
-	if gitBranchExists(branchName, "") {
+	if defaultGitOps.BranchExists(branchName, "") {
 		t.Errorf("branch %q should have been deleted", branchName)
 	}
 }
@@ -990,7 +990,7 @@ func TestCreateWorktree_Success(t *testing.T) {
 	}
 
 	// Branch should exist.
-	if !gitBranchExists(task.BranchName, ".") {
+	if !defaultGitOps.BranchExists(task.BranchName, ".") {
 		t.Error("branch should exist after createWorktree")
 	}
 
@@ -1022,13 +1022,13 @@ func TestGitBranchExists_ChecksLocalBranches(t *testing.T) {
 	_ = initTestGitRepo(t)
 
 	// Branch does not exist → gitBranchExists returns false.
-	if gitBranchExists("task/main-nonexistent", ".") {
+	if defaultGitOps.BranchExists("task/main-nonexistent", ".") {
 		t.Error("non-existent branch should not exist")
 	}
 
 	// Create a branch → exists.
 	gitRun(t, "branch", "task/main-99999")
-	if !gitBranchExists("task/main-99999", ".") {
+	if !defaultGitOps.BranchExists("task/main-99999", ".") {
 		t.Error("created branch should exist")
 	}
 }
