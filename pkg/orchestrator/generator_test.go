@@ -451,7 +451,7 @@ func TestCleanupDirs_EmptyList(t *testing.T) {
 func TestEnsureOnBranch_AlreadyOnBranch(t *testing.T) {
 	initTestGitRepo(t)
 
-	current, err := gitCurrentBranch("")
+	current, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +464,7 @@ func TestEnsureOnBranch_AlreadyOnBranch(t *testing.T) {
 func TestEnsureOnBranch_SwitchesBranch(t *testing.T) {
 	initTestGitRepo(t)
 
-	if err := gitCreateBranch("test-branch", ""); err != nil {
+	if err := defaultGitOps.CreateBranch("test-branch", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -472,7 +472,7 @@ func TestEnsureOnBranch_SwitchesBranch(t *testing.T) {
 		t.Fatalf("ensureOnBranch(test-branch) error = %v", err)
 	}
 
-	current, err := gitCurrentBranch("")
+	current, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,7 +486,7 @@ func TestEnsureOnBranch_SwitchesBranch(t *testing.T) {
 func TestSaveAndSwitchBranch_AlreadyOnTarget(t *testing.T) {
 	initTestGitRepo(t)
 
-	current, _ := gitCurrentBranch("")
+	current, _ := defaultGitOps.CurrentBranch("")
 	if err := saveAndSwitchBranch(current); err != nil {
 		t.Errorf("saveAndSwitchBranch(current) error = %v", err)
 	}
@@ -495,7 +495,7 @@ func TestSaveAndSwitchBranch_AlreadyOnTarget(t *testing.T) {
 func TestSaveAndSwitchBranch_CleanSwitch(t *testing.T) {
 	initTestGitRepo(t)
 
-	if err := gitCreateBranch("target", ""); err != nil {
+	if err := defaultGitOps.CreateBranch("target", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -503,7 +503,7 @@ func TestSaveAndSwitchBranch_CleanSwitch(t *testing.T) {
 		t.Fatalf("saveAndSwitchBranch(target) error = %v", err)
 	}
 
-	current, err := gitCurrentBranch("")
+	current, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -519,7 +519,7 @@ func TestSaveAndSwitchBranch_DirtyWorkingTree(t *testing.T) {
 	exec.Command("git", "add", "tracked.txt").Run()
 	exec.Command("git", "commit", "--no-verify", "-m", "add tracked file").Run()
 
-	if err := gitCreateBranch("other", ""); err != nil {
+	if err := defaultGitOps.CreateBranch("other", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -529,7 +529,7 @@ func TestSaveAndSwitchBranch_DirtyWorkingTree(t *testing.T) {
 		t.Fatalf("saveAndSwitchBranch with dirty tree error = %v", err)
 	}
 
-	current, err := gitCurrentBranch("")
+	current, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -543,7 +543,7 @@ func TestSaveAndSwitchBranch_DirtyWorkingTree(t *testing.T) {
 func TestResolveBranch_ExplicitBranchExists(t *testing.T) {
 	initTestGitRepo(t)
 
-	if err := gitCreateBranch("explicit-branch", ""); err != nil {
+	if err := defaultGitOps.CreateBranch("explicit-branch", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -576,7 +576,7 @@ func TestResolveBranch_NoGenerationBranches(t *testing.T) {
 		t.Fatalf("resolveBranch() error = %v", err)
 	}
 
-	current, _ := gitCurrentBranch("")
+	current, _ := defaultGitOps.CurrentBranch("")
 	if got != current {
 		t.Errorf("resolveBranch() = %q, want current branch %q", got, current)
 	}
@@ -585,7 +585,7 @@ func TestResolveBranch_NoGenerationBranches(t *testing.T) {
 func TestResolveBranch_SingleGenerationBranch(t *testing.T) {
 	initTestGitRepo(t)
 
-	if err := gitCreateBranch("generation-2026-02-28-12-00-00", ""); err != nil {
+	if err := defaultGitOps.CreateBranch("generation-2026-02-28-12-00-00", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -602,8 +602,8 @@ func TestResolveBranch_SingleGenerationBranch(t *testing.T) {
 func TestResolveBranch_MultipleGenerationBranches(t *testing.T) {
 	initTestGitRepo(t)
 
-	gitCreateBranch("generation-2026-02-28-12-00-00", "")
-	gitCreateBranch("generation-2026-02-28-13-00-00", "")
+	defaultGitOps.CreateBranch("generation-2026-02-28-12-00-00", "")
+	defaultGitOps.CreateBranch("generation-2026-02-28-13-00-00", "")
 
 	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
 	_, err := o.resolveBranch("")
@@ -630,9 +630,9 @@ func TestListGenerationBranches_NoBranches(t *testing.T) {
 func TestListGenerationBranches_WithBranches(t *testing.T) {
 	initTestGitRepo(t)
 
-	gitCreateBranch("generation-2026-02-28-12-00-00", "")
-	gitCreateBranch("generation-2026-02-28-13-00-00", "")
-	gitCreateBranch("other-branch", "")
+	defaultGitOps.CreateBranch("generation-2026-02-28-12-00-00", "")
+	defaultGitOps.CreateBranch("generation-2026-02-28-13-00-00", "")
+	defaultGitOps.CreateBranch("other-branch", "")
 
 	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
 	got := o.listGenerationBranches()
@@ -743,7 +743,7 @@ func TestGeneratorStart_CustomName(t *testing.T) {
 		t.Fatalf("GeneratorStart() error = %v", err)
 	}
 
-	branch, err := gitCurrentBranch("")
+	branch, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatalf("gitCurrentBranch: %v", err)
 	}
@@ -752,7 +752,7 @@ func TestGeneratorStart_CustomName(t *testing.T) {
 	}
 
 	// Verify lifecycle tag was created.
-	tags := gitListTags("generation-gh-42-start", "")
+	tags := defaultGitOps.ListTags("generation-gh-42-start", "")
 	if len(tags) != 1 {
 		t.Errorf("expected start tag, got %v", tags)
 	}
@@ -776,7 +776,7 @@ func TestGeneratorStart_EnvNameOverridesConfig(t *testing.T) {
 		t.Fatalf("GeneratorStart() error = %v", err)
 	}
 
-	branch, err := gitCurrentBranch("")
+	branch, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatalf("gitCurrentBranch: %v", err)
 	}
@@ -848,7 +848,7 @@ func TestGeneratorStart_CreatesWorktree(t *testing.T) {
 	}
 
 	// The worktree should be on the generation branch.
-	branch, err := gitCurrentBranch("")
+	branch, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatalf("gitCurrentBranch in worktree: %v", err)
 	}
@@ -857,7 +857,7 @@ func TestGeneratorStart_CreatesWorktree(t *testing.T) {
 	}
 
 	// The main repo should still be on main.
-	mainBranch, err := gitCurrentBranch(repoDir)
+	mainBranch, err := defaultGitOps.CurrentBranch(repoDir)
 	if err != nil {
 		t.Fatalf("gitCurrentBranch in main repo: %v", err)
 	}
@@ -937,8 +937,8 @@ func TestGeneratorStop_CleansUpWorktree(t *testing.T) {
 	if err := os.WriteFile(testFile, []byte("generated\n"), 0o644); err != nil {
 		t.Fatalf("writing test file: %v", err)
 	}
-	_ = gitStageAll(".")
-	_ = gitCommit("Add test output", ".")
+	_ = defaultGitOps.StageAll(".")
+	_ = defaultGitOps.Commit("Add test output", ".")
 
 	if err := o.GeneratorStop(); err != nil {
 		t.Fatalf("GeneratorStop() error = %v", err)
@@ -956,7 +956,7 @@ func TestGeneratorStop_CleansUpWorktree(t *testing.T) {
 	}
 
 	// The main repo should be on the base branch.
-	branch, err := gitCurrentBranch("")
+	branch, err := defaultGitOps.CurrentBranch("")
 	if err != nil {
 		t.Fatalf("gitCurrentBranch: %v", err)
 	}
@@ -970,7 +970,7 @@ func TestGeneratorStop_CleansUpWorktree(t *testing.T) {
 	}
 
 	// The generation branch should be deleted.
-	if gitBranchExists("generation-stop-test", "") {
+	if defaultGitOps.BranchExists("generation-stop-test", "") {
 		t.Errorf("generation branch still exists after GeneratorStop")
 	}
 
@@ -1095,7 +1095,7 @@ func TestGeneratorSwitch_AlreadyOnBranch(t *testing.T) {
 	initTestGitRepo(t)
 
 	branch := "generation-2026-02-28-12-00-00"
-	if err := gitCheckoutNew(branch, ""); err != nil {
+	if err := defaultGitOps.CheckoutNew(branch, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1107,7 +1107,7 @@ func TestGeneratorSwitch_AlreadyOnBranch(t *testing.T) {
 		t.Errorf("GeneratorSwitch() already on branch error = %v", err)
 	}
 
-	current, _ := gitCurrentBranch("")
+	current, _ := defaultGitOps.CurrentBranch("")
 	if current != branch {
 		t.Errorf("current branch = %q, want %q", current, branch)
 	}
@@ -1116,7 +1116,7 @@ func TestGeneratorSwitch_AlreadyOnBranch(t *testing.T) {
 func TestGeneratorSwitch_SwitchToMain(t *testing.T) {
 	initTestGitRepo(t)
 
-	if err := gitCheckoutNew("generation-2026-02-28-12-00-00", ""); err != nil {
+	if err := defaultGitOps.CheckoutNew("generation-2026-02-28-12-00-00", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1129,7 +1129,7 @@ func TestGeneratorSwitch_SwitchToMain(t *testing.T) {
 		t.Errorf("GeneratorSwitch() to main error = %v", err)
 	}
 
-	current, _ := gitCurrentBranch("")
+	current, _ := defaultGitOps.CurrentBranch("")
 	if current != "main" {
 		t.Errorf("current branch = %q, want %q", current, "main")
 	}
@@ -1163,14 +1163,14 @@ func TestGeneratorReset_UsesConfiguredBaseBranch(t *testing.T) {
 func TestCleanupUnmergedTags_MergedNotTouched(t *testing.T) {
 	initTestGitRepo(t)
 
-	gitTag("generation-2026-02-28-12-00-00-start", "")
-	gitTag("generation-2026-02-28-12-00-00-finished", "")
-	gitTag("generation-2026-02-28-12-00-00-merged", "")
+	defaultGitOps.Tag("generation-2026-02-28-12-00-00-start", "")
+	defaultGitOps.Tag("generation-2026-02-28-12-00-00-finished", "")
+	defaultGitOps.Tag("generation-2026-02-28-12-00-00-merged", "")
 
 	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
 	o.cleanupUnmergedTags()
 
-	tags := gitListTags("generation-2026-02-28-12-00-00-*", "")
+	tags := defaultGitOps.ListTags("generation-2026-02-28-12-00-00-*", "")
 	if len(tags) != 3 {
 		t.Errorf("expected 3 tags after cleanup, got %d: %v", len(tags), tags)
 	}
@@ -1179,13 +1179,13 @@ func TestCleanupUnmergedTags_MergedNotTouched(t *testing.T) {
 func TestCleanupUnmergedTags_UnmergedAbandoned(t *testing.T) {
 	initTestGitRepo(t)
 
-	gitTag("generation-2026-02-28-12-00-00-start", "")
-	gitTag("generation-2026-02-28-12-00-00-finished", "")
+	defaultGitOps.Tag("generation-2026-02-28-12-00-00-start", "")
+	defaultGitOps.Tag("generation-2026-02-28-12-00-00-finished", "")
 
 	o := &Orchestrator{cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
 	o.cleanupUnmergedTags()
 
-	tags := gitListTags("generation-2026-02-28-12-00-00-*", "")
+	tags := defaultGitOps.ListTags("generation-2026-02-28-12-00-00-*", "")
 	found := false
 	for _, tag := range tags {
 		if tag == "generation-2026-02-28-12-00-00-abandoned" {
@@ -1288,12 +1288,12 @@ func TestGitCurrentBranch_ExplicitDir(t *testing.T) {
 	dir := t.TempDir()
 	initTestGitRepoInDir(t, dir)
 
-	branch, err := gitCurrentBranch(dir)
+	branch, err := defaultGitOps.CurrentBranch(dir)
 	if err != nil {
-		t.Fatalf("gitCurrentBranch(%q) error = %v", dir, err)
+		t.Fatalf("defaultGitOps.CurrentBranch(%q) error = %v", dir, err)
 	}
 	if branch == "" {
-		t.Errorf("gitCurrentBranch(%q) returned empty branch", dir)
+		t.Errorf("defaultGitOps.CurrentBranch(%q) returned empty branch", dir)
 	}
 }
 
@@ -1447,7 +1447,7 @@ func TestCleanupUnmergedTags_AllMerged(t *testing.T) {
 	o.cleanupUnmergedTags()
 
 	// All tags should still exist (nothing abandoned).
-	tags := gitListTags("generation-*", ".")
+	tags := defaultGitOps.ListTags("generation-*", ".")
 	if len(tags) != 3 {
 		t.Errorf("expected 3 tags after cleanup of all-merged, got %d: %v", len(tags), tags)
 	}

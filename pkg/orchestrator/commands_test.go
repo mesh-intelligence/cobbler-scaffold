@@ -9,13 +9,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/gitops"
 )
 
 // --- parseBranchList ---
 
 func TestParseBranchList_StripsMarkers(t *testing.T) {
 	input := "  main\n* current\n+ other\n"
-	got := parseBranchList(input)
+	got := gitops.ParseBranchList(input)
 	want := []string{"main", "current", "other"}
 	if len(got) != len(want) {
 		t.Fatalf("got %v, want %v", got, want)
@@ -28,14 +30,14 @@ func TestParseBranchList_StripsMarkers(t *testing.T) {
 }
 
 func TestParseBranchList_EmptyInput(t *testing.T) {
-	got := parseBranchList("")
+	got := gitops.ParseBranchList("")
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty slice", got)
 	}
 }
 
 func TestParseBranchList_SkipsBlankLines(t *testing.T) {
-	got := parseBranchList("main\n\n  \nfeature\n")
+	got := gitops.ParseBranchList("main\n\n  \nfeature\n")
 	if len(got) != 2 || got[0] != "main" || got[1] != "feature" {
 		t.Errorf("got %v, want [main feature]", got)
 	}
@@ -43,7 +45,7 @@ func TestParseBranchList_SkipsBlankLines(t *testing.T) {
 
 func TestParseBranchList_GenerationPattern(t *testing.T) {
 	input := "  generation-20260214.0\n  generation-20260215.1\n"
-	got := parseBranchList(input)
+	got := gitops.ParseBranchList(input)
 	if len(got) != 2 {
 		t.Fatalf("got %v, want 2 entries", got)
 	}
@@ -56,7 +58,7 @@ func TestParseBranchList_GenerationPattern(t *testing.T) {
 
 func TestParseDiffShortstat_FullOutput(t *testing.T) {
 	s := " 5 files changed, 100 insertions(+), 20 deletions(-)\n"
-	ds := parseDiffShortstat(s)
+	ds := gitops.ParseDiffShortstat(s)
 	if ds.FilesChanged != 5 {
 		t.Errorf("FilesChanged: got %d, want 5", ds.FilesChanged)
 	}
@@ -70,7 +72,7 @@ func TestParseDiffShortstat_FullOutput(t *testing.T) {
 
 func TestParseDiffShortstat_InsertionsOnly(t *testing.T) {
 	s := " 3 files changed, 42 insertions(+)\n"
-	ds := parseDiffShortstat(s)
+	ds := gitops.ParseDiffShortstat(s)
 	if ds.FilesChanged != 3 {
 		t.Errorf("FilesChanged: got %d, want 3", ds.FilesChanged)
 	}
@@ -83,7 +85,7 @@ func TestParseDiffShortstat_InsertionsOnly(t *testing.T) {
 }
 
 func TestParseDiffShortstat_Empty(t *testing.T) {
-	ds := parseDiffShortstat("")
+	ds := gitops.ParseDiffShortstat("")
 	if ds.FilesChanged != 0 || ds.Insertions != 0 || ds.Deletions != 0 {
 		t.Errorf("empty input: got %+v, want all zeros", ds)
 	}
@@ -91,7 +93,7 @@ func TestParseDiffShortstat_Empty(t *testing.T) {
 
 func TestParseDiffShortstat_SingleFile(t *testing.T) {
 	s := " 1 file changed, 1 insertion(+), 1 deletion(-)\n"
-	ds := parseDiffShortstat(s)
+	ds := gitops.ParseDiffShortstat(s)
 	if ds.FilesChanged != 1 {
 		t.Errorf("FilesChanged: got %d, want 1", ds.FilesChanged)
 	}
@@ -161,16 +163,16 @@ func TestCommandsInit_PopulatesPath(t *testing.T) {
 func TestGitTagAt(t *testing.T) {
 	initTestGitRepo(t)
 
-	head, err := gitRevParseHEAD("")
+	head, err := defaultGitOps.RevParseHEAD("")
 	if err != nil {
 		t.Fatalf("gitRevParseHEAD: %v", err)
 	}
 
-	if err := gitTagAt("v1.2.3", head, ""); err != nil {
+	if err := defaultGitOps.TagAt("v1.2.3", head, ""); err != nil {
 		t.Fatalf("gitTagAt: %v", err)
 	}
 
-	tags := gitListTags("v1.2.3", "")
+	tags := defaultGitOps.ListTags("v1.2.3", "")
 	if len(tags) != 1 || tags[0] != "v1.2.3" {
 		t.Errorf("gitListTags after gitTagAt: got %v, want [v1.2.3]", tags)
 	}
@@ -192,11 +194,11 @@ func TestGitStash(t *testing.T) {
 	}
 
 	const stashMsg = "my-test-stash"
-	if err := gitStash(stashMsg, ""); err != nil {
+	if err := defaultGitOps.Stash(stashMsg, ""); err != nil {
 		t.Fatalf("gitStash: %v", err)
 	}
 
-	if gitHasChanges("") {
+	if defaultGitOps.HasChanges("") {
 		t.Error("gitHasChanges: want false after stash, got true")
 	}
 
@@ -220,7 +222,7 @@ func TestGitStageDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := gitStageDir("mydir", ""); err != nil {
+	if err := defaultGitOps.StageDir("mydir", ""); err != nil {
 		t.Fatalf("gitStageDir: %v", err)
 	}
 
@@ -236,16 +238,16 @@ func TestGitStageDir(t *testing.T) {
 func TestGitCommitAllowEmpty(t *testing.T) {
 	initTestGitRepo(t)
 
-	head1, err := gitRevParseHEAD("")
+	head1, err := defaultGitOps.RevParseHEAD("")
 	if err != nil {
 		t.Fatalf("gitRevParseHEAD before: %v", err)
 	}
 
-	if err := gitCommitAllowEmpty("empty commit", ""); err != nil {
+	if err := defaultGitOps.CommitAllowEmpty("empty commit", ""); err != nil {
 		t.Fatalf("gitCommitAllowEmpty: %v", err)
 	}
 
-	head2, err := gitRevParseHEAD("")
+	head2, err := defaultGitOps.RevParseHEAD("")
 	if err != nil {
 		t.Fatalf("gitRevParseHEAD after: %v", err)
 	}
@@ -266,7 +268,7 @@ func TestGitLsTreeFiles(t *testing.T) {
 	gitRun(t, "add", "-A")
 	gitRun(t, "commit", "--no-verify", "-m", "add two files")
 
-	files, err := gitLsTreeFiles("HEAD", "")
+	files, err := defaultGitOps.LsTreeFiles("HEAD", "")
 	if err != nil {
 		t.Fatalf("gitLsTreeFiles: %v", err)
 	}
@@ -293,7 +295,7 @@ func TestGitShowFileContent(t *testing.T) {
 	gitRun(t, "add", "-A")
 	gitRun(t, "commit", "--no-verify", "-m", "add hello file")
 
-	got, err := gitShowFileContent("HEAD", "hello.txt", "")
+	got, err := defaultGitOps.ShowFileContent("HEAD", "hello.txt", "")
 	if err != nil {
 		t.Fatalf("gitShowFileContent: %v", err)
 	}
@@ -316,7 +318,7 @@ func TestGitDiffShortstat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ds, err := gitDiffShortstat("HEAD", "")
+	ds, err := defaultGitOps.DiffShortstat("HEAD", "")
 	if err != nil {
 		t.Fatalf("gitDiffShortstat: %v", err)
 	}
@@ -338,7 +340,7 @@ func TestGitDiffNameStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	changes, err := gitDiffNameStatus("HEAD", "")
+	changes, err := diffNameStatus("HEAD", "")
 	if err != nil {
 		t.Fatalf("gitDiffNameStatus: %v", err)
 	}

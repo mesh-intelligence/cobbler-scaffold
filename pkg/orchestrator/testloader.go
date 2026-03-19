@@ -49,7 +49,7 @@ func ResolverFromArg(arg string) BinaryResolver {
 		Log:            logf,
 		GitBin:         binGit,
 		GoBin:          binGo,
-		RemoveWorktree: gitWorktreeRemove,
+		RemoveWorktree: defaultGitOps.WorktreeRemove,
 	}
 	return compare.ResolverFromArg(arg, deps)
 }

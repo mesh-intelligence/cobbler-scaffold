@@ -446,12 +446,12 @@ func (o *Orchestrator) PrepareTestRepo(module, version, orchestratorRoot string)
 		return "", fmt.Errorf("git init: %w", err)
 	}
 
-	if err := gitStageAll(repoDir); err != nil {
+	if err := defaultGitOps.StageAll(repoDir); err != nil {
 		os.RemoveAll(workDir)
 		return "", fmt.Errorf("git add: %w", err)
 	}
 
-	if err := gitCommit("Initial commit from test-clone", repoDir); err != nil {
+	if err := defaultGitOps.Commit("Initial commit from test-clone", repoDir); err != nil {
 		os.RemoveAll(workDir)
 		return "", fmt.Errorf("git commit: %w", err)
 	}
@@ -482,12 +482,12 @@ func (o *Orchestrator) PrepareTestRepo(module, version, orchestratorRoot string)
 	}
 
 	// Commit scaffold artifacts so the working tree is clean.
-	if err := gitStageAll(repoDir); err != nil {
+	if err := defaultGitOps.StageAll(repoDir); err != nil {
 		os.RemoveAll(workDir)
 		return "", fmt.Errorf("git add scaffold: %w", err)
 	}
 
-	if err := gitCommit("Add orchestrator scaffold", repoDir); err != nil {
+	if err := defaultGitOps.Commit("Add orchestrator scaffold", repoDir); err != nil {
 		os.RemoveAll(workDir)
 		return "", fmt.Errorf("git commit scaffold: %w", err)
 	}

@@ -29,7 +29,7 @@ func ghTracker(cfg Config) *gh.GitHubTracker {
 	return &gh.GitHubTracker{
 		Log:          logf,
 		GhBin:        binGh,
-		BranchExists: gitBranchExists,
+		BranchExists: defaultGitOps.BranchExists,
 		Cfg: gh.RepoConfig{
 			IssuesRepo: cfg.Cobbler.IssuesRepo,
 			ModulePath: cfg.Project.ModulePath,
@@ -44,7 +44,7 @@ func ghTrackerNoCfg() *gh.GitHubTracker {
 	return &gh.GitHubTracker{
 		Log:          logf,
 		GhBin:        binGh,
-		BranchExists: gitBranchExists,
+		BranchExists: defaultGitOps.BranchExists,
 	}
 }
 

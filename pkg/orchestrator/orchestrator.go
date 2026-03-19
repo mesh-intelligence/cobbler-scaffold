@@ -43,7 +43,7 @@ func New(cfg Config) *Orchestrator {
 			gh.Deps{
 				Log:          logf,
 				GhBin:        binGh,
-				BranchExists: gitBranchExists,
+				BranchExists: defaultGitOps.BranchExists,
 			},
 			gh.RepoConfig{
 				IssuesRepo: cfg.Cobbler.IssuesRepo,
