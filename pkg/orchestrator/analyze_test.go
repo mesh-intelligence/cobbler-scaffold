@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	an "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/analysis"
 )
 
 // --- extractID ---
@@ -24,8 +26,8 @@ func TestExtractID(t *testing.T) {
 		{"simple.yaml", "simple"},
 	}
 	for _, tc := range cases {
-		if got := extractID(tc.path); got != tc.want {
-			t.Errorf("extractID(%q) = %q, want %q", tc.path, got, tc.want)
+		if got := an.ExtractID(tc.path); got != tc.want {
+			t.Errorf("an.ExtractID(%q) = %q, want %q", tc.path, got, tc.want)
 		}
 	}
 }
@@ -38,7 +40,7 @@ func TestExtractPRDsFromTouchpoints(t *testing.T) {
 		"T2: Parser subsystem (prd002-parser)",
 		"T3: No PRD reference here",
 	}
-	got := extractPRDsFromTouchpoints(tps)
+	got := an.ExtractPRDsFromTouchpoints(tps)
 	want := map[string]bool{"prd001-core": true, "prd002-parser": true}
 	if len(got) != len(want) {
 		t.Fatalf("got %v, want %v", got, want)
@@ -51,7 +53,7 @@ func TestExtractPRDsFromTouchpoints(t *testing.T) {
 }
 
 func TestExtractPRDsFromTouchpoints_Empty(t *testing.T) {
-	got := extractPRDsFromTouchpoints(nil)
+	got := an.ExtractPRDsFromTouchpoints(nil)
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty", got)
 	}
@@ -59,7 +61,7 @@ func TestExtractPRDsFromTouchpoints_Empty(t *testing.T) {
 
 func TestExtractPRDsFromTouchpoints_NoPRDs(t *testing.T) {
 	tps := []string{"T1: Some component", "T2: Another component"}
-	got := extractPRDsFromTouchpoints(tps)
+	got := an.ExtractPRDsFromTouchpoints(tps)
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty", got)
 	}
@@ -73,7 +75,7 @@ func TestExtractUseCaseIDsFromTraces(t *testing.T) {
 		"rel01.0-uc002-lifecycle",
 		"prd001-core R4",
 	}
-	got := extractUseCaseIDsFromTraces(traces)
+	got := an.ExtractUseCaseIDsFromTraces(traces)
 	if len(got) != 2 {
 		t.Fatalf("got %v, want 2 use case IDs", got)
 	}
@@ -86,7 +88,7 @@ func TestExtractUseCaseIDsFromTraces(t *testing.T) {
 }
 
 func TestExtractUseCaseIDsFromTraces_Empty(t *testing.T) {
-	got := extractUseCaseIDsFromTraces(nil)
+	got := an.ExtractUseCaseIDsFromTraces(nil)
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty", got)
 	}
@@ -106,7 +108,7 @@ touchpoints:
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	uc, err := loadUseCase(path)
+	uc, err := an.LoadUseCase(path)
 	if err != nil {
 		t.Fatalf("loadUseCase: %v", err)
 	}
@@ -119,7 +121,7 @@ touchpoints:
 }
 
 func TestLoadUseCase_MissingFile(t *testing.T) {
-	_, err := loadUseCase("/nonexistent/uc.yaml")
+	_, err := an.LoadUseCase("/nonexistent/uc.yaml")
 	if err == nil {
 		t.Error("expected error for missing file, got nil")
 	}
@@ -146,7 +148,7 @@ test_cases:
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	ts, err := loadTestSuite(path)
+	ts, err := an.LoadTestSuite(path)
 	if err != nil {
 		t.Fatalf("loadTestSuite: %v", err)
 	}
@@ -162,7 +164,7 @@ test_cases:
 }
 
 func TestLoadTestSuite_MissingFile(t *testing.T) {
-	_, err := loadTestSuite("/nonexistent/test.yaml")
+	_, err := an.LoadTestSuite("/nonexistent/test.yaml")
 	if err == nil {
 		t.Error("expected error for missing file, got nil")
 	}
@@ -184,8 +186,8 @@ func TestExtractReqGroup(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range cases {
-		if got := extractReqGroup(tc.input); got != tc.want {
-			t.Errorf("extractReqGroup(%q) = %q, want %q", tc.input, got, tc.want)
+		if got := an.ExtractReqGroup(tc.input); got != tc.want {
+			t.Errorf("an.ExtractReqGroup(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }
@@ -194,7 +196,7 @@ func TestExtractReqGroup(t *testing.T) {
 
 func TestExtractCitationsFromTouchpoints_SinglePRD(t *testing.T) {
 	tps := []string{"T1: GeneratorStart: prd002-lifecycle R2"}
-	got := extractCitationsFromTouchpoints(tps)
+	got := an.ExtractCitationsFromTouchpoints(tps)
 	if len(got) != 1 {
 		t.Fatalf("got %d citations, want 1", len(got))
 	}
@@ -208,7 +210,7 @@ func TestExtractCitationsFromTouchpoints_SinglePRD(t *testing.T) {
 
 func TestExtractCitationsFromTouchpoints_MultiplePRDs(t *testing.T) {
 	tps := []string{"T1: Config: prd001-core R1, prd003-workflows R1, R2"}
-	got := extractCitationsFromTouchpoints(tps)
+	got := an.ExtractCitationsFromTouchpoints(tps)
 	if len(got) != 2 {
 		t.Fatalf("got %d citations, want 2", len(got))
 	}
@@ -222,7 +224,7 @@ func TestExtractCitationsFromTouchpoints_MultiplePRDs(t *testing.T) {
 
 func TestExtractCitationsFromTouchpoints_SubItems(t *testing.T) {
 	tps := []string{"T2: Git tags: prd006-vscode R2.2, prd002-lifecycle R1.2"}
-	got := extractCitationsFromTouchpoints(tps)
+	got := an.ExtractCitationsFromTouchpoints(tps)
 	if len(got) != 2 {
 		t.Fatalf("got %d citations, want 2", len(got))
 	}
@@ -237,7 +239,7 @@ func TestExtractCitationsFromTouchpoints_SubItems(t *testing.T) {
 
 func TestExtractCitationsFromTouchpoints_Parenthetical(t *testing.T) {
 	tps := []string{"T1: Start: prd002-lifecycle R2 (including R2.8 base branch)"}
-	got := extractCitationsFromTouchpoints(tps)
+	got := an.ExtractCitationsFromTouchpoints(tps)
 	if len(got) != 1 {
 		t.Fatalf("got %d citations, want 1", len(got))
 	}
@@ -248,7 +250,7 @@ func TestExtractCitationsFromTouchpoints_Parenthetical(t *testing.T) {
 }
 
 func TestExtractCitationsFromTouchpoints_Empty(t *testing.T) {
-	got := extractCitationsFromTouchpoints(nil)
+	got := an.ExtractCitationsFromTouchpoints(nil)
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty", got)
 	}
@@ -256,7 +258,7 @@ func TestExtractCitationsFromTouchpoints_Empty(t *testing.T) {
 
 func TestExtractCitationsFromTouchpoints_NoPRD(t *testing.T) {
 	tps := []string{"T1: Some component with no PRD reference"}
-	got := extractCitationsFromTouchpoints(tps)
+	got := an.ExtractCitationsFromTouchpoints(tps)
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty", got)
 	}
@@ -280,7 +282,7 @@ func TestDetectConstitutionDrift_Matching(t *testing.T) {
 	os.Chdir(dir)
 	defer os.Chdir(orig)
 
-	got := detectConstitutionDrift()
+	got := an.DetectConstitutionDrift(logf)
 	if len(got) != 0 {
 		t.Errorf("got %v, want no drift", got)
 	}
@@ -300,7 +302,7 @@ func TestDetectConstitutionDrift_Differs(t *testing.T) {
 	os.Chdir(dir)
 	defer os.Chdir(orig)
 
-	got := detectConstitutionDrift()
+	got := an.DetectConstitutionDrift(logf)
 	if len(got) != 1 || got[0] != "design.yaml" {
 		t.Errorf("got %v, want [design.yaml]", got)
 	}
@@ -320,7 +322,7 @@ func TestDetectConstitutionDrift_OnlyInDocs(t *testing.T) {
 	os.Chdir(dir)
 	defer os.Chdir(orig)
 
-	got := detectConstitutionDrift()
+	got := an.DetectConstitutionDrift(logf)
 	if len(got) != 0 {
 		t.Errorf("got %v, want no drift", got)
 	}
@@ -1040,7 +1042,7 @@ func captureStdout(t *testing.T, fn func()) string {
 
 func TestPrintSection_EmptyItems(t *testing.T) {
 	out := captureStdout(t, func() {
-		got := printSection("label", nil)
+		got := an.PrintSection("label", nil)
 		if got {
 			t.Error("printSection returned true for empty items")
 		}
@@ -1052,7 +1054,7 @@ func TestPrintSection_EmptyItems(t *testing.T) {
 
 func TestPrintSection_WithItems(t *testing.T) {
 	out := captureStdout(t, func() {
-		got := printSection("Errors", []string{"err1", "err2"})
+		got := an.PrintSection("Errors", []string{"err1", "err2"})
 		if !got {
 			t.Error("printSection returned false for non-empty items")
 		}
@@ -1587,7 +1589,7 @@ func TestSmValidateSections_AllPresent(t *testing.T) {
 		"algorithm":    map[string]interface{}{"type": "gap"},
 		"output_format": map[string]interface{}{"type": "list"},
 	}
-	errs := smValidateSections("test", sm)
+	errs := an.SmValidateSections("test", sm)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for full model, got %v", errs)
 	}
@@ -1611,7 +1613,7 @@ func TestSmValidateSections_MissingSection(t *testing.T) {
 			"output_format": map[string]interface{}{},
 		}
 		delete(sm, tt.missing)
-		errs := smValidateSections("prefix", sm)
+		errs := an.SmValidateSections("prefix", sm)
 		if len(errs) != 1 {
 			t.Errorf("missing %q: expected 1 error, got %d: %v", tt.missing, len(errs), errs)
 			continue
@@ -1631,7 +1633,7 @@ func TestSmValidateSM7_ValidNameAndVersion(t *testing.T) {
 		"name":    "cobbler-measure",
 		"version": "1.0.0",
 	}
-	errs := smValidateSM7("test", sm)
+	errs := an.SmValidateSM7("test", sm)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for valid name/version, got %v", errs)
 	}
@@ -1641,7 +1643,7 @@ func TestSmValidateSM7_InvalidName(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"cobbler", "Cobbler-Measure", "cobbler_measure", ""} {
 		sm := map[string]interface{}{"name": name, "version": "1.0.0"}
-		errs := smValidateSM7("test", sm)
+		errs := an.SmValidateSM7("test", sm)
 		if name == "" {
 			// empty name: no validation triggered
 			if len(errs) != 0 {
@@ -1663,7 +1665,7 @@ func TestSmValidateSM7_InvalidVersion(t *testing.T) {
 	t.Parallel()
 	for _, ver := range []string{"1.0", "v1.0.0", "1.0.0.0", "latest"} {
 		sm := map[string]interface{}{"name": "edge-compute", "version": ver}
-		errs := smValidateSM7("test", sm)
+		errs := an.SmValidateSM7("test", sm)
 		if len(errs) != 1 {
 			t.Errorf("version %q: expected 1 error, got %d: %v", ver, len(errs), errs)
 			continue
@@ -1687,7 +1689,7 @@ func TestSmSourceRefs(t *testing.T) {
 		{"", nil},
 	}
 	for _, tt := range tests {
-		got := smSourceRefs(tt.source)
+		got := an.SmSourceRefs(tt.source)
 		if len(got) != len(tt.want) {
 			t.Errorf("source %q: got %v, want %v", tt.source, got, tt.want)
 			continue
@@ -1711,7 +1713,7 @@ func TestSmValidateSM3_ValidTraceability(t *testing.T) {
 			map[string]interface{}{"name": "derived", "source": "gap"},
 		},
 	}
-	errs := smValidateSM3("test", sm)
+	errs := an.SmValidateSM3("test", sm)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for valid traceability, got %v", errs)
 	}
@@ -1727,7 +1729,7 @@ func TestSmValidateSM3_UntetheredFeature(t *testing.T) {
 			map[string]interface{}{"name": "bad_feature", "source": "unknown_source.capacity"},
 		},
 	}
-	errs := smValidateSM3("test", sm)
+	errs := an.SmValidateSM3("test", sm)
 	if len(errs) != 1 {
 		t.Errorf("expected 1 error for untethered feature, got %d: %v", len(errs), errs)
 	}
@@ -1756,7 +1758,7 @@ func TestValidateStandaloneSemanticModel_ValidFile(t *testing.T) {
     output_format:
       type: list
 `), 0o644)
-	errs := validateStandaloneSemanticModel(path)
+	errs := an.ValidateStandaloneSemanticModel(path)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for valid standalone model, got %v", errs)
 	}
@@ -1779,7 +1781,7 @@ func TestValidateStandaloneSemanticModel_MissingAlgorithm(t *testing.T) {
     output_format:
       type: report
 `), 0o644)
-	errs := validateStandaloneSemanticModel(path)
+	errs := an.ValidateStandaloneSemanticModel(path)
 	if len(errs) != 1 {
 		t.Errorf("expected 1 error for missing algorithm, got %d: %v", len(errs), errs)
 	}
@@ -1796,7 +1798,7 @@ func TestValidatePRDSemanticModel_NoSemanticModel(t *testing.T) {
 title: Test PRD
 problem: test
 `), 0o644)
-	errs := validatePRDSemanticModel(path)
+	errs := an.ValidatePRDSemanticModel(path)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for PRD without semantic_model, got %v", errs)
 	}
@@ -1814,7 +1816,7 @@ semantic_model:
   reason: apply logic
   produce: output result
 `), 0o644)
-	errs := validatePRDSemanticModel(path)
+	errs := an.ValidatePRDSemanticModel(path)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for valid shorthand model, got %v", errs)
 	}
@@ -1831,7 +1833,7 @@ semantic_model:
   observe: input data
   reason: apply logic
 `), 0o644)
-	errs := validatePRDSemanticModel(path)
+	errs := an.ValidatePRDSemanticModel(path)
 	if len(errs) != 1 {
 		t.Errorf("expected 1 error for missing produce key, got %d: %v", len(errs), errs)
 	}
@@ -1847,7 +1849,7 @@ func TestValidatePromptSemanticModel_NoSemanticModel(t *testing.T) {
 	os.WriteFile(path, []byte(`role: analyst
 task: analyze
 `), 0o644)
-	errs := validatePromptSemanticModel(path)
+	errs := an.ValidatePromptSemanticModel(path)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for prompt without semantic_model, got %v", errs)
 	}
@@ -1867,7 +1869,7 @@ semantic_model:
   algorithm:
     type: gap_ordered
 `), 0o644)
-	errs := validatePromptSemanticModel(path)
+	errs := an.ValidatePromptSemanticModel(path)
 	if len(errs) != 1 {
 		t.Errorf("expected 1 error for missing output_format, got %d: %v", len(errs), errs)
 	}
@@ -1908,7 +1910,7 @@ func TestValidateSemanticModels_Count(t *testing.T) {
 	writeValidSMFile("model-a.yaml", "behave")
 	writeValidSMFile("model-b.yaml", "analyze")
 
-	errs, count := validateSemanticModels(nil)
+	errs, count := an.ValidateSemanticModels(nil)
 	if count != 2 {
 		t.Errorf("expected count=2, got %d", count)
 	}
