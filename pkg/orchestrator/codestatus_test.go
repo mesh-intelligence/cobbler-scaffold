@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	an "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/analysis"
 )
 
 // --- ucPrefixFromID ---
@@ -27,8 +29,8 @@ func TestUCPrefixFromID(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range cases {
-		if got := ucPrefixFromID(tc.input); got != tc.want {
-			t.Errorf("ucPrefixFromID(%q) = %q, want %q", tc.input, got, tc.want)
+		if got := an.UCPrefixFromID(tc.input); got != tc.want {
+			t.Errorf("an.UCPrefixFromID(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }
@@ -46,8 +48,8 @@ func TestTestDirForUC(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range cases {
-		if got := testDirForUC(tc.input); got != tc.want {
-			t.Errorf("testDirForUC(%q) = %q, want %q", tc.input, got, tc.want)
+		if got := an.TestDirForUC(tc.input); got != tc.want {
+			t.Errorf("an.TestDirForUC(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }
@@ -60,20 +62,20 @@ func TestCountTestFiles(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "bench_test.go"), []byte("package x"), 0o644)
 	os.WriteFile(filepath.Join(dir, "helper.go"), []byte("package x"), 0o644)
 
-	if got := countTestFiles(dir); got != 2 {
+	if got := an.CountTestFiles(dir); got != 2 {
 		t.Errorf("countTestFiles = %d, want 2", got)
 	}
 }
 
 func TestCountTestFiles_Empty(t *testing.T) {
 	dir := t.TempDir()
-	if got := countTestFiles(dir); got != 0 {
+	if got := an.CountTestFiles(dir); got != 0 {
 		t.Errorf("countTestFiles = %d, want 0", got)
 	}
 }
 
 func TestCountTestFiles_NoDir(t *testing.T) {
-	if got := countTestFiles("/nonexistent/path"); got != 0 {
+	if got := an.CountTestFiles("/nonexistent/path"); got != 0 {
 		t.Errorf("countTestFiles = %d, want 0", got)
 	}
 }
@@ -98,7 +100,7 @@ func TestScanTestDirectories(t *testing.T) {
 	os.MkdirAll(uc201, 0o755)
 	os.WriteFile(filepath.Join(uc201, "helper.go"), []byte("package x"), 0o644)
 
-	got := scanTestDirectories(root)
+	got := an.ScanTestDirectories(root)
 	if got["rel01.0-uc001"] != 1 {
 		t.Errorf("rel01.0-uc001: got %d, want 1", got["rel01.0-uc001"])
 	}
@@ -112,14 +114,14 @@ func TestScanTestDirectories(t *testing.T) {
 
 func TestScanTestDirectories_Empty(t *testing.T) {
 	root := t.TempDir()
-	got := scanTestDirectories(root)
+	got := an.ScanTestDirectories(root)
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty", got)
 	}
 }
 
 func TestScanTestDirectories_NoDir(t *testing.T) {
-	got := scanTestDirectories("/nonexistent/tests")
+	got := an.ScanTestDirectories("/nonexistent/tests")
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty", got)
 	}
@@ -132,7 +134,7 @@ func TestScanTestDirectories_SkipsNonRelDirs(t *testing.T) {
 	os.MkdirAll(internal, 0o755)
 	os.WriteFile(filepath.Join(internal, "helper_test.go"), []byte("package x"), 0o644)
 
-	got := scanTestDirectories(root)
+	got := an.ScanTestDirectories(root)
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty (internal/ should be skipped)", got)
 	}
@@ -272,7 +274,7 @@ func TestDetectSpecCodeGaps_NoGaps(t *testing.T) {
 			},
 		}},
 	}
-	gaps := detectSpecCodeGaps(report)
+	gaps := an.DetectSpecCodeGaps(report)
 	if len(gaps) != 0 {
 		t.Errorf("got %v, want no gaps", gaps)
 	}
@@ -290,7 +292,7 @@ func TestDetectSpecCodeGaps_ReleaseLevelGap(t *testing.T) {
 			},
 		}},
 	}
-	gaps := detectSpecCodeGaps(report)
+	gaps := an.DetectSpecCodeGaps(report)
 	if len(gaps) != 2 {
 		t.Fatalf("got %d gaps, want 2", len(gaps))
 	}
@@ -308,7 +310,7 @@ func TestDetectSpecCodeGaps_UCLevelGap(t *testing.T) {
 			},
 		}},
 	}
-	gaps := detectSpecCodeGaps(report)
+	gaps := an.DetectSpecCodeGaps(report)
 	// Release spec is "not started" so no release-level gap. But UC001 has a gap.
 	if len(gaps) != 1 {
 		t.Fatalf("got %d gaps, want 1", len(gaps))
@@ -326,7 +328,7 @@ func TestDetectSpecCodeGaps_SpecNotStarted_NoGap(t *testing.T) {
 			},
 		}},
 	}
-	gaps := detectSpecCodeGaps(report)
+	gaps := an.DetectSpecCodeGaps(report)
 	if len(gaps) != 0 {
 		t.Errorf("got %v, want no gaps", gaps)
 	}
@@ -348,8 +350,8 @@ func TestStatusIcon(t *testing.T) {
 		{"unknown", "[??]"},
 	}
 	for _, tc := range cases {
-		if got := statusIcon(tc.input); got != tc.want {
-			t.Errorf("statusIcon(%q) = %q, want %q", tc.input, got, tc.want)
+		if got := an.StatusIcon(tc.input); got != tc.want {
+			t.Errorf("an.StatusIcon(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }
@@ -375,7 +377,7 @@ func TestPrintCodeStatusReport_ContainsReleaseInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Stdout = w
-	printCodeStatusReport(report)
+	an.PrintCodeStatusReport(report)
 	w.Close()
 	os.Stdout = old
 
@@ -410,7 +412,7 @@ func TestPrintCodeStatusReport_ShowsGaps(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Stdout = w
-	printCodeStatusReport(report)
+	an.PrintCodeStatusReport(report)
 	w.Close()
 	os.Stdout = old
 

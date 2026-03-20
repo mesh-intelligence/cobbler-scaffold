@@ -123,55 +123,10 @@ func validateYAMLStrict[T any](path string) []string {
 	return errs
 }
 
-// Unexported delegations for parent-level functions that were previously
-// defined here and are still referenced by other parent-package code or tests.
-
-func extractID(path string) string                         { return an.ExtractID(path) }
-func extractPRDsFromTouchpoints(tps []string) []string     { return an.ExtractPRDsFromTouchpoints(tps) }
-func extractUseCaseIDsFromTraces(traces []string) []string  { return an.ExtractUseCaseIDsFromTraces(traces) }
-func extractReqGroup(s string) string                       { return an.ExtractReqGroup(s) }
-func extractCitationsFromTouchpoints(tps []string) []an.PRDCitation {
-	return an.ExtractCitationsFromTouchpoints(tps)
-}
-
-func loadUseCase(path string) (*an.AnalyzeUseCase, error) { return an.LoadUseCase(path) }
-func loadTestSuite(path string) (*an.AnalyzeTestSuite, error) { return an.LoadTestSuite(path) }
-
-func detectConstitutionDrift() []string { return an.DetectConstitutionDrift(logf) }
-
-func printSection(label string, items []string) bool { return an.PrintSection(label, items) }
-
-func validateSemanticModels(prdFiles []string) ([]string, int) {
-	return an.ValidateSemanticModels(prdFiles)
-}
-func validateStandaloneSemanticModel(path string) []string {
-	return an.ValidateStandaloneSemanticModel(path)
-}
-func validatePRDSemanticModel(path string) []string { return an.ValidatePRDSemanticModel(path) }
-func validatePromptSemanticModel(path string) []string {
-	return an.ValidatePromptSemanticModel(path)
-}
-func smValidateSections(prefix string, sm map[string]interface{}) []string {
-	return an.SmValidateSections(prefix, sm)
-}
-func smValidateSM7(prefix string, sm map[string]interface{}) []string {
-	return an.SmValidateSM7(prefix, sm)
-}
-func smValidateSM3(prefix string, sm map[string]interface{}) []string {
-	return an.SmValidateSM3(prefix, sm)
-}
-func smSourceRefs(source string) []string { return an.SmSourceRefs(source) }
-
-// Type aliases for internal types used in parent tests.
-type prdCitation = an.PRDCitation
-type analyzeUseCase = an.AnalyzeUseCase
-type analyzeTestSuite = an.AnalyzeTestSuite
-type analyzeCounts = an.AnalyzeCounts
-
-// Function aliases for code status helpers used by other parent code.
-func scanTestDirectories(root string) map[string]int { return an.ScanTestDirectories(root) }
+// computeCodeStatus converts parent-package RoadmapDoc to the internal type
+// before delegating to an.ComputeCodeStatus. This wrapper exists because the
+// parent and internal packages define separate RoadmapDoc structs.
 func computeCodeStatus(roadmap *RoadmapDoc, scan map[string]int) CodeStatusReport {
-	// Convert parent RoadmapDoc to internal RoadmapDoc.
 	var internalRoadmap an.RoadmapDoc
 	for _, r := range roadmap.Releases {
 		var ucs []an.RoadmapUseCase
@@ -187,17 +142,3 @@ func computeCodeStatus(roadmap *RoadmapDoc, scan map[string]int) CodeStatusRepor
 	}
 	return an.ComputeCodeStatus(&internalRoadmap, scan)
 }
-func detectSpecCodeGaps(report *CodeStatusReport) []string { return an.DetectSpecCodeGaps(report) }
-func printCodeStatusReport(report *CodeStatusReport)       { an.PrintCodeStatusReport(report) }
-func statusIcon(status string) string                      { return an.StatusIcon(status) }
-func ucPrefixFromID(ucID string) string                    { return an.UCPrefixFromID(ucID) }
-func testDirForUC(ucID string) string                      { return an.TestDirForUC(ucID) }
-func countTestFiles(dir string) int                        { return an.CountTestFiles(dir) }
-
-// Unexported aliases for precycle functions used by parent code.
-func collectConsistencyDetails(r *AnalyzeResult) []string { return an.CollectConsistencyDetails(r) }
-func collectDefects(r *AnalyzeResult) []string            { return an.CollectDefects(r) }
-func writeAnalysisDoc(doc *AnalysisDoc, path string) error { return an.WriteAnalysisDoc(doc, path) }
-
-// The analysisFileName constant is needed by precycle_test.go.
-const analysisFileName = an.AnalysisFileName

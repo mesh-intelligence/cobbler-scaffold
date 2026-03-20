@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	an "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/analysis"
 )
 
 // --- totalIssues ---
@@ -53,7 +55,7 @@ func TestTotalIssues_Combined(t *testing.T) {
 
 func TestCollectConsistencyDetails_Empty(t *testing.T) {
 	r := &AnalyzeResult{}
-	details := collectConsistencyDetails(r)
+	details := an.CollectConsistencyDetails(r)
 	if len(details) != 0 {
 		t.Errorf("got %d details, want 0", len(details))
 	}
@@ -70,7 +72,7 @@ func TestCollectConsistencyDetails_AllFields(t *testing.T) {
 		ConstitutionDrift:         []string{"design.yaml"},      // excluded from details
 		BrokenCitations:           []string{"uc001->prd001:R99"},
 	}
-	details := collectConsistencyDetails(r)
+	details := an.CollectConsistencyDetails(r)
 
 	// SchemaErrors and ConstitutionDrift are excluded (prd003 R11.2).
 	if len(details) != 6 {
@@ -99,7 +101,7 @@ func TestCollectConsistencyDetails_MultiplePerField(t *testing.T) {
 		SchemaErrors:    []string{"err1", "err2", "err3"}, // excluded from details
 		BrokenCitations: []string{"cite1"},
 	}
-	details := collectConsistencyDetails(r)
+	details := an.CollectConsistencyDetails(r)
 	// SchemaErrors excluded; 2 orphaned + 1 citation = 3 (prd003 R11.2).
 	if len(details) != 3 {
 		t.Errorf("got %d details, want 3", len(details))
@@ -110,7 +112,7 @@ func TestCollectConsistencyDetails_MultiplePerField(t *testing.T) {
 
 func TestCollectDefects_Empty(t *testing.T) {
 	r := &AnalyzeResult{}
-	defects := collectDefects(r)
+	defects := an.CollectDefects(r)
 	if len(defects) != 0 {
 		t.Errorf("got %d defects, want 0", len(defects))
 	}
@@ -122,7 +124,7 @@ func TestCollectDefects_SchemaAndDrift(t *testing.T) {
 		ConstitutionDrift: []string{"design.yaml"},
 		OrphanedPRDs:      []string{"prd-x"}, // must NOT appear in defects
 	}
-	defects := collectDefects(r)
+	defects := an.CollectDefects(r)
 
 	if len(defects) != 2 {
 		t.Fatalf("got %d defects, want 2", len(defects))
@@ -141,8 +143,8 @@ func TestCollectDefects_ExcludedFromConsistencyDetails(t *testing.T) {
 		SchemaErrors:      []string{"docs/VISION.yaml: err"},
 		ConstitutionDrift: []string{"design.yaml"},
 	}
-	details := collectConsistencyDetails(r)
-	defects := collectDefects(r)
+	details := an.CollectConsistencyDetails(r)
+	defects := an.CollectDefects(r)
 
 	if len(details) != 0 {
 		t.Errorf("ConsistencyDetails should be empty, got %v", details)
@@ -162,7 +164,7 @@ func TestAnalysisDocDefectsRoundTrip(t *testing.T) {
 		Defects:           []string{"schema error: docs/VISION.yaml: bad field"},
 	}
 
-	if err := writeAnalysisDoc(doc, path); err != nil {
+	if err := an.WriteAnalysisDoc(doc, path); err != nil {
 		t.Fatalf("writeAnalysisDoc: %v", err)
 	}
 
@@ -201,7 +203,7 @@ func TestWriteAndLoadAnalysisDoc(t *testing.T) {
 		},
 	}
 
-	if err := writeAnalysisDoc(doc, path); err != nil {
+	if err := an.WriteAnalysisDoc(doc, path); err != nil {
 		t.Fatalf("writeAnalysisDoc: %v", err)
 	}
 
@@ -234,7 +236,7 @@ func TestWriteAnalysisDoc_CreatesDirectory(t *testing.T) {
 	nested := filepath.Join(dir, "sub", "dir", "analysis.yaml")
 
 	doc := &AnalysisDoc{ConsistencyErrors: 1}
-	if err := writeAnalysisDoc(doc, nested); err != nil {
+	if err := an.WriteAnalysisDoc(doc, nested); err != nil {
 		t.Fatalf("writeAnalysisDoc: %v", err)
 	}
 	if _, err := os.Stat(nested); err != nil {
@@ -247,7 +249,7 @@ func TestWriteAnalysisDoc_EmptyDoc(t *testing.T) {
 	path := filepath.Join(dir, "analysis.yaml")
 
 	doc := &AnalysisDoc{}
-	if err := writeAnalysisDoc(doc, path); err != nil {
+	if err := an.WriteAnalysisDoc(doc, path); err != nil {
 		t.Fatalf("writeAnalysisDoc: %v", err)
 	}
 
@@ -273,7 +275,7 @@ func TestLoadAnalysisDoc_NoFile(t *testing.T) {
 
 func TestLoadAnalysisDoc_InvalidYAML(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, analysisFileName)
+	path := filepath.Join(dir, an.AnalysisFileName)
 	os.WriteFile(path, []byte("{{invalid yaml"), 0o644)
 
 	loaded := loadAnalysisDoc(dir)
@@ -307,9 +309,9 @@ func TestRunPreCycleAnalysis_WritesFile(t *testing.T) {
 	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{Dir: scratchDir}}}
 	o.RunPreCycleAnalysis()
 
-	outPath := filepath.Join(scratchDir, analysisFileName)
+	outPath := filepath.Join(scratchDir, an.AnalysisFileName)
 	if _, err := os.Stat(outPath); os.IsNotExist(err) {
-		t.Fatalf("expected %s to exist after RunPreCycleAnalysis", analysisFileName)
+		t.Fatalf("expected %s to exist after RunPreCycleAnalysis", an.AnalysisFileName)
 	}
 	data, err := os.ReadFile(outPath)
 	if err != nil {
@@ -335,8 +337,8 @@ func TestRunPreCycleAnalysis_NoRoadmap(t *testing.T) {
 	o.RunPreCycleAnalysis()
 
 	// Should still write a file even if analysis had errors.
-	outPath := filepath.Join(scratchDir, analysisFileName)
+	outPath := filepath.Join(scratchDir, an.AnalysisFileName)
 	if _, err := os.Stat(outPath); os.IsNotExist(err) {
-		t.Fatalf("expected %s even with empty docs", analysisFileName)
+		t.Fatalf("expected %s even with empty docs", an.AnalysisFileName)
 	}
 }

@@ -647,7 +647,7 @@ func (o *Orchestrator) validateAndMarkUCs() {
 // if the UC file is not found or cannot be parsed.
 func loadUCTouchpoints(ucID string) []string {
 	path := filepath.Join("docs/specs/use-cases", ucID+".yaml")
-	uc, err := loadUseCase(path)
+	uc, err := an.LoadUseCase(path)
 	if err != nil {
 		return nil
 	}
