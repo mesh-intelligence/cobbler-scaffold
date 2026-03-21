@@ -21,7 +21,8 @@ import (
 var claudeTimeout = testutil.ClaudeTestTimeout
 
 // StitchExecutesTask runs 1 measure (MaxMeasureIssues=1) then 1 stitch
-// (MaxStitchIssuesPerCycle=1) and verifies the task was processed.
+// (MaxStitchIssuesPerCycle=1) and verifies the task was processed by
+// checking that HEAD advances in the generation worktree.
 // Precondition: hasUnresolvedRequirements via MeasureAndExpectIssues (GH-1798).
 // Requires Claude: invokes cobbler:measure and cobbler:stitch.
 func TestRel01_UC004_StitchExecutesTask(t *testing.T) {
@@ -36,9 +37,10 @@ func TestRel01_UC004_StitchExecutesTask(t *testing.T) {
 	if err := testutil.RunMage(t, dir, "reset"); err != nil {
 		t.Fatalf("reset: %v", err)
 	}
-	_ = testutil.GeneratorStart(t, dir)
+	wtDir := testutil.GeneratorStart(t, dir)
 
-	headBefore := testutil.GitHead(t, dir)
+	// Read HEAD from the generation worktree (not dir, which stays on main).
+	headBefore := testutil.GitHead(t, wtDir)
 
 	testutil.MeasureAndExpectIssues(t, dir, 60*time.Second)
 
@@ -46,7 +48,7 @@ func TestRel01_UC004_StitchExecutesTask(t *testing.T) {
 		t.Fatalf("cobbler:stitch: %v", err)
 	}
 
-	headAfter := testutil.GitHead(t, dir)
+	headAfter := testutil.GitHead(t, wtDir)
 	if headAfter == headBefore {
 		t.Error("expected git HEAD to advance after stitch, but it did not")
 	}
@@ -54,6 +56,7 @@ func TestRel01_UC004_StitchExecutesTask(t *testing.T) {
 
 // StitchRecordsInvocation runs measure+stitch and verifies that the stitch
 // history contains an InvocationRecord with diff stats and LOC data.
+// History files live in the generation worktree's .cobbler/history/.
 // Precondition: hasUnresolvedRequirements via MeasureAndExpectIssues (GH-1798).
 // Requires Claude: invokes cobbler:measure and cobbler:stitch.
 func TestRel01_UC004_StitchRecordsInvocation(t *testing.T) {
@@ -68,7 +71,7 @@ func TestRel01_UC004_StitchRecordsInvocation(t *testing.T) {
 	if err := testutil.RunMage(t, dir, "reset"); err != nil {
 		t.Fatalf("reset: %v", err)
 	}
-	_ = testutil.GeneratorStart(t, dir)
+	wtDir := testutil.GeneratorStart(t, dir)
 
 	testutil.MeasureAndExpectIssues(t, dir, 60*time.Second)
 
@@ -76,8 +79,8 @@ func TestRel01_UC004_StitchRecordsInvocation(t *testing.T) {
 		t.Fatalf("cobbler:stitch: %v", err)
 	}
 
-	// Verify stitch stats file exists and contains diff data.
-	statsFiles := testutil.HistoryStatsFiles(t, dir, "stitch")
+	// Verify stitch stats file exists in the worktree and contains diff data.
+	statsFiles := testutil.HistoryStatsFiles(t, wtDir, "stitch")
 	if len(statsFiles) == 0 {
 		t.Fatal("expected at least one stitch stats file in .cobbler/history/, got none")
 	}
@@ -99,8 +102,8 @@ func TestRel01_UC004_StitchRecordsInvocation(t *testing.T) {
 		t.Error("expected stitch stats file to contain 'loc_before:' (InvocationRecord with LOC)")
 	}
 
-	// Verify stitch report file exists.
-	reportFiles := testutil.HistoryReportFiles(t, dir, "stitch")
+	// Verify stitch report file exists in the worktree.
+	reportFiles := testutil.HistoryReportFiles(t, wtDir, "stitch")
 	if len(reportFiles) == 0 {
 		t.Fatal("expected at least one stitch report file in .cobbler/history/, got none")
 	}
