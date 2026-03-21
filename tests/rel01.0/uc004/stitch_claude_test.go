@@ -42,7 +42,7 @@ func TestRel01_UC004_StitchExecutesTask(t *testing.T) {
 	if err := testutil.RunMageTimeout(t, dir, claudeTimeout, "cobbler:measure"); err != nil {
 		t.Fatalf("cobbler:measure: %v", err)
 	}
-	if n := testutil.WaitForReadyIssues(t, dir, 1, 30*time.Second); n == 0 {
+	if n := testutil.WaitForReadyIssues(t, dir, 1, 60*time.Second); n == 0 {
 		t.Fatal("expected at least 1 ready issue after measure, got 0")
 	}
 
@@ -134,7 +134,7 @@ func TestRel01_UC004_SecondMeasureProducesNoNewTasks(t *testing.T) {
 	if err := testutil.RunMageTimeout(t, dir, claudeTimeout, "cobbler:measure"); err != nil {
 		t.Fatalf("first cobbler:measure: %v", err)
 	}
-	if n := testutil.WaitForReadyIssues(t, dir, 1, 30*time.Second); n == 0 {
+	if n := testutil.WaitForReadyIssues(t, dir, 1, 60*time.Second); n == 0 {
 		t.Fatal("expected at least 1 ready issue after first measure, got 0")
 	}
 

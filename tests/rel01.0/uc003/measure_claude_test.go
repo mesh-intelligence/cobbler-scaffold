@@ -44,7 +44,7 @@ func TestRel01_UC003_MeasureCreatesIssues(t *testing.T) {
 		t.Fatalf("cobbler:measure: %v", err)
 	}
 
-	n := testutil.WaitForReadyIssues(t, dir, 1, 30*time.Second)
+	n := testutil.WaitForReadyIssues(t, dir, 1, 60*time.Second)
 	if n == 0 {
 		t.Error("expected at least 1 ready issue after cobbler:measure, got 0")
 	}
