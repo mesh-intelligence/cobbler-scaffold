@@ -169,6 +169,40 @@ func ReadWorktreeDir(t testing.TB, dir string) string {
 	return FindGenerationWorktree(t, dir)
 }
 
+// GenerationBranch returns the generation branch name by finding the
+// generation worktree and reading its current branch. This works from
+// the main repo dir (which stays on main) by inspecting worktree metadata.
+func GenerationBranch(t testing.TB, dir string) string {
+	t.Helper()
+	wtDir := FindGenerationWorktree(t, dir)
+	return GitBranch(t, wtDir)
+}
+
+// resolveGeneration returns the current generation branch name. If a
+// generation worktree exists, reads its branch. Otherwise falls back to
+// GitBranch(dir) for non-worktree setups. This ensures GitHub issue
+// queries use the correct generation label regardless of whether the
+// generation runs in a worktree or the main repo.
+func resolveGeneration(t testing.TB, dir string) string {
+	t.Helper()
+	// Try worktree-based detection first (non-fatal).
+	cmd := exec.Command("git", "worktree", "list", "--porcelain")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err == nil {
+		var currentPath string
+		for _, line := range strings.Split(string(out), "\n") {
+			if strings.HasPrefix(line, "worktree ") {
+				currentPath = strings.TrimPrefix(line, "worktree ")
+			}
+			if strings.HasPrefix(line, "branch refs/heads/generation-") && currentPath != "" {
+				return GitBranch(t, currentPath)
+			}
+		}
+	}
+	return GitBranch(t, dir)
+}
+
 // sanitizeGenName creates a short, filesystem-safe generation name from
 // a test name by replacing path separators and special chars.
 func sanitizeGenName(testName string) string {
@@ -391,7 +425,7 @@ func CountReadyIssues(t testing.TB, dir string) int {
 	if repo == "" {
 		return 0
 	}
-	generation := GitBranch(t, dir)
+	generation := resolveGeneration(t, dir)
 	genLabel := orchestrator.CobblerGenLabel(generation)
 	cmd := exec.Command("gh", "api",
 		"--method", "GET",
@@ -453,7 +487,7 @@ func promoteOpenIssues(t testing.TB, dir string) {
 	if repo == "" {
 		return
 	}
-	generation := GitBranch(t, dir)
+	generation := resolveGeneration(t, dir)
 	genLabel := orchestrator.CobblerGenLabel(generation)
 	out, err := exec.Command("gh", "api",
 		"--method", "GET",
@@ -762,7 +796,7 @@ func CountIssuesByStatus(t testing.TB, dir, status string) int {
 	if repo == "" {
 		return 0
 	}
-	generation := GitBranch(t, dir)
+	generation := resolveGeneration(t, dir)
 	statusLabel := "cobbler-" + strings.ReplaceAll(status, "_", "-")
 	genLabel := orchestrator.CobblerGenLabel(generation)
 	cmd := exec.Command("gh", "api",
