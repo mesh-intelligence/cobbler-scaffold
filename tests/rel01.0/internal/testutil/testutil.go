@@ -392,7 +392,7 @@ func CountReadyIssues(t testing.TB, dir string) int {
 		return 0
 	}
 	generation := GitBranch(t, dir)
-	genLabel := "cobbler-gen-" + generation
+	genLabel := orchestrator.CobblerGenLabel(generation)
 	cmd := exec.Command("gh", "api",
 		"--method", "GET",
 		fmt.Sprintf("repos/%s/issues", repo),
@@ -454,7 +454,7 @@ func promoteOpenIssues(t testing.TB, dir string) {
 		return
 	}
 	generation := GitBranch(t, dir)
-	genLabel := "cobbler-gen-" + generation
+	genLabel := orchestrator.CobblerGenLabel(generation)
 	out, err := exec.Command("gh", "api",
 		"--method", "GET",
 		fmt.Sprintf("repos/%s/issues", repo),
@@ -764,7 +764,7 @@ func CountIssuesByStatus(t testing.TB, dir, status string) int {
 	}
 	generation := GitBranch(t, dir)
 	statusLabel := "cobbler-" + strings.ReplaceAll(status, "_", "-")
-	genLabel := "cobbler-gen-" + generation
+	genLabel := orchestrator.CobblerGenLabel(generation)
 	cmd := exec.Command("gh", "api",
 		"--method", "GET",
 		fmt.Sprintf("repos/%s/issues", repo),
