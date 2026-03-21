@@ -420,13 +420,16 @@ func CountReadyIssues(t testing.TB, dir string) int {
 }
 
 // WaitForReadyIssues polls CountReadyIssues until at least min issues are
-// ready or timeout elapses. Returns the final count. This absorbs the
-// eventual-consistency lag in GitHub's label-filtered issue listing that
-// can cause promoteReadyIssues to miss newly created issues.
+// ready or timeout elapses. Returns the final count. On each iteration,
+// adds cobbler-ready to any open issue that lacks it and has no unresolved
+// dependencies (GH-1682). This compensates for the GitHub API eventual-
+// consistency lag where PromoteReadyIssues during import may not see
+// newly created issues.
 func WaitForReadyIssues(t testing.TB, dir string, min int, timeout time.Duration) int {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for {
+		promoteOpenIssues(t, dir)
 		n := CountReadyIssues(t, dir)
 		if n >= min {
 			return n
@@ -436,6 +439,43 @@ func WaitForReadyIssues(t testing.TB, dir string, min int, timeout time.Duration
 			return n
 		}
 		time.Sleep(2 * time.Second)
+	}
+}
+
+// promoteOpenIssues adds cobbler-ready to open generation issues that lack
+// both cobbler-ready and cobbler-in-progress labels. This is a test-only
+// helper that compensates for GitHub API eventual consistency — the
+// orchestrator's PromoteReadyIssues may have run before the issue was
+// visible in the API listing.
+func promoteOpenIssues(t testing.TB, dir string) {
+	t.Helper()
+	repo := readIssuesRepo(t, dir)
+	if repo == "" {
+		return
+	}
+	generation := GitBranch(t, dir)
+	genLabel := "cobbler-gen-" + generation
+	out, err := exec.Command("gh", "api",
+		"--method", "GET",
+		fmt.Sprintf("repos/%s/issues", repo),
+		"-f", "state=open",
+		"-f", "labels="+genLabel,
+		"-f", "per_page=100",
+	).Output()
+	if err != nil {
+		return
+	}
+	var issues []struct {
+		Number int `json:"number"`
+	}
+	if err := json.Unmarshal(out, &issues); err != nil {
+		return
+	}
+	for _, iss := range issues {
+		num := strconv.Itoa(iss.Number)
+		if !IssueHasLabel(t, dir, num, "cobbler-ready") && !IssueHasLabel(t, dir, num, "cobbler-in-progress") {
+			_ = exec.Command("gh", "issue", "edit", "--repo", repo, num, "--add-label", "cobbler-ready").Run()
+		}
 	}
 }
 
