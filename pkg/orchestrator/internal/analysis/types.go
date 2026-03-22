@@ -65,9 +65,11 @@ type SuccessCriterion struct {
 }
 
 // PRDRequirementGroup is a requirement section within a PRD.
+// Items uses []any to accept both plain string values ("R1.1: text") and
+// weighted values ("R1.1: {text: ..., weight: N}") (GH-1832).
 type PRDRequirementGroup struct {
-	Title string              `yaml:"title"`
-	Items []map[string]string `yaml:"items"`
+	Title string `yaml:"title"`
+	Items []any  `yaml:"items"`
 }
 
 // PRDPackageContract describes the public API surface of a pkg/ package.

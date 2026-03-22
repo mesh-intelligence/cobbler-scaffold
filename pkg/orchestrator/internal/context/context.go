@@ -440,10 +440,56 @@ type PRDAcceptanceCriterion struct {
 }
 
 // PRDRequirementGroup is a requirement section within a PRD.
-// Items use "- R1.1: text" format (list of single-key maps).
 type PRDRequirementGroup struct {
-	Title string              `yaml:"title"`
-	Items []map[string]string `yaml:"items"`
+	Title string               `yaml:"title"`
+	Items []PRDRequirementItem `yaml:"items"`
+}
+
+// PRDRequirementItem represents a single R-item in a PRD. It supports two
+// YAML formats:
+//
+//	Simple:  - R1.1: Must accept -f flag         (weight defaults to 1)
+//	Weighted: - R1.1:
+//	              text: Must scan each input line
+//	              weight: 3
+type PRDRequirementItem struct {
+	ID     string
+	Text   string
+	Weight int // positive integer, default 1, no upper bound (GH-1832)
+}
+
+// UnmarshalYAML handles both string and {text, weight} map values for R-items.
+func (item *PRDRequirementItem) UnmarshalYAML(value *yaml.Node) error {
+	// Items are single-key maps: {"R1.1": <value>}
+	if value.Kind != yaml.MappingNode || len(value.Content) < 2 {
+		return fmt.Errorf("expected mapping node for requirement item, got kind %d", value.Kind)
+	}
+	item.ID = value.Content[0].Value
+	valNode := value.Content[1]
+
+	switch valNode.Kind {
+	case yaml.ScalarNode:
+		// Simple format: "R1.1: text"
+		item.Text = valNode.Value
+		item.Weight = 1
+	case yaml.MappingNode:
+		// Weighted format: "R1.1: {text: ..., weight: N}"
+		var fields struct {
+			Text   string `yaml:"text"`
+			Weight int    `yaml:"weight"`
+		}
+		if err := valNode.Decode(&fields); err != nil {
+			return fmt.Errorf("decoding requirement item %s: %w", item.ID, err)
+		}
+		item.Text = fields.Text
+		item.Weight = fields.Weight
+		if item.Weight <= 0 {
+			item.Weight = 1
+		}
+	default:
+		return fmt.Errorf("unexpected node kind %d for requirement item %s", valNode.Kind, item.ID)
+	}
+	return nil
 }
 
 // PRDPackageContract describes the public API surface of a pkg/ package.
@@ -2142,10 +2188,8 @@ func (d *PRDDoc) Validate() []string {
 			errs = append(errs, fmt.Sprintf("requirements.%s.items is required", k))
 		}
 		for _, item := range g.Items {
-			for itemKey := range item {
-				if !prdItemIDRe.MatchString(itemKey) {
-					errs = append(errs, fmt.Sprintf("requirements.%s: item ID %q must use numeric dotted format (e.g., R1.1)", k, itemKey))
-				}
+			if !prdItemIDRe.MatchString(item.ID) {
+				errs = append(errs, fmt.Sprintf("requirements.%s: item ID %q must use numeric dotted format (e.g., R1.1)", k, item.ID))
 			}
 		}
 	}

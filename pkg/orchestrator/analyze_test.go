@@ -645,7 +645,7 @@ func TestPRDDoc_Validate_AllPresent(t *testing.T) {
 		Title:   "Core",
 		Problem: "The problem",
 		Requirements: map[string]PRDRequirementGroup{
-			"R1": {Title: "Group 1", Items: []map[string]string{{"R1.1": "Do X"}}},
+			"R1": {Title: "Group 1", Items: []PRDRequirementItem{{ID: "R1.1", Text: "Do X", Weight: 1}}},
 		},
 	}
 	if errs := d.Validate(); len(errs) != 0 {
@@ -675,7 +675,7 @@ func TestPRDDoc_Validate_RequirementGroupMissingTitle(t *testing.T) {
 		Title:   "Core",
 		Problem: "The problem",
 		Requirements: map[string]PRDRequirementGroup{
-			"R1": {Items: []map[string]string{{"R1.1": "Do X"}}},
+			"R1": {Items: []PRDRequirementItem{{ID: "R1.1", Text: "Do X", Weight: 1}}},
 		},
 	}
 	errs := d.Validate()
@@ -713,9 +713,9 @@ func TestPRDDoc_Validate_ItemIDLetterSuffix_Error(t *testing.T) {
 		Title:   "Core",
 		Problem: "The problem",
 		Requirements: map[string]PRDRequirementGroup{
-			"R2": {Title: "Group 2", Items: []map[string]string{
-				{"R2a": "Do A"},
-				{"R2b": "Do B"},
+			"R2": {Title: "Group 2", Items: []PRDRequirementItem{
+				{ID: "R2a", Text: "Do A", Weight: 1},
+				{ID: "R2b", Text: "Do B", Weight: 1},
 			}},
 		},
 	}
@@ -738,12 +738,12 @@ func TestPRDDoc_Validate_ItemIDDotted_Valid(t *testing.T) {
 		Title:   "Core",
 		Problem: "The problem",
 		Requirements: map[string]PRDRequirementGroup{
-			"R1": {Title: "Group 1", Items: []map[string]string{
-				{"R1.1": "Do X"},
-				{"R1.2": "Do Y"},
+			"R1": {Title: "Group 1", Items: []PRDRequirementItem{
+				{ID: "R1.1", Text: "Do X", Weight: 1},
+				{ID: "R1.2", Text: "Do Y", Weight: 1},
 			}},
-			"R2": {Title: "Group 2", Items: []map[string]string{
-				{"R2.3": "Do Z"},
+			"R2": {Title: "Group 2", Items: []PRDRequirementItem{
+				{ID: "R2.3", Text: "Do Z", Weight: 1},
 			}},
 		},
 	}

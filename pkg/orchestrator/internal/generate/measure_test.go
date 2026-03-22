@@ -165,7 +165,7 @@ files:
   - path: pkg/foo/bar.go`
 
 	issues := []ProposedIssue{{Index: 1, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, nil)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, nil)
 	if result.HasErrors() {
 		t.Errorf("expected no errors for valid code issue, got: %v", result.Errors)
 	}
@@ -196,7 +196,7 @@ design_decisions:
     text: dd3`
 
 	issues := []ProposedIssue{{Index: 1, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, nil)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, nil)
 	if !result.HasErrors() {
 		t.Error("expected error for code issue with 1 requirement")
 	}
@@ -237,7 +237,7 @@ files:
   - path: pkg/foo/foo.go`
 
 	issues := []ProposedIssue{{Index: 1, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, nil)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, nil)
 	if !result.HasErrors() {
 		t.Error("expected P7 violation error for foo/foo.go")
 	}
@@ -271,7 +271,7 @@ design_decisions:
 		"prd003": {"R2": 10},
 	}
 	issues := []ProposedIssue{{Index: 1, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 5, subItems, nil)
+	result := ValidateMeasureOutput(issues, 5, 0, subItems, nil)
 	if !result.HasErrors() {
 		t.Error("expected error for expanded count exceeding max")
 	}
@@ -279,7 +279,7 @@ design_decisions:
 
 func TestValidateMeasureOutput_UnparseableDescription(t *testing.T) {
 	issues := []ProposedIssue{{Index: 1, Title: "bad", Description: ":::not yaml"}}
-	result := ValidateMeasureOutput(issues, 0, nil, nil)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, nil)
 	if result.HasErrors() {
 		t.Error("unparseable descriptions should produce warnings, not errors")
 	}
@@ -289,7 +289,7 @@ func TestValidateMeasureOutput_UnparseableDescription(t *testing.T) {
 }
 
 func TestValidateMeasureOutput_EmptyIssues(t *testing.T) {
-	result := ValidateMeasureOutput(nil, 0, nil, nil)
+	result := ValidateMeasureOutput(nil, 0, 0, nil, nil)
 	if result.HasErrors() {
 		t.Error("expected no errors for empty issue list")
 	}
@@ -313,7 +313,7 @@ acceptance_criteria:
     text: ac3`
 
 	issues := []ProposedIssue{{Index: 1, Title: "doc", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, nil)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, nil)
 	if result.HasErrors() {
 		t.Errorf("expected no errors for valid doc issue, got: %v", result.Errors)
 	}
@@ -363,7 +363,7 @@ files:
 	}
 
 	issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 	if !result.HasErrors() {
 		t.Fatal("expected errors for proposal targeting completed R-item")
 	}
@@ -420,7 +420,7 @@ files:
 	}
 
 	issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 	if !result.HasErrors() {
 		t.Fatal("expected errors for proposal targeting fully complete group")
 	}
@@ -470,7 +470,7 @@ files:
   - path: pkg/foo/bar.go`
 
 	issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, nil)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, nil)
 	if result.HasErrors() {
 		t.Errorf("expected no errors when reqStates is nil, got: %v", result.Errors)
 	}
@@ -620,3 +620,116 @@ func TestPRDRefPattern_NoMatch(t *testing.T) {
 		t.Error("expected no match")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Weight-based validation (GH-1832)
+// ---------------------------------------------------------------------------
+
+func TestValidateMeasureOutput_WeightBudget(t *testing.T) {
+	t.Parallel()
+	reqStates := map[string]map[string]RequirementState{
+		"prd001": {
+			"R1.1": {Status: "ready", Weight: 1},
+			"R1.2": {Status: "ready", Weight: 4},
+			"R1.3": {Status: "ready", Weight: 3},
+		},
+	}
+	issues := []ProposedIssue{{
+		Index: 0,
+		Title: "[stitch] prd001 R1.1-R1.3",
+		Description: `deliverable_type: code
+required_reading:
+  - docs/specs/product-requirements/prd001.yaml
+files:
+  - path: pkg/foo/bar.go
+    action: create
+requirements:
+  - id: R1
+    text: "prd001 R1.1 simple"
+  - id: R2
+    text: "prd001 R1.2 complex parser"
+  - id: R3
+    text: "prd001 R1.3 moderate"
+design_decisions:
+  - id: D1
+    text: Use standard library
+  - id: D2
+    text: Parse with regex
+  - id: D3
+    text: Return errors
+acceptance_criteria:
+  - id: AC1
+    text: Passes tests
+  - id: AC2
+    text: Handles edge cases
+  - id: AC3
+    text: Error messages are clear
+  - id: AC4
+    text: No panics
+  - id: AC5
+    text: Documentation updated`,
+	}}
+
+	// Total weight = 1+4+3 = 8. Budget = 4 → should error.
+	result := ValidateMeasureOutput(issues, 0, 4, nil, reqStates)
+	if len(result.Errors) == 0 {
+		t.Error("expected weight budget error, got none")
+	}
+
+	// Budget = 10 → should pass.
+	result = ValidateMeasureOutput(issues, 0, 10, nil, reqStates)
+	for _, e := range result.Errors {
+		if contains(e, "total weight") {
+			t.Errorf("unexpected weight error with budget 10: %s", e)
+		}
+	}
+}
+
+func TestExpandedRequirementWeight_SpecificItems(t *testing.T) {
+	t.Parallel()
+	reqStates := map[string]map[string]RequirementState{
+		"prd001": {
+			"R1.1": {Status: "ready", Weight: 2},
+			"R1.2": {Status: "ready", Weight: 5},
+		},
+	}
+	reqs := []IssueDescItem{
+		{Text: "prd001 R1.1 simple"},
+		{Text: "prd001 R1.2 complex"},
+	}
+	w := ExpandedRequirementWeight(reqs, nil, reqStates)
+	if w != 7 {
+		t.Errorf("ExpandedRequirementWeight = %d, want 7 (2+5)", w)
+	}
+}
+
+func TestExpandedRequirementWeight_GroupReference(t *testing.T) {
+	t.Parallel()
+	reqStates := map[string]map[string]RequirementState{
+		"prd002": {
+			"R1.1": {Status: "ready", Weight: 1},
+			"R1.2": {Status: "ready", Weight: 3},
+			"R1.3": {Status: "ready", Weight: 2},
+		},
+	}
+	reqs := []IssueDescItem{
+		{Text: "prd002 R1 entire group"},
+	}
+	w := ExpandedRequirementWeight(reqs, nil, reqStates)
+	if w != 6 {
+		t.Errorf("ExpandedRequirementWeight = %d, want 6 (1+3+2)", w)
+	}
+}
+
+func TestExpandedRequirementWeight_FallsBackToCount(t *testing.T) {
+	t.Parallel()
+	reqs := []IssueDescItem{
+		{Text: "something without prd ref"},
+		{Text: "another item"},
+	}
+	w := ExpandedRequirementWeight(reqs, nil, nil)
+	if w != 2 {
+		t.Errorf("ExpandedRequirementWeight with nil states = %d, want 2", w)
+	}
+}
+

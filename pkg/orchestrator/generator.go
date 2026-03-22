@@ -194,7 +194,7 @@ func filterImplementedRelease(release string) string {
 	return generate.FilterImplementedRelease(release)
 }
 
-func validateMeasureOutput(issues []proposedIssue, maxReqs int, subItemCounts map[string]map[string]int, reqStates map[string]map[string]generate.RequirementState) validationResult {
+func validateMeasureOutput(issues []proposedIssue, maxReqs, maxWeight int, subItemCounts map[string]map[string]int, reqStates map[string]map[string]generate.RequirementState) validationResult {
 	// Convert proposedIssue (from internal/github) to generate.ProposedIssue.
 	genIssues := make([]generate.ProposedIssue, len(issues))
 	for i, iss := range issues {
@@ -205,7 +205,7 @@ func validateMeasureOutput(issues []proposedIssue, maxReqs int, subItemCounts ma
 			Dependency:  iss.Dependency,
 		}
 	}
-	return generate.ValidateMeasureOutput(genIssues, maxReqs, subItemCounts, reqStates)
+	return generate.ValidateMeasureOutput(genIssues, maxReqs, maxWeight, subItemCounts, reqStates)
 }
 
 func expandedRequirementCount(reqs []issueDescItem, subItemCounts map[string]map[string]int) int {

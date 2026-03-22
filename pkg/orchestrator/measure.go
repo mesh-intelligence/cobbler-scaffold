@@ -498,6 +498,7 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 		"lines_min":        fmt.Sprintf("%d", o.cfg.Cobbler.EstimatedLinesMin),
 		"lines_max":        fmt.Sprintf("%d", o.cfg.Cobbler.EstimatedLinesMax),
 		"max_requirements": fmt.Sprintf("%d", o.cfg.Cobbler.MaxRequirementsPerTask),
+		"max_weight":       fmt.Sprintf("%d", o.cfg.Cobbler.MaxWeightPerTask),
 	}
 
 	// Inject package_contracts when source mode is "headers" or "custom".
@@ -533,6 +534,16 @@ func (o *Orchestrator) buildMeasurePrompt(userInput, existingIssues string, limi
 	// When MinMeasureIssues is set and unresolved requirements exist, add
 	// a constraint that overrides the "return [] when complete" instruction.
 	// This prevents the LLM from non-deterministically returning empty
+	// When max_weight_per_task is set, add a constraint explaining weight-
+	// based batching so Claude respects the budget (GH-1832).
+	if maxW := o.cfg.Cobbler.MaxWeightPerTask; maxW > 0 {
+		doc.Constraints += fmt.Sprintf("\n- Requirements in requirements.yaml carry a weight field "+
+			"(default 1). When batching requirements into tasks, sum the weights of all "+
+			"R-items. Each task's total weight must not exceed %d. A task with one weight-4 "+
+			"requirement has budget for at most %d more weight-1 requirements.", maxW, maxW-4)
+		logf("buildMeasurePrompt: max_weight_per_task=%d constraint injected", maxW)
+	}
+
 	// results for projects with high documentation-to-code ratios (GH-1882).
 	if minIssues := o.cfg.Cobbler.MinMeasureIssues; minIssues > 0 && o.hasUnresolvedRequirements() {
 		doc.Constraints += fmt.Sprintf("\n- MANDATORY: You MUST propose at least %d task(s). "+
@@ -587,7 +598,7 @@ func (o *Orchestrator) importIssuesImpl(yamlFile, repo, generation string, skipE
 	// Validate proposed issues against P9/P7 rules and completed R-items (GH-1386).
 	subItemCounts := loadPRDSubItemCounts()
 	reqStates := loadRequirementStates(o.cfg.Cobbler.Dir)
-	vr := validateMeasureOutput(issues, o.cfg.Cobbler.MaxRequirementsPerTask, subItemCounts, reqStates)
+	vr := validateMeasureOutput(issues, o.cfg.Cobbler.MaxRequirementsPerTask, o.cfg.Cobbler.MaxWeightPerTask, subItemCounts, reqStates)
 	if len(vr.Warnings) > 0 {
 		logf("importIssues: %d warning(s)", len(vr.Warnings))
 	}

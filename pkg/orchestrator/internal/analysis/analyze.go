@@ -84,8 +84,10 @@ func CollectAnalyzeResult(deps AnalyzeDeps) (AnalyzeResult, AnalyzeCounts, error
 			for groupKey, group := range prd.Requirements {
 				groups[groupKey] = true
 				for _, item := range group.Items {
-					for itemKey := range item {
-						prdRItems[id] = append(prdRItems[id], itemKey)
+					if m, ok := item.(map[string]interface{}); ok {
+						for itemKey := range m {
+							prdRItems[id] = append(prdRItems[id], itemKey)
+						}
 					}
 				}
 			}

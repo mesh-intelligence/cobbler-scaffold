@@ -75,6 +75,7 @@ type SpecsCollection = ctx.SpecsCollection
 // PRD types.
 type PRDDoc = ctx.PRDDoc
 type PRDRequirementGroup = ctx.PRDRequirementGroup
+type PRDRequirementItem = ctx.PRDRequirementItem
 type PRDPackageContract = ctx.PRDPackageContract
 type PRDExport = ctx.PRDExport
 type PRDDependsOn = ctx.PRDDependsOn

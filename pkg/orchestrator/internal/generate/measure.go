@@ -117,7 +117,7 @@ var PRDRefPattern = regexp.MustCompile(`(prd\d+[-\w]*)\s+(?:\w+\s+){0,2}R(\d+)(?
 // Expanded-count violations are logged as warnings (best-effort), not errors.
 // reqStates, when non-nil, cross-references proposed R-items against
 // requirements.yaml and rejects proposals targeting completed R-items (GH-1386).
-func ValidateMeasureOutput(issues []ProposedIssue, maxReqs int, subItemCounts map[string]map[string]int, reqStates map[string]map[string]RequirementState) ValidationResult {
+func ValidateMeasureOutput(issues []ProposedIssue, maxReqs, maxWeight int, subItemCounts map[string]map[string]int, reqStates map[string]map[string]RequirementState) ValidationResult {
 	var result ValidationResult
 	for _, issue := range issues {
 		var desc IssueDescription
@@ -136,10 +136,17 @@ func ValidateMeasureOutput(issues []ProposedIssue, maxReqs int, subItemCounts ma
 		// references to their sub-item counts (GH-122).
 		expandedCount := ExpandedRequirementCount(desc.Requirements, subItemCounts)
 
-		// Enforce max_requirements_per_task on the expanded sub-item count,
-		// not the top-level group count (GH-535). A requirement referencing
-		// "prd003 R2" where R2 has 10 sub-items counts as 10, not 1.
-		if maxReqs > 0 && expandedCount > maxReqs {
+		// When max_weight_per_task is set, enforce weight budget instead
+		// of requirement count (GH-1832). Weight takes precedence.
+		if maxWeight > 0 {
+			expandedWeight := ExpandedRequirementWeight(desc.Requirements, subItemCounts, reqStates)
+			if expandedWeight > maxWeight {
+				msg := fmt.Sprintf("[%d] %q: total weight is %d, max is %d", issue.Index, issue.Title, expandedWeight, maxWeight)
+				Log("validateMeasureOutput: %s", msg)
+				result.Errors = append(result.Errors, msg)
+			}
+		} else if maxReqs > 0 && expandedCount > maxReqs {
+			// Fall back to count-based enforcement when weight is not configured.
 			msg := fmt.Sprintf("[%d] %q: expanded sub-item count is %d, max is %d", issue.Index, issue.Title, expandedCount, maxReqs)
 			Log("validateMeasureOutput: %s", msg)
 			result.Errors = append(result.Errors, msg)
@@ -255,6 +262,85 @@ func findPRDReqStates(states map[string]map[string]RequirementState, stem string
 		}
 	}
 	return nil
+}
+
+// ExpandedRequirementWeight computes the total weight of a task's
+// requirements by summing weights from requirements.yaml. A requirement
+// referencing "prd003 R1.2" looks up the weight for that R-item. A group
+// reference "prd003 R2" sums weights of all sub-items in that group.
+// Requirements without a recognized reference default to weight 1. When
+// reqStates is nil, falls back to ExpandedRequirementCount (GH-1832).
+func ExpandedRequirementWeight(reqs []IssueDescItem, subItemCounts map[string]map[string]int, reqStates map[string]map[string]RequirementState) int {
+	if len(reqStates) == 0 {
+		return ExpandedRequirementCount(reqs, subItemCounts)
+	}
+	total := 0
+	for _, req := range reqs {
+		matches := PRDRefPattern.FindStringSubmatch(req.Text)
+		if matches == nil {
+			total++
+			continue
+		}
+		prdStem := matches[1]
+		groupNum := matches[2]
+		subItem := matches[3]
+
+		prdReqs := reqStates[prdStem]
+		if prdReqs == nil {
+			// Try short prefix (e.g., "prd003" for "prd003-core").
+			for k, v := range reqStates {
+				if idx := indexByte(k, '-'); idx > 0 && k[:idx] == prdStem {
+					prdReqs = v
+					break
+				}
+			}
+		}
+		if prdReqs == nil {
+			total++
+			continue
+		}
+
+		if subItem != "" {
+			// Specific sub-item reference (e.g., R1.3).
+			key := "R" + groupNum + "." + subItem
+			if st, ok := prdReqs[key]; ok && st.Weight > 0 {
+				total += st.Weight
+			} else {
+				total++
+			}
+			continue
+		}
+
+		// Group reference (e.g., R2). Sum weights of all sub-items in the group.
+		prefix := "R" + groupNum + "."
+		groupWeight := 0
+		found := false
+		for id, st := range prdReqs {
+			if len(id) > len(prefix) && id[:len(prefix)] == prefix {
+				w := st.Weight
+				if w <= 0 {
+					w = 1
+				}
+				groupWeight += w
+				found = true
+			}
+		}
+		if found {
+			total += groupWeight
+		} else {
+			total++
+		}
+	}
+	return total
+}
+
+func indexByte(s string, b byte) int {
+	for i := range s {
+		if s[i] == b {
+			return i
+		}
+	}
+	return -1
 }
 
 // ExpandedRequirementCount computes the effective requirement count by
