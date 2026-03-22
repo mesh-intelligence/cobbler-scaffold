@@ -1041,6 +1041,141 @@ title: Plain
 	}
 }
 
+// ---------------------------------------------------------------------------
+// PRDRequirementItem weight parsing (GH-1832)
+// ---------------------------------------------------------------------------
+
+func TestPRDRequirementItem_SimpleFormat(t *testing.T) {
+	t.Parallel()
+	input := `
+title: Core behavior
+items:
+  - R1.1: Must accept -f flag
+  - R1.2: Must accept -v flag
+`
+	var group PRDRequirementGroup
+	if err := yaml.Unmarshal([]byte(input), &group); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(group.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(group.Items))
+	}
+	if group.Items[0].ID != "R1.1" {
+		t.Errorf("item 0 ID = %q, want R1.1", group.Items[0].ID)
+	}
+	if group.Items[0].Text != "Must accept -f flag" {
+		t.Errorf("item 0 Text = %q, want 'Must accept -f flag'", group.Items[0].Text)
+	}
+	if group.Items[0].Weight != 1 {
+		t.Errorf("item 0 Weight = %d, want 1 (default)", group.Items[0].Weight)
+	}
+}
+
+func TestPRDRequirementItem_WeightedFormat(t *testing.T) {
+	t.Parallel()
+	input := `
+title: Complex parsing
+items:
+  - R6.1:
+      text: Must scan each input line for known timestamp patterns
+      weight: 3
+  - R6.2:
+      text: Must recognize 4 timestamp formats
+      weight: 10
+`
+	var group PRDRequirementGroup
+	if err := yaml.Unmarshal([]byte(input), &group); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(group.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(group.Items))
+	}
+	if group.Items[0].Weight != 3 {
+		t.Errorf("item 0 Weight = %d, want 3", group.Items[0].Weight)
+	}
+	if group.Items[0].Text != "Must scan each input line for known timestamp patterns" {
+		t.Errorf("item 0 Text = %q", group.Items[0].Text)
+	}
+	if group.Items[1].Weight != 10 {
+		t.Errorf("item 1 Weight = %d, want 10", group.Items[1].Weight)
+	}
+}
+
+func TestPRDRequirementItem_MixedFormats(t *testing.T) {
+	t.Parallel()
+	input := `
+title: Mixed
+items:
+  - R1.1: Simple requirement
+  - R1.2:
+      text: Complex requirement
+      weight: 5
+`
+	var group PRDRequirementGroup
+	if err := yaml.Unmarshal([]byte(input), &group); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if group.Items[0].Weight != 1 {
+		t.Errorf("simple item Weight = %d, want 1", group.Items[0].Weight)
+	}
+	if group.Items[1].Weight != 5 {
+		t.Errorf("weighted item Weight = %d, want 5", group.Items[1].Weight)
+	}
+}
+
+func TestPRDRequirementItem_ZeroWeightDefaultsToOne(t *testing.T) {
+	t.Parallel()
+	input := `
+title: Zero weight
+items:
+  - R1.1:
+      text: Should default
+      weight: 0
+`
+	var group PRDRequirementGroup
+	if err := yaml.Unmarshal([]byte(input), &group); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if group.Items[0].Weight != 1 {
+		t.Errorf("zero weight should default to 1, got %d", group.Items[0].Weight)
+	}
+}
+
+func TestPRDRequirementItem_FullPRDDoc(t *testing.T) {
+	t.Parallel()
+	input := `
+id: prd-test
+title: Test PRD
+problem: test
+goals:
+  - G1: goal
+requirements:
+  R1:
+    title: Basic
+    items:
+      - R1.1: Simple
+      - R1.2:
+          text: Weighted
+          weight: 7
+non_goals: []
+acceptance_criteria: []
+`
+	var prd PRDDoc
+	if err := yaml.Unmarshal([]byte(input), &prd); err != nil {
+		t.Fatalf("unmarshal PRDDoc: %v", err)
+	}
+	r1 := prd.Requirements["R1"]
+	if len(r1.Items) != 2 {
+		t.Fatalf("expected 2 items in R1, got %d", len(r1.Items))
+	}
+	if r1.Items[0].Weight != 1 {
+		t.Errorf("R1.1 weight = %d, want 1", r1.Items[0].Weight)
+	}
+	if r1.Items[1].Weight != 7 {
+		t.Errorf("R1.2 weight = %d, want 7", r1.Items[1].Weight)
+	}
+}
+
 func TestLoadPRDSemanticModel_NoPRDs(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()

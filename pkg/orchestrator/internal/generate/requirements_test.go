@@ -1511,3 +1511,129 @@ func assertReqState(t *testing.T, rf RequirementsFile, prd, rItem, wantStatus st
 		t.Errorf("%s %s: issue = %d, want %d", prd, rItem, st.Issue, wantIssue)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Requirement weights (GH-1832)
+// ---------------------------------------------------------------------------
+
+func TestExtractRItemsWeighted_SimpleFormat(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	prdPath := filepath.Join(dir, "prd001-test.yaml")
+	prd := `id: prd001
+title: Test
+problem: test
+goals:
+  - G1: goal
+requirements:
+  R1:
+    title: Basic
+    items:
+      - R1.1: Simple requirement
+      - R1.2: Another simple one
+non_goals: []
+acceptance_criteria: []
+`
+	os.WriteFile(prdPath, []byte(prd), 0o644)
+
+	items := extractRItemsWeighted(prdPath)
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+	for _, item := range items {
+		if item.Weight != 1 {
+			t.Errorf("%s: weight = %d, want 1 (default)", item.ID, item.Weight)
+		}
+	}
+}
+
+func TestExtractRItemsWeighted_WithWeights(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	prdPath := filepath.Join(dir, "prd002-test.yaml")
+	prd := `id: prd002
+title: Test
+problem: test
+goals:
+  - G1: goal
+requirements:
+  R1:
+    title: Complex
+    items:
+      - R1.1: Simple thing
+      - R1.2:
+          text: Complex parser
+          weight: 4
+      - R1.3:
+          text: Very complex
+          weight: 10
+non_goals: []
+acceptance_criteria: []
+`
+	os.WriteFile(prdPath, []byte(prd), 0o644)
+
+	items := extractRItemsWeighted(prdPath)
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(items))
+	}
+	weights := map[string]int{}
+	for _, item := range items {
+		weights[item.ID] = item.Weight
+	}
+	if weights["R1.1"] != 1 {
+		t.Errorf("R1.1 weight = %d, want 1", weights["R1.1"])
+	}
+	if weights["R1.2"] != 4 {
+		t.Errorf("R1.2 weight = %d, want 4", weights["R1.2"])
+	}
+	if weights["R1.3"] != 10 {
+		t.Errorf("R1.3 weight = %d, want 10", weights["R1.3"])
+	}
+}
+
+func TestGenerateRequirementsFile_CarriesWeight(t *testing.T) {
+	dir := t.TempDir()
+	prdDir := filepath.Join(dir, "docs", "specs", "product-requirements")
+	os.MkdirAll(prdDir, 0o755)
+	cobblerDir := filepath.Join(dir, ".cobbler")
+
+	prd := `id: prd001
+title: Test
+problem: test
+goals:
+  - G1: goal
+requirements:
+  R1:
+    title: Mixed
+    items:
+      - R1.1: Simple
+      - R1.2:
+          text: Weighted
+          weight: 5
+non_goals: []
+acceptance_criteria: []
+`
+	os.WriteFile(filepath.Join(prdDir, "prd001-test.yaml"), []byte(prd), 0o644)
+
+	_, err := GenerateRequirementsFile(prdDir, cobblerDir, false)
+	if err != nil {
+		t.Fatalf("GenerateRequirementsFile: %v", err)
+	}
+
+	states := LoadRequirementStates(cobblerDir)
+	if states == nil {
+		t.Fatal("LoadRequirementStates returned nil")
+	}
+
+	prdStates := states["prd001-test"]
+	if prdStates == nil {
+		t.Fatal("no states for prd001-test")
+	}
+
+	if w := prdStates["R1.1"].Weight; w != 1 {
+		t.Errorf("R1.1 weight = %d, want 1", w)
+	}
+	if w := prdStates["R1.2"].Weight; w != 5 {
+		t.Errorf("R1.2 weight = %d, want 5", w)
+	}
+}

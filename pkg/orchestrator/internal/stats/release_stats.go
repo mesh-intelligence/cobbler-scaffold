@@ -59,9 +59,10 @@ type PRDDoc struct {
 }
 
 // PRDRequirementGroup is a requirement section within a PRD.
+// Items uses []any to accept both plain string values and weighted values (GH-1832).
 type PRDRequirementGroup struct {
-	Title string              `yaml:"title"`
-	Items []map[string]string `yaml:"items"`
+	Title string `yaml:"title"`
+	Items []any  `yaml:"items"`
 }
 
 // UseCaseDoc corresponds to docs/specs/use-cases/rel*.yaml

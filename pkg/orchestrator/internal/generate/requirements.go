@@ -18,6 +18,7 @@ import (
 type RequirementState struct {
 	Status string `yaml:"status"`
 	Issue  int    `yaml:"issue,omitempty"`
+	Weight int    `yaml:"weight,omitempty"` // from PRD; default 1 (GH-1832)
 }
 
 // RequirementsFile is the top-level structure of .cobbler/requirements.yaml.
@@ -70,21 +71,23 @@ func GenerateRequirementsFile(prdDir, cobblerDir string, preserveExisting bool) 
 
 	for _, path := range paths {
 		slug := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-		items := extractRItems(path)
+		items := extractRItemsWeighted(path)
 		if len(items) == 0 {
 			continue
 		}
 		group := make(map[string]RequirementState, len(items))
-		for _, id := range items {
+		for _, item := range items {
 			if existing != nil {
 				if prev, ok := existing[slug]; ok {
-					if st, ok := prev[id]; ok {
-						group[id] = st
+					if st, ok := prev[item.ID]; ok {
+						// Preserve existing state but update weight from PRD.
+						st.Weight = item.Weight
+						group[item.ID] = st
 						continue
 					}
 				}
 			}
-			group[id] = RequirementState{Status: "ready"}
+			group[item.ID] = RequirementState{Status: "ready", Weight: item.Weight}
 		}
 		allReqs[slug] = group
 	}
@@ -388,9 +391,15 @@ func extractTouchpointCitations(touchpoints []string) []touchpointCitation {
 	return citations
 }
 
+// rItemInfo holds an R-item ID and its weight from the PRD.
+type rItemInfo struct {
+	ID     string
+	Weight int
+}
+
 // extractRItems reads a PRD YAML file and returns all R-item IDs (e.g.
-// R1.1, R1.2, R2.1) in sorted order.
-func extractRItems(path string) []string {
+// R1.1, R1.2, R2.1) with their weights, sorted by ID.
+func extractRItemsWeighted(path string) []rItemInfo {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
@@ -400,20 +409,36 @@ func extractRItems(path string) []string {
 		return nil
 	}
 
-	var items []string
+	var items []rItemInfo
 	for _, group := range prd.Requirements {
 		for _, item := range group.Items {
-			// Each item is a map with a single key like "R1.1".
-			// The generate package's PRDDoc uses Items []any,
-			// so we need a type assertion.
 			switch v := item.(type) {
 			case map[string]interface{}:
-				for k := range v {
-					items = append(items, k)
+				for k, val := range v {
+					w := 1
+					// Check for weighted format: {text: ..., weight: N}
+					if m, ok := val.(map[string]interface{}); ok {
+						if wv, ok := m["weight"]; ok {
+							if wi, ok := wv.(int); ok && wi > 0 {
+								w = wi
+							}
+						}
+					}
+					items = append(items, rItemInfo{ID: k, Weight: w})
 				}
 			}
 		}
 	}
-	sort.Strings(items)
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items
+}
+
+// extractRItems reads a PRD YAML file and returns all R-item IDs in sorted order.
+func extractRItems(path string) []string {
+	weighted := extractRItemsWeighted(path)
+	ids := make([]string, len(weighted))
+	for i, item := range weighted {
+		ids[i] = item.ID
+	}
+	return ids
 }
