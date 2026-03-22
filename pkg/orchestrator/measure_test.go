@@ -52,7 +52,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if vr.HasErrors() {
 		t.Errorf("expected no errors for valid code task, got: %v", vr.Errors)
 	}
@@ -90,7 +90,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for code task with 2 requirements (P9 range 5-8)")
 	}
@@ -145,7 +145,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for code task with 9 requirements (P9 range 5-8)")
 	}
@@ -174,7 +174,7 @@ acceptance_criteria:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if vr.HasErrors() {
 		t.Errorf("expected no errors for valid doc task, got: %v", vr.Errors)
 	}
@@ -207,7 +207,7 @@ acceptance_criteria:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for doc task with 5 requirements (P9 range 2-4)")
 	}
@@ -253,7 +253,7 @@ design_decisions:
 `,
 	}}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors for file named after package (P7 violation)")
 	}
@@ -311,7 +311,7 @@ design_decisions:
 
 	// runner.go in pkg/difftest/ is NOT a P7 violation because
 	// the file name does not match the parent directory name.
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	p7Errors := 0
 	for _, e := range vr.Errors {
 		if contains(e, "P7 violation") {
@@ -331,7 +331,7 @@ func TestValidateMeasureOutput_UnparseableDescription(t *testing.T) {
 		Description: `{{{not valid yaml`,
 	}}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if len(vr.Warnings) == 0 {
 		t.Error("expected warning for unparseable description")
 	}
@@ -389,7 +389,7 @@ acceptance_criteria:
 		},
 	}
 
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	if !vr.HasErrors() {
 		t.Error("expected errors from invalid second issue")
 	}
@@ -429,7 +429,7 @@ func TestValidateMeasureOutput_MaxReqs_ZeroIsUnlimited(t *testing.T) {
 		Title:       "Huge task",
 		Description: "deliverable_type: code\nrequirements:\n" + reqs,
 	}}
-	vr := validateMeasureOutput(issues, 0, nil, nil)
+	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	for _, e := range vr.Errors {
 		if contains(e, "max is") {
 			t.Errorf("maxReqs=0 should not produce max-requirements error, got: %s", e)
@@ -457,7 +457,7 @@ requirements:
     text: req
 `,
 	}}
-	vr := validateMeasureOutput(issues, 5, nil, nil)
+	vr := validateMeasureOutput(issues, 5, 0, nil, nil)
 	for _, e := range vr.Errors {
 		if contains(e, "max is") {
 			t.Errorf("5 requirements at maxReqs=5 should not error, got: %s", e)
@@ -487,7 +487,7 @@ requirements:
     text: req
 `,
 	}}
-	vr := validateMeasureOutput(issues, 5, nil, nil)
+	vr := validateMeasureOutput(issues, 5, 0, nil, nil)
 	found := false
 	for _, e := range vr.Errors {
 		if contains(e, "max is") {
@@ -526,7 +526,7 @@ requirements:
     text: req
 `,
 	}}
-	vr := validateMeasureOutput(issues, 5, nil, nil)
+	vr := validateMeasureOutput(issues, 5, 0, nil, nil)
 	found := false
 	for _, e := range vr.Errors {
 		if contains(e, "8") && contains(e, "5") && contains(e, "Task Title") {
@@ -656,7 +656,7 @@ design_decisions:
     text: d3
 `,
 	}}
-	vr := validateMeasureOutput(issues, 8, subItems, nil)
+	vr := validateMeasureOutput(issues, 8, 0, subItems, nil)
 	found := false
 	for _, e := range vr.Errors {
 		if contains(e, "expanded sub-item count") && contains(e, "max is") {
@@ -711,7 +711,7 @@ design_decisions:
 `,
 	}}
 	// expanded = 2+4 = 6, maxReqs = 8 → no expanded-count error.
-	vr := validateMeasureOutput(issues, 8, subItems, nil)
+	vr := validateMeasureOutput(issues, 8, 0, subItems, nil)
 	for _, e := range vr.Errors {
 		if contains(e, "expanded sub-item count") {
 			t.Errorf("should not error when expanded count under limit, got: %s", e)
@@ -760,7 +760,7 @@ design_decisions:
 `,
 	}}
 	// 5 listed, expanded = 2+4 = 6. maxReqs = 8. Under limit — no error.
-	vr := validateMeasureOutput(issues, 8, subItems, nil)
+	vr := validateMeasureOutput(issues, 8, 0, subItems, nil)
 	for _, e := range vr.Errors {
 		if contains(e, "expanded sub-item count") {
 			t.Errorf("should not error when expanded count under limit, got: %s", e)

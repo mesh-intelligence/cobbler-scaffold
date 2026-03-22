@@ -230,6 +230,14 @@ type CobblerConfig struct {
 	// is disabled and requirement count is governed only by P9 range rules.
 	MaxRequirementsPerTask int `yaml:"max_requirements_per_task"`
 
+	// MaxWeightPerTask is the maximum total weight a single proposed task
+	// may carry. When set, the measure agent batches requirements by total
+	// weight (from PRD weight annotations) instead of count. Requirements
+	// without explicit weights default to weight 1. When 0 (default), the
+	// limit is disabled and MaxRequirementsPerTask governs batching.
+	// When both are set, MaxWeightPerTask takes precedence (GH-1832).
+	MaxWeightPerTask int `yaml:"max_weight_per_task"`
+
 	// MaxTaskFailures is the maximum number of times a task may fail within
 	// a single stitch cycle before it is closed as permanently failed. This
 	// prevents a broken task from blocking all generation progress and

@@ -1042,7 +1042,7 @@ files:
 	t.Run("rejects proposal targeting completed group R1", func(t *testing.T) {
 		desc := makeDesc("prd003-config R1 — re-implement loading")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		found := false
 		for _, e := range result.Errors {
 			if strings.Contains(e, "R1") && strings.Contains(e, "complete") {
@@ -1057,7 +1057,7 @@ files:
 	t.Run("rejects proposal targeting completed sub-item R2.1", func(t *testing.T) {
 		desc := makeDesc("prd003-config R2.1 — re-validate fields")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		found := false
 		for _, e := range result.Errors {
 			if strings.Contains(e, "R2.1") && strings.Contains(e, "already complete") {
@@ -1072,7 +1072,7 @@ files:
 	t.Run("accepts proposal targeting ready group R4", func(t *testing.T) {
 		desc := makeDesc("prd003-config R4 — implement hot-reload")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		for _, e := range result.Errors {
 			if strings.Contains(e, "R4") && strings.Contains(e, "complete") {
 				t.Errorf("R4 is ready, should not be rejected: %s", e)
@@ -1083,7 +1083,7 @@ files:
 	t.Run("accepts proposal targeting ready sub-item R4.2", func(t *testing.T) {
 		desc := makeDesc("prd003-config R4.2 — re-validate on change")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		for _, e := range result.Errors {
 			if strings.Contains(e, "R4.2") && strings.Contains(e, "complete") {
 				t.Errorf("R4.2 is ready, should not be rejected: %s", e)
@@ -1277,7 +1277,7 @@ files:
   - path: pkg/sys/stat.go`
 
 	issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-	result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+	result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 	found := 0
 	for _, e := range result.Errors {
 		if strings.Contains(e, "already complete") {
@@ -1418,7 +1418,7 @@ files:
 	t.Run("rejects proposal targeting skipped R-item", func(t *testing.T) {
 		desc := makeDesc("prd011-magefiles R1.1 — implement mage target")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		found := false
 		for _, e := range result.Errors {
 			if strings.Contains(e, "R1.1") && strings.Contains(e, "already complete") {
@@ -1433,7 +1433,7 @@ files:
 	t.Run("accepts proposal targeting ready R-item alongside skip", func(t *testing.T) {
 		desc := makeDesc("prd011-magefiles R2.1 — implement something")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
-		result := ValidateMeasureOutput(issues, 0, nil, reqStates)
+		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		for _, e := range result.Errors {
 			if strings.Contains(e, "R2.1") && strings.Contains(e, "complete") {
 				t.Errorf("R2.1 is ready, should not be rejected: %s", e)
