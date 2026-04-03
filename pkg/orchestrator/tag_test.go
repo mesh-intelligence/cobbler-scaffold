@@ -124,7 +124,7 @@ func TestTag_WrongBranch(t *testing.T) {
 	// Override BaseBranch to something that won't match the current branch.
 	cfg.Cobbler.BaseBranch = "release"
 	o := New(cfg)
-	err := o.Tag()
+	err := o.Releaser.Tag()
 	if err == nil {
 		t.Fatal("Tag() expected error for wrong branch, got nil")
 	}
@@ -146,9 +146,9 @@ func TestTag_CreatesGitTag(t *testing.T) {
 	}
 	cfg.Cobbler.BaseBranch = current
 	cfg.Cobbler.DocTagPrefix = "v0."
-	o := &Orchestrator{cfg: cfg}
+	o := testOrchWithCfg(cfg)
 
-	err = o.Tag()
+	err = o.Releaser.Tag()
 	if err != nil {
 		t.Fatalf("Tag() unexpected error: %v", err)
 	}
@@ -175,8 +175,8 @@ func TestTag_VersionFileWriteError(t *testing.T) {
 	cfg.Cobbler.DocTagPrefix = "v0."
 	cfg.Project.VersionFile = "/dev/null/impossible/version.go" // will fail
 
-	o := &Orchestrator{cfg: cfg}
-	err = o.Tag()
+	o := testOrchWithCfg(cfg)
+	err = o.Releaser.Tag()
 
 	// Should fail with a version file error that mentions the tag was created.
 	if err == nil {

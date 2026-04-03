@@ -43,7 +43,7 @@ func (o *Orchestrator) saveHistoryLog(ts, phase string, rawOutput []byte) {
 
 // captureLOC returns the current Go LOC counts.
 func (o *Orchestrator) captureLOC() claude.LocSnapshot {
-	rec, err := o.CollectStats()
+	rec, err := o.Stats.CollectStats()
 	if err != nil {
 		o.logf("captureLOC: collectStats error: %v", err)
 		return claude.LocSnapshot{}

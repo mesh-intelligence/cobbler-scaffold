@@ -12,6 +12,6 @@ import (
 
 // ReleaseStats prints a table of roadmap releases with per-release PRD and
 // requirement counts.
-func (o *Orchestrator) ReleaseStats() error {
+func (s *Stats) ReleaseStats() error {
 	return st.PrintReleaseStats()
 }

@@ -14,9 +14,9 @@ type OutcomeRecord = st.OutcomeRecord
 
 // Outcomes scans all git branches for commits that carry outcome trailers
 // and prints a summary table to stdout.
-func (o *Orchestrator) Outcomes() error {
+func (s *Stats) Outcomes() error {
 	return st.PrintOutcomes(st.OutcomesDeps{
-		Log:    o.logf,
+		Log:    s.logf,
 		GitBin: binGit,
 	})
 }

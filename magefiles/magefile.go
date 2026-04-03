@@ -105,7 +105,7 @@ func Analyze() error { return newOrch().Analyze() }
 func Status() error { return newOrch().CodeStatus() }
 
 // Tag creates a documentation release tag (v0.YYYYMMDD.N) and builds the container image.
-func Tag() error { return newOrch().Tag() }
+func Tag() error { return newOrch().Releaser.Tag() }
 
 // --- Release targets ---
 
@@ -116,16 +116,16 @@ type Release mg.Namespace
 // Tag creates a documentation release tag (v0.YYYYMMDD.N) and builds the
 // container image. Alias of the top-level Tag target, exposed under the
 // Release namespace for discoverability.
-func (Release) Tag() error { return newOrch().Tag() }
+func (Release) Tag() error { return newOrch().Releaser.Tag() }
 
 // Update marks a release complete: sets all use-case statuses to "implemented"
 // in docs/road-map.yaml and removes the version from project.releases in
 // configuration.yaml. Errors if the release version is not found.
-func (Release) Update(version string) error { return newOrch().ReleaseUpdate(version) }
+func (Release) Update(version string) error { return newOrch().Releaser.ReleaseUpdate(version) }
 
 // Clear reverses Update: resets use-case statuses to "spec_complete" and
 // re-adds the version to project.releases. Errors if the version is not found.
-func (Release) Clear(version string) error { return newOrch().ReleaseClear(version) }
+func (Release) Clear(version string) error { return newOrch().Releaser.ReleaseClear(version) }
 
 // --- Scaffold targets ---
 
@@ -289,26 +289,26 @@ func (Generator) Reset() error { return newOrch().GeneratorReset() }
 // --- Stats targets ---
 
 // Loc prints Go lines of code and documentation word counts.
-func (Stats) Loc() error { return newOrch().Stats() }
+func (Stats) Loc() error { return newOrch().Stats.PrintStats() }
 
 // Tokens enumerates prompt-attached files and counts tokens via the Anthropic API.
 func (Stats) Tokens() error { return newOrch().TokenStats() }
 
 // Outcomes prints a summary table of task outcome trailers from git history.
-func (Stats) Outcomes() error { return newOrch().Outcomes() }
+func (Stats) Outcomes() error { return newOrch().Stats.Outcomes() }
 
 // Generator prints a live status report for the current generation run.
-func (Stats) Generator() error { return newOrch().GeneratorStats() }
+func (Stats) Generator() error { return newOrch().Stats.GeneratorStats() }
 
 // Releases prints a table of roadmap releases with PRD and requirement counts.
-func (Stats) Releases() error { return newOrch().ReleaseStats() }
+func (Stats) Releases() error { return newOrch().Stats.ReleaseStats() }
 
 // Run prints aggregate statistics for a completed generation run.
 // Pass a generation name (e.g. "generation-main") or omit to list available runs.
-func (Stats) Run(name string) error { return newOrch().RunStats(name) }
+func (Stats) Run(name string) error { return newOrch().Stats.RunStats(name) }
 
 // Compare prints a side-by-side comparison of two generation runs.
-func (Stats) Compare(name1, name2 string) error { return newOrch().CompareRunStats(name1, name2) }
+func (Stats) Compare(name1, name2 string) error { return newOrch().Stats.CompareRunStats(name1, name2) }
 
 // --- Prompt targets ---
 

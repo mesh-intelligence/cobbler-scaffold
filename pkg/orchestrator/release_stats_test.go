@@ -212,8 +212,8 @@ func TestReleaseStats_NoRoadmap(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(orig) })
 	os.Chdir(dir)
 
-	o := &Orchestrator{}
-	if err := o.ReleaseStats(); err != nil {
+	o := testOrch()
+	if err := o.Stats.ReleaseStats(); err != nil {
 		t.Errorf("ReleaseStats() returned error: %v", err)
 	}
 }
@@ -240,8 +240,8 @@ releases:
 	t.Cleanup(func() { os.Chdir(orig) })
 	os.Chdir(dir)
 
-	o := &Orchestrator{}
-	if err := o.ReleaseStats(); err != nil {
+	o := testOrch()
+	if err := o.Stats.ReleaseStats(); err != nil {
 		t.Errorf("ReleaseStats() returned error: %v", err)
 	}
 }

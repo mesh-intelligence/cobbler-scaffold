@@ -37,5 +37,7 @@ func testOrchWithCfg(cfg Config) *Orchestrator {
 	o.Scaffolder = NewScaffolder(o.git, o.logf)
 	o.Comparer = NewComparer(o.logf, o.git)
 	o.VsCode = NewVsCode(o.logf)
+	o.Stats = NewStats(cfg, o.logf, o.git, o.tracker)
+	o.Releaser = NewReleaser(cfg)
 	return o
 }

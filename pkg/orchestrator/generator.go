@@ -564,7 +564,7 @@ func (o *Orchestrator) checkAutoAdvanceRelease() (bool, string) {
 
 	// All UCs done and all requirements complete — auto-advance.
 	o.logf("checkAutoAdvanceRelease: release %s has all use cases done, advancing", target.Version)
-	if err := o.ReleaseUpdate(target.Version); err != nil {
+	if err := o.Releaser.ReleaseUpdate(target.Version); err != nil {
 		o.logf("checkAutoAdvanceRelease: ReleaseUpdate(%s) failed: %v", target.Version, err)
 		return false, ""
 	}
@@ -1194,7 +1194,7 @@ func (o *Orchestrator) resetImplementedReleases() error {
 	var revertedUCs []string
 	for _, rel := range rm.Releases {
 		if strings.EqualFold(rel.Status, "implemented") {
-			if err := o.ReleaseClear(rel.Version); err != nil {
+			if err := o.Releaser.ReleaseClear(rel.Version); err != nil {
 				o.logf("resetImplementedReleases: ReleaseClear(%s) failed: %v", rel.Version, err)
 				continue
 			}
