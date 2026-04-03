@@ -40,5 +40,10 @@ func testOrchWithCfg(cfg Config) *Orchestrator {
 	o.Stats = NewStats(cfg, o.logf, o.git, o.tracker)
 	o.Releaser = NewReleaser(cfg)
 	o.Analyzer = NewAnalyzer(cfg, o.logf)
+	o.ClaudeRunner = NewClaudeRunner(
+		cfg, o.git, o.tracker, nil, o.logf,
+		o.Builder.ExtractCredentials,
+		o.Stats.CollectStats,
+	)
 	return o
 }

@@ -1030,9 +1030,7 @@ func TestSaveHistory_WritesIssuesFile(t *testing.T) {
 	histDir := t.TempDir()
 	cobblerDir := t.TempDir()
 
-	o := New(Config{})
-	o.cfg.Cobbler.Dir = cobblerDir
-	o.cfg.Cobbler.HistoryDir = histDir
+	o := New(Config{Cobbler: CobblerConfig{Dir: cobblerDir, HistoryDir: histDir}})
 
 	// Create the issues file that saveHistory reads.
 	issuesFile := filepath.Join(cobblerDir, "measure-test.yaml")

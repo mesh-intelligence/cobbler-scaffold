@@ -256,7 +256,7 @@ func (Cobbler) Measure() error { return newOrch().Measure() }
 func (Cobbler) Stitch() error { return newOrch().Stitch() }
 
 // Reset removes the cobbler scratch directory.
-func (Cobbler) Reset() error { return newOrch().CobblerReset() }
+func (Cobbler) Reset() error { return newOrch().ClaudeRunner.CobblerReset() }
 
 // --- Generator targets ---
 

@@ -210,11 +210,10 @@ func TestParseNameStatus_ShortLine(t *testing.T) {
 
 func TestSaveHistoryReport_WritesFile(t *testing.T) {
 	dir := t.TempDir()
-	o := &Orchestrator{
-		cfg: Config{
+	o := testOrchWithCfg(Config{
 			Cobbler: CobblerConfig{HistoryDir: dir},
 		},
-	}
+	)
 
 	report := claude.StitchReport{
 		TaskID:    "test-001",
@@ -230,7 +229,7 @@ func TestSaveHistoryReport_WritesFile(t *testing.T) {
 	}
 
 	ts := "2026-02-24-10-00-00"
-	o.saveHistoryReport(ts, report)
+	o.ClaudeRunner.saveHistoryReport(ts, report)
 
 	path := filepath.Join(dir, ts+"-stitch-report.yaml")
 	data, err := os.ReadFile(path)
@@ -458,14 +457,13 @@ func TestToolSummary_PriorityOrder(t *testing.T) {
 }
 
 func TestSaveHistoryReport_NoOpWhenHistoryDirEmpty(t *testing.T) {
-	o := &Orchestrator{
-		cfg: Config{
+	o := testOrchWithCfg(Config{
 			Cobbler: CobblerConfig{HistoryDir: ""},
 		},
-	}
+	)
 
 	// Should not panic or create any files.
-	o.saveHistoryReport("2026-02-24-10-00-00", claude.StitchReport{
+	o.ClaudeRunner.saveHistoryReport("2026-02-24-10-00-00", claude.StitchReport{
 		TaskID: "test-noop",
 		Status: "success",
 	})
@@ -475,31 +473,31 @@ func TestSaveHistoryReport_NoOpWhenHistoryDirEmpty(t *testing.T) {
 
 func TestHistoryDir_Empty(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: ""}}}
-	if got := o.historyDir(); got != "" {
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: ""}})
+	if got := o.ClaudeRunner.historyDir(); got != "" {
 		t.Errorf("historyDir() = %q, want empty", got)
 	}
 }
 
 func TestHistoryDir_Absolute(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{
 		Dir:        ".cobbler/",
 		HistoryDir: "/tmp/history",
-	}}}
-	if got := o.historyDir(); got != "/tmp/history" {
+	}})
+	if got := o.ClaudeRunner.historyDir(); got != "/tmp/history" {
 		t.Errorf("historyDir() = %q, want %q", got, "/tmp/history")
 	}
 }
 
 func TestHistoryDir_Relative(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{
 		Dir:        ".cobbler/",
 		HistoryDir: "history",
-	}}}
+	}})
 	want := filepath.Join(".cobbler/", "history")
-	if got := o.historyDir(); got != want {
+	if got := o.ClaudeRunner.historyDir(); got != want {
 		t.Errorf("historyDir() = %q, want %q", got, want)
 	}
 }
@@ -598,17 +596,17 @@ func TestWorktreeBasePath_FallbackOutsideGit(t *testing.T) {
 
 func TestSaveHistoryStats_WritesFile(t *testing.T) {
 	dir := t.TempDir()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{
 		Dir:        dir + "/",
 		HistoryDir: "hist",
-	}}}
+	}})
 
 	stats := claude.HistoryStats{
 		Caller: "test",
 		TaskID: "task-001",
 		Status: "success",
 	}
-	o.saveHistoryStats("2026-02-26-10-00-00", "stitch", stats)
+	o.ClaudeRunner.saveHistoryStats("2026-02-26-10-00-00", "stitch", stats)
 
 	path := filepath.Join(dir, "hist", "2026-02-26-10-00-00-stitch-stats.yaml")
 	data, err := os.ReadFile(path)
@@ -622,21 +620,21 @@ func TestSaveHistoryStats_WritesFile(t *testing.T) {
 
 func TestSaveHistoryStats_NoOpWhenEmpty(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: ""}}}
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: ""}})
 	// Should not panic.
-	o.saveHistoryStats("ts", "phase", claude.HistoryStats{})
+	o.ClaudeRunner.saveHistoryStats("ts", "phase", claude.HistoryStats{})
 }
 
 // --- saveHistoryPrompt ---
 
 func TestSaveHistoryPrompt_WritesFile(t *testing.T) {
 	dir := t.TempDir()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{
 		Dir:        dir + "/",
 		HistoryDir: "hist",
-	}}}
+	}})
 
-	o.saveHistoryPrompt("2026-02-26-10-00-00", "measure", "prompt content here")
+	o.ClaudeRunner.saveHistoryPrompt("2026-02-26-10-00-00", "measure", "prompt content here")
 
 	path := filepath.Join(dir, "hist", "2026-02-26-10-00-00-measure-prompt.yaml")
 	data, err := os.ReadFile(path)
@@ -650,21 +648,21 @@ func TestSaveHistoryPrompt_WritesFile(t *testing.T) {
 
 func TestSaveHistoryPrompt_NoOpWhenEmpty(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: ""}}}
-	o.saveHistoryPrompt("ts", "phase", "prompt")
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: ""}})
+	o.ClaudeRunner.saveHistoryPrompt("ts", "phase", "prompt")
 }
 
 // --- saveHistoryLog ---
 
 func TestSaveHistoryLog_WritesFile(t *testing.T) {
 	dir := t.TempDir()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{
 		Dir:        dir + "/",
 		HistoryDir: "hist",
-	}}}
+	}})
 
 	logData := []byte(`{"type":"assistant","message":"hello"}`)
-	o.saveHistoryLog("2026-02-26-10-00-00", "stitch", logData)
+	o.ClaudeRunner.saveHistoryLog("2026-02-26-10-00-00", "stitch", logData)
 
 	path := filepath.Join(dir, "hist", "2026-02-26-10-00-00-stitch-log.log")
 	data, err := os.ReadFile(path)
@@ -678,8 +676,8 @@ func TestSaveHistoryLog_WritesFile(t *testing.T) {
 
 func TestSaveHistoryLog_NoOpWhenEmpty(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: ""}}}
-	o.saveHistoryLog("ts", "phase", []byte("data"))
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: ""}})
+	o.ClaudeRunner.saveHistoryLog("ts", "phase", []byte("data"))
 }
 
 func TestSaveHistoryReport_MkdirError(t *testing.T) {
@@ -687,33 +685,33 @@ func TestSaveHistoryReport_MkdirError(t *testing.T) {
 	// Point history dir to a path under a file (not a directory) so MkdirAll fails.
 	f := filepath.Join(t.TempDir(), "blocker")
 	os.WriteFile(f, []byte("x"), 0o644)
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}}}
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}})
 	// Should not panic; logs the mkdir error and returns.
-	o.saveHistoryReport("ts", claude.StitchReport{})
+	o.ClaudeRunner.saveHistoryReport("ts", claude.StitchReport{})
 }
 
 func TestSaveHistoryStats_MkdirError(t *testing.T) {
 	t.Parallel()
 	f := filepath.Join(t.TempDir(), "blocker")
 	os.WriteFile(f, []byte("x"), 0o644)
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}}}
-	o.saveHistoryStats("ts", "phase", claude.HistoryStats{})
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}})
+	o.ClaudeRunner.saveHistoryStats("ts", "phase", claude.HistoryStats{})
 }
 
 func TestSaveHistoryPrompt_MkdirError(t *testing.T) {
 	t.Parallel()
 	f := filepath.Join(t.TempDir(), "blocker")
 	os.WriteFile(f, []byte("x"), 0o644)
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}}}
-	o.saveHistoryPrompt("ts", "phase", "prompt")
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}})
+	o.ClaudeRunner.saveHistoryPrompt("ts", "phase", "prompt")
 }
 
 func TestSaveHistoryLog_MkdirError(t *testing.T) {
 	t.Parallel()
 	f := filepath.Join(t.TempDir(), "blocker")
 	os.WriteFile(f, []byte("x"), 0o644)
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}}}
-	o.saveHistoryLog("ts", "phase", []byte("data"))
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{HistoryDir: filepath.Join(f, "sub")}})
+	o.ClaudeRunner.saveHistoryLog("ts", "phase", []byte("data"))
 }
 
 // --- buildDirectCmd ---
@@ -721,7 +719,7 @@ func TestSaveHistoryLog_MkdirError(t *testing.T) {
 func TestBuildDirectCmd_UsesClaudeBinary(t *testing.T) {
 	t.Parallel()
 	o := New(Config{})
-	cmd := o.buildDirectCmd(context.TODO(), "/work/mydir")
+	cmd := o.ClaudeRunner.buildDirectCmd(context.TODO(), "/work/mydir")
 
 	if cmd.Path == "" {
 		t.Fatal("buildDirectCmd returned cmd with empty Path")
@@ -735,7 +733,7 @@ func TestBuildDirectCmd_UsesClaudeBinary(t *testing.T) {
 func TestBuildDirectCmd_SetsWorkDir(t *testing.T) {
 	t.Parallel()
 	o := New(Config{})
-	cmd := o.buildDirectCmd(context.TODO(), "/work/mydir")
+	cmd := o.ClaudeRunner.buildDirectCmd(context.TODO(), "/work/mydir")
 
 	if cmd.Dir != "/work/mydir" {
 		t.Errorf("buildDirectCmd cmd.Dir = %q; want /work/mydir", cmd.Dir)
@@ -745,7 +743,7 @@ func TestBuildDirectCmd_SetsWorkDir(t *testing.T) {
 func TestBuildDirectCmd_ExtraArgsAppended(t *testing.T) {
 	t.Parallel()
 	o := New(Config{})
-	cmd := o.buildDirectCmd(context.TODO(), "/work", "--max-turns", "5")
+	cmd := o.ClaudeRunner.buildDirectCmd(context.TODO(), "/work", "--max-turns", "5")
 
 	joined := strings.Join(cmd.Args, " ")
 	if !strings.Contains(joined, "--max-turns") {
@@ -759,7 +757,7 @@ func TestBuildDirectCmd_ExtraArgsAppended(t *testing.T) {
 func TestBuildDirectCmd_NoVolumeMount(t *testing.T) {
 	t.Parallel()
 	o := New(Config{})
-	cmd := o.buildDirectCmd(context.TODO(), "/work/mydir")
+	cmd := o.ClaudeRunner.buildDirectCmd(context.TODO(), "/work/mydir")
 
 	joined := strings.Join(cmd.Args, " ")
 	// Check for volume mount pattern ("-v /path:/path"),
@@ -772,7 +770,7 @@ func TestBuildDirectCmd_NoVolumeMount(t *testing.T) {
 func TestBuildDirectCmd_StripsCLAUDECODE(t *testing.T) {
 	t.Setenv("CLAUDECODE", "1")
 	o := New(Config{})
-	cmd := o.buildDirectCmd(context.TODO(), "/work")
+	cmd := o.ClaudeRunner.buildDirectCmd(context.TODO(), "/work")
 
 	for _, e := range cmd.Env {
 		if strings.HasPrefix(e, "CLAUDECODE=") {
@@ -874,15 +872,14 @@ func TestSaveHistoryReport_EmptyHistoryDir_NoOp(t *testing.T) {
 	// panicking. No files should be created.
 	o := New(Config{})
 	o.cfg.Cobbler.HistoryDir = "" // override default
-	o.saveHistoryReport("20260101T120000", claude.StitchReport{TaskID: "t1", Status: "success"})
+	o.ClaudeRunner.saveHistoryReport("20260101T120000", claude.StitchReport{TaskID: "t1", Status: "success"})
 	// success: did not panic
 }
 
 func TestSaveHistoryReport_WritesToDisk(t *testing.T) {
 	tmp := t.TempDir()
-	o := New(Config{})
-	o.cfg.Cobbler.HistoryDir = tmp
-	o.saveHistoryReport("20260101T120000", claude.StitchReport{TaskID: "t1", Status: "success"})
+	o := New(Config{Cobbler: CobblerConfig{HistoryDir: tmp}})
+	o.ClaudeRunner.saveHistoryReport("20260101T120000", claude.StitchReport{TaskID: "t1", Status: "success"})
 
 	entries, err := os.ReadDir(tmp)
 	if err != nil {
@@ -899,21 +896,21 @@ func TestSaveHistoryReport_WritesToDisk(t *testing.T) {
 func TestSaveHistoryStats_EmptyHistoryDir_NoOp(t *testing.T) {
 	o := New(Config{})
 	o.cfg.Cobbler.HistoryDir = ""
-	o.saveHistoryStats("20260101T120000", "stitch", claude.HistoryStats{})
+	o.ClaudeRunner.saveHistoryStats("20260101T120000", "stitch", claude.HistoryStats{})
 	// success: did not panic
 }
 
 func TestSaveHistoryPrompt_EmptyHistoryDir_NoOp(t *testing.T) {
 	o := New(Config{})
 	o.cfg.Cobbler.HistoryDir = ""
-	o.saveHistoryPrompt("20260101T120000", "stitch", "prompt text")
+	o.ClaudeRunner.saveHistoryPrompt("20260101T120000", "stitch", "prompt text")
 	// success: did not panic
 }
 
 func TestSaveHistoryLog_EmptyHistoryDir_NoOp(t *testing.T) {
 	o := New(Config{})
 	o.cfg.Cobbler.HistoryDir = ""
-	o.saveHistoryLog("20260101T120000", "stitch", []byte("log output"))
+	o.ClaudeRunner.saveHistoryLog("20260101T120000", "stitch", []byte("log output"))
 	// success: did not panic
 }
 
@@ -935,7 +932,7 @@ func TestCaptureLOC_CountsProductionAndTestFiles(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	o := New(Config{})
-	snap := o.captureLOC()
+	snap := o.ClaudeRunner.captureLOC()
 	if snap.Production != 2 {
 		t.Errorf("Production = %d, want 2", snap.Production)
 	}
@@ -957,7 +954,7 @@ func TestCaptureLOC_EmptyDir_ReturnsZero(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	o := New(Config{})
-	snap := o.captureLOC()
+	snap := o.ClaudeRunner.captureLOC()
 	if snap.Production != 0 || snap.Test != 0 {
 		t.Errorf("empty dir: got {%d %d}, want {0 0}", snap.Production, snap.Test)
 	}
@@ -978,7 +975,7 @@ func TestCaptureLOCAt_CountsInTargetDir(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	o := New(Config{})
-	snap := o.captureLOCAt(dir)
+	snap := o.ClaudeRunner.captureLOCAt(dir)
 
 	if snap.Production != 3 {
 		t.Errorf("Production = %d, want 3", snap.Production)
@@ -1012,7 +1009,7 @@ func TestCaptureLOCAt_EmptyDirString_FallsBackToCwd(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	o := New(Config{})
-	snap := o.captureLOCAt("") // empty dir → fallback to captureLOC (cwd)
+	snap := o.ClaudeRunner.captureLOCAt("") // empty dir → fallback to captureLOC (cwd)
 	if snap.Production != 2 {
 		t.Errorf("Production = %d, want 2", snap.Production)
 	}
@@ -1402,27 +1399,27 @@ func TestProgressWriter_TurnCount_MultipleAssistantEvents(t *testing.T) {
 
 func TestLogConfig(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{
+	o := testOrchWithCfg(Config{
 		Cobbler: CobblerConfig{
 			MaxStitchIssues:         10,
 			MaxStitchIssuesPerCycle: 3,
 			MaxMeasureIssues:        5,
 			UserPrompt:              "test prompt",
 		},
-	}}
+	})
 	// logConfig should not panic. It writes to logf (stderr) which we don't capture.
-	o.logConfig("test-target")
+	o.ClaudeRunner.logConfig("test-target")
 }
 
 func TestLogConfig_NoUserPrompt(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{
+	o := testOrchWithCfg(Config{
 		Cobbler: CobblerConfig{
 			MaxStitchIssues: 5,
 		},
-	}}
+	})
 	// When UserPrompt is empty, the second logf call is skipped.
-	o.logConfig("stitch")
+	o.ClaudeRunner.logConfig("stitch")
 }
 
 // --- CobblerReset ---
@@ -1433,8 +1430,8 @@ func TestCobblerReset_RemovesDir(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, "sub"), 0o755)
 	os.WriteFile(filepath.Join(dir, "sub", "file.txt"), []byte("data"), 0o644)
 
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{Dir: dir}}}
-	if err := o.CobblerReset(); err != nil {
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{Dir: dir}})
+	if err := o.ClaudeRunner.CobblerReset(); err != nil {
 		t.Fatalf("CobblerReset: %v", err)
 	}
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
@@ -1444,8 +1441,8 @@ func TestCobblerReset_RemovesDir(t *testing.T) {
 
 func TestCobblerReset_NonExistentDir(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{Dir: filepath.Join(t.TempDir(), "nope")}}}
-	if err := o.CobblerReset(); err != nil {
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{Dir: filepath.Join(t.TempDir(), "nope")}})
+	if err := o.ClaudeRunner.CobblerReset(); err != nil {
 		t.Fatalf("CobblerReset on nonexistent dir: %v", err)
 	}
 }
@@ -1459,8 +1456,8 @@ func TestHistoryClean_RemovesHistoryDir(t *testing.T) {
 	os.MkdirAll(histDir, 0o755)
 	os.WriteFile(filepath.Join(histDir, "report.yaml"), []byte("data"), 0o644)
 
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir, HistoryDir: "history"}}}
-	if err := o.HistoryClean(); err != nil {
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{Dir: cobblerDir, HistoryDir: "history"}})
+	if err := o.ClaudeRunner.HistoryClean(); err != nil {
 		t.Fatalf("HistoryClean: %v", err)
 	}
 	if _, err := os.Stat(histDir); !os.IsNotExist(err) {
@@ -1475,16 +1472,16 @@ func TestHistoryClean_RemovesHistoryDir(t *testing.T) {
 func TestHistoryClean_NonExistentDir(t *testing.T) {
 	t.Parallel()
 	cobblerDir := t.TempDir()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir, HistoryDir: "history"}}}
-	if err := o.HistoryClean(); err != nil {
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{Dir: cobblerDir, HistoryDir: "history"}})
+	if err := o.ClaudeRunner.HistoryClean(); err != nil {
 		t.Fatalf("HistoryClean on nonexistent dir: %v", err)
 	}
 }
 
 func TestHistoryClean_NoopWhenHistoryDirEmpty(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{cfg: Config{Cobbler: CobblerConfig{Dir: t.TempDir(), HistoryDir: ""}}}
-	if err := o.HistoryClean(); err != nil {
+	o := testOrchWithCfg(Config{Cobbler: CobblerConfig{Dir: t.TempDir(), HistoryDir: ""}})
+	if err := o.ClaudeRunner.HistoryClean(); err != nil {
 		t.Fatalf("HistoryClean with no HistoryDir: %v", err)
 	}
 }
@@ -1596,6 +1593,7 @@ func resultMsg(input, output int, costUSD float64) *claudetypes.ResultMessage {
 func newSDKOrchestrator(fn claude.SdkQueryFunc) *Orchestrator {
 	o := New(Config{})
 	o.sdkQueryFn = fn
+	o.ClaudeRunner.sdkQueryFn = fn
 	return o
 }
 
@@ -1606,7 +1604,7 @@ func TestRunClaudeSDK_Success(t *testing.T) {
 		assistantMsg(wantText),
 		resultMsg(10, 20, 0.0042),
 	))
-	res, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+	res, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1630,7 +1628,7 @@ func TestRunClaudeSDK_QueryError(t *testing.T) {
 	o := newSDKOrchestrator(func(_ context.Context, _ string, _ *claudetypes.ClaudeAgentOptions) (<-chan claudetypes.Message, error) {
 		return nil, wantErr
 	})
-	_, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+	_, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -1643,7 +1641,7 @@ func TestRunClaudeSDK_NoResultMessage(t *testing.T) {
 	t.Parallel()
 	// Channel closes with only an AssistantMessage — no ResultMessage.
 	o := newSDKOrchestrator(fakeSdkQuery(assistantMsg("partial")))
-	_, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+	_, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
 	if err == nil {
 		t.Fatal("expected error for missing ResultMessage, got nil")
 	}
@@ -1657,7 +1655,7 @@ func TestRunClaudeSDK_IsError(t *testing.T) {
 	rm := resultMsg(0, 0, 0)
 	rm.IsError = true
 	o := newSDKOrchestrator(fakeSdkQuery(rm))
-	_, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+	_, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
 	if err == nil {
 		t.Fatal("expected error for IsError=true result, got nil")
 	}
@@ -1679,7 +1677,7 @@ func TestRunClaudeSDK_ContextCancellation(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := o.runClaudeSDK(ctx, "prompt", t.TempDir(), true)
+		_, err := o.ClaudeRunner.runClaudeSDK(ctx, "prompt", t.TempDir(), true)
 		done <- err
 	}()
 
@@ -1707,7 +1705,7 @@ func TestRunClaudeSDK_MaxTurnsArgParsed(t *testing.T) {
 		return ch, nil
 	}
 	o := newSDKOrchestrator(capture)
-	_, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true, "--max-turns", "7")
+	_, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true, "--max-turns", "7")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1727,7 +1725,7 @@ func TestRunClaudeSDK_SDKMetadataCaptured(t *testing.T) {
 		Usage:         map[string]interface{}{"input_tokens": float64(7), "output_tokens": float64(3)},
 	}
 	o := newSDKOrchestrator(fakeSdkQuery(rm))
-	res, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+	res, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1747,7 +1745,7 @@ func TestRunClaudeSDK_SDKMetadataZeroWhenAbsent(t *testing.T) {
 	// A ResultMessage with no NumTurns/DurationAPIMs/SessionID should yield
 	// zero values so callers can use omitempty safely.
 	o := newSDKOrchestrator(fakeSdkQuery(resultMsg(1, 1, 0.001)))
-	res, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+	res, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1788,7 +1786,7 @@ func TestRunClaudeSDK_ConcurrentCalls_Race(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			o := newSDKOrchestrator(fn)
-			_, errs[i] = o.runClaudeSDK(context.Background(), fmt.Sprintf("prompt-%d", i), t.TempDir(), true)
+			_, errs[i] = o.ClaudeRunner.runClaudeSDK(context.Background(), fmt.Sprintf("prompt-%d", i), t.TempDir(), true)
 		}(i)
 	}
 	wg.Wait()
@@ -1857,7 +1855,7 @@ func TestRunClaudeSDK_NonContentMessagesIgnored(t *testing.T) {
 				close(ch)
 				return ch, nil
 			})
-			_, err := o.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
+			_, err := o.ClaudeRunner.runClaudeSDK(context.Background(), "prompt", t.TempDir(), true)
 			if err != nil {
 				t.Errorf("runClaudeSDK returned unexpected error for %s: %v", tc.name, err)
 			}

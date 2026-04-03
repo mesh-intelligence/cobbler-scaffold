@@ -64,7 +64,7 @@ func (o *Orchestrator) RunMeasure() error {
 	measureStart := time.Now()
 
 	// Start orchestrator log capture.
-	if hdir := o.historyDir(); hdir != "" {
+	if hdir := o.ClaudeRunner.historyDir(); hdir != "" {
 		logPath := filepath.Join(hdir,
 			measureStart.Format("2006-01-02-15-04-05")+"-measure-orchestrator.log")
 		if err := o.openLogSink(logPath); err != nil {
@@ -75,9 +75,9 @@ func (o *Orchestrator) RunMeasure() error {
 	}
 
 	o.logf("starting (iterative, %d issue(s) requested)", o.cfg.Cobbler.MaxMeasureIssues)
-	o.logConfig("measure")
+	o.ClaudeRunner.logConfig("measure")
 
-	if err := o.checkClaude(); err != nil {
+	if err := o.ClaudeRunner.checkClaude(); err != nil {
 		return err
 	}
 
@@ -154,7 +154,7 @@ func (o *Orchestrator) RunMeasure() error {
 		len(existingIssues), o.cfg.Cobbler.MaxMeasureIssues, commitSHA)
 
 	// Snapshot LOC before Claude.
-	locBefore := o.captureLOC()
+	locBefore := o.ClaudeRunner.captureLOC()
 	o.logf("locBefore prod=%d test=%d", locBefore.Production, locBefore.Test)
 
 	// Measure loop: call Claude with limit=tasksPerCall, up to maxIssues total.
@@ -229,10 +229,10 @@ func (o *Orchestrator) RunMeasure() error {
 
 			// Save prompt BEFORE calling Claude so it's on disk even if Claude times out.
 			historyTS := time.Now().Format("2006-01-02-15-04-05")
-			o.saveHistoryPrompt(historyTS, "measure", prompt)
+			o.ClaudeRunner.saveHistoryPrompt(historyTS, "measure", prompt)
 
 			iterStart := time.Now()
-			tokens, err := o.runMeasureClaude(prompt, "", o.cfg.Silence(), "--max-turns", "1")
+			tokens, err := o.ClaudeRunner.runMeasureClaude(prompt, "", o.cfg.Silence(), "--max-turns", "1")
 			iterDuration := time.Since(iterStart)
 
 			totalTokens.InputTokens += tokens.InputTokens
@@ -245,8 +245,8 @@ func (o *Orchestrator) RunMeasure() error {
 				o.logf("Claude failed on iteration %d after %s: %v",
 					i+1, iterDuration.Round(time.Second), err)
 				// Save log and stats even on failure.
-				o.saveHistoryLog(historyTS, "measure", tokens.RawOutput)
-				o.saveHistoryStats(historyTS, "measure", claude.HistoryStats{
+				o.ClaudeRunner.saveHistoryLog(historyTS, "measure", tokens.RawOutput)
+				o.ClaudeRunner.saveHistoryStats(historyTS, "measure", claude.HistoryStats{
 					Caller:        "measure",
 					TaskID:        taskID,
 					Status:        "failed",
@@ -260,7 +260,7 @@ func (o *Orchestrator) RunMeasure() error {
 					DurationAPIMs: tokens.DurationAPIMs,
 					SessionID:     tokens.SessionID,
 					LOCBefore:     locBefore,
-					LOCAfter:      o.captureLOC(),
+					LOCAfter:      o.ClaudeRunner.captureLOC(),
 				})
 				return fmt.Errorf("running Claude (iteration %d/%d): %w", i+1, totalCalls, err)
 			}
@@ -268,7 +268,7 @@ func (o *Orchestrator) RunMeasure() error {
 
 			// Save remaining history artifacts (log, issues, stats) after Claude.
 			o.saveHistory(historyTS, tokens.RawOutput, outputFile)
-			o.saveHistoryStats(historyTS, "measure", claude.HistoryStats{
+			o.ClaudeRunner.saveHistoryStats(historyTS, "measure", claude.HistoryStats{
 				Caller:        "measure",
 				TaskID:        taskID,
 				Status:        "success",
@@ -281,7 +281,7 @@ func (o *Orchestrator) RunMeasure() error {
 				DurationAPIMs: tokens.DurationAPIMs,
 				SessionID:     tokens.SessionID,
 				LOCBefore:     locBefore,
-				LOCAfter:      o.captureLOC(),
+				LOCAfter:      o.ClaudeRunner.captureLOC(),
 			})
 
 			// Extract YAML from Claude's text output and write to file.
@@ -354,10 +354,10 @@ func (o *Orchestrator) RunMeasure() error {
 		prompt, promptErr := o.buildMeasurePrompt(o.cfg.Cobbler.UserPrompt, existingIssues, retryLimit)
 		if promptErr == nil {
 			historyTS := time.Now().Format("2006-01-02-15-04-05")
-			o.saveHistoryPrompt(historyTS, "measure", prompt)
+			o.ClaudeRunner.saveHistoryPrompt(historyTS, "measure", prompt)
 
 			retryStart := time.Now()
-			tokens, err := o.runMeasureClaude(prompt, "", o.cfg.Silence(), "--max-turns", "1")
+			tokens, err := o.ClaudeRunner.runMeasureClaude(prompt, "", o.cfg.Silence(), "--max-turns", "1")
 			retryDuration := time.Since(retryStart)
 
 			totalTokens.InputTokens += tokens.InputTokens
@@ -366,7 +366,7 @@ func (o *Orchestrator) RunMeasure() error {
 
 			if err == nil {
 				o.saveHistory(historyTS, tokens.RawOutput, outputFile)
-				o.saveHistoryStats(historyTS, "measure", claude.HistoryStats{
+				o.ClaudeRunner.saveHistoryStats(historyTS, "measure", claude.HistoryStats{
 					Caller:    "measure",
 					TaskID:    fmt.Sprintf("%d", placeholderNum),
 					Status:    "success",
@@ -377,7 +377,7 @@ func (o *Orchestrator) RunMeasure() error {
 					CostUSD:   tokens.CostUSD,
 					NumTurns:  tokens.NumTurns,
 					LOCBefore: locBefore,
-					LOCAfter:  o.captureLOC(),
+					LOCAfter:  o.ClaudeRunner.captureLOC(),
 				})
 
 				textOutput := claude.ExtractTextFromStreamJSON(tokens.RawOutput)
@@ -708,9 +708,9 @@ func fileOverlap(proposedFiles []string, existingFiles map[string]int) (int, boo
 // saveHistory persists measure artifacts (log, issues YAML) to the configured
 // history directory.
 func (o *Orchestrator) saveHistory(ts string, rawOutput []byte, issuesFile string) {
-	o.saveHistoryLog(ts, "measure", rawOutput)
+	o.ClaudeRunner.saveHistoryLog(ts, "measure", rawOutput)
 
-	dir := o.historyDir()
+	dir := o.ClaudeRunner.historyDir()
 	if dir == "" {
 		return
 	}

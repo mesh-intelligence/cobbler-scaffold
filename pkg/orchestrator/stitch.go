@@ -75,7 +75,7 @@ func (o *Orchestrator) RunStitchN(limit int) (int, error) {
 	stitchStart := time.Now()
 
 	// Start orchestrator log capture.
-	if hdir := o.historyDir(); hdir != "" {
+	if hdir := o.ClaudeRunner.historyDir(); hdir != "" {
 		logPath := filepath.Join(hdir,
 			stitchStart.Format("2006-01-02-15-04-05")+"-stitch-orchestrator.log")
 		if err := o.openLogSink(logPath); err != nil {
@@ -86,9 +86,9 @@ func (o *Orchestrator) RunStitchN(limit int) (int, error) {
 	}
 
 	o.logf("starting (limit=%d)", limit)
-	o.logConfig("stitch")
+	o.ClaudeRunner.logConfig("stitch")
 
-	if err := o.checkClaude(); err != nil {
+	if err := o.ClaudeRunner.checkClaude(); err != nil {
 		return 0, err
 	}
 
@@ -276,7 +276,7 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 	o.logf("doOneTask: worktree created in %s", time.Since(wtStart).Round(time.Second))
 
 	// Snapshot LOC before Claude.
-	locBefore := o.captureLOC()
+	locBefore := o.ClaudeRunner.captureLOC()
 	o.logf("doOneTask: locBefore prod=%d test=%d", locBefore.Production, locBefore.Test)
 
 	// Build and run prompt.
@@ -293,21 +293,21 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 
 	// Save prompt BEFORE calling Claude.
 	historyTS := time.Now().Format("2006-01-02-15-04-05")
-	o.saveHistoryPrompt(historyTS, "stitch", prompt)
+	o.ClaudeRunner.saveHistoryPrompt(historyTS, "stitch", prompt)
 
 	o.logf("doOneTask: invoking Claude for task %s", task.ID)
 	claudeStart := time.Now()
-	tokens, claudeErr := o.runClaude(prompt, task.WorktreeDir, o.cfg.Silence())
+	tokens, claudeErr := o.ClaudeRunner.runClaude(prompt, task.WorktreeDir, o.cfg.Silence())
 
 	// Save Claude log immediately.
-	o.saveHistoryLog(historyTS, "stitch", tokens.RawOutput)
+	o.ClaudeRunner.saveHistoryLog(historyTS, "stitch", tokens.RawOutput)
 
 	if claudeErr != nil {
 		durS := int(time.Since(taskStart).Seconds())
 		rlWaitS := tokens.RateLimitWaitS
 		o.logf("doOneTask: Claude failed for %s after %s (rate_limit_wait=%ds): %v",
 			task.ID, time.Since(claudeStart).Round(time.Second), rlWaitS, claudeErr)
-		o.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
+		o.ClaudeRunner.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
 			Caller:         "stitch",
 			TaskID:         task.ID,
 			TaskTitle:      task.Title,
@@ -332,7 +332,7 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 	// Commit Claude's changes in the worktree.
 	if err := commitWorktreeChanges(task); err != nil {
 		o.logf("doOneTask: worktree commit failed for %s: %v", task.ID, err)
-		o.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
+		o.ClaudeRunner.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
 			Caller:    "stitch",
 			TaskID:    task.ID,
 			TaskTitle: task.Title,
@@ -350,7 +350,7 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 	}
 
 	// Capture locAfter from the worktree before merging.
-	locAfter := o.captureLOCAt(task.WorktreeDir)
+	locAfter := o.ClaudeRunner.captureLOCAt(task.WorktreeDir)
 	o.logf("doOneTask: locAfter prod=%d test=%d", locAfter.Production, locAfter.Test)
 
 	// Append outcome trailers to the worktree commit before merging.
@@ -384,7 +384,7 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 	mergeStart := time.Now()
 	if err := o.mergeBranch(task.BranchName, baseBranch, repoRoot); err != nil {
 		o.logf("doOneTask: merge failed for %s after %s: %v", task.ID, time.Since(mergeStart).Round(time.Second), err)
-		o.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
+		o.ClaudeRunner.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
 			Caller:    "stitch",
 			TaskID:    task.ID,
 			TaskTitle: task.Title,
@@ -426,7 +426,7 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 
 	// Save stitch stats.
 	taskDuration := time.Since(taskStart)
-	o.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
+	o.ClaudeRunner.saveHistoryStats(historyTS, "stitch", claude.HistoryStats{
 		Caller:         "stitch",
 		TaskID:         task.ID,
 		TaskTitle:      task.Title,
@@ -446,7 +446,7 @@ func (o *Orchestrator) doOneTask(task stitchTask, baseBranch, repoRoot string) e
 	})
 
 	// Save stitch report with per-file diffstat.
-	o.saveHistoryReport(historyTS, claude.StitchReport{
+	o.ClaudeRunner.saveHistoryReport(historyTS, claude.StitchReport{
 		TaskID:    task.ID,
 		TaskTitle: task.Title,
 		Status:    "success",

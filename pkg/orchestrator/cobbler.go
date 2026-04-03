@@ -9,174 +9,201 @@ import (
 
 	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/claude"
 	gh "github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/github"
+	"github.com/mesh-intelligence/cobbler-scaffold/pkg/orchestrator/internal/gitops"
 )
 
-// ---------------------------------------------------------------------------
-// Orchestrator methods — each wires Config fields into dependency structs
-// before delegating to internal/claude.
-// ---------------------------------------------------------------------------
+// ClaudeRunner encapsulates Claude execution infrastructure: running Claude,
+// capturing LOC, saving history, and checking credentials. Both Measure and
+// Stitch depend on this struct.
+type ClaudeRunner struct {
+	cfg                Config
+	git                gitops.GitOps
+	tracker            gh.WorkTracker
+	sdkQueryFn         claude.SdkQueryFunc
+	logf               func(string, ...any)
+	extractCredentials func() error
+	collectStats       func() (StatsRecord, error)
+}
+
+// NewClaudeRunner creates a ClaudeRunner with explicit dependencies.
+func NewClaudeRunner(
+	cfg Config,
+	git gitops.GitOps,
+	tracker gh.WorkTracker,
+	sdkQueryFn claude.SdkQueryFunc,
+	logf func(string, ...any),
+	extractCredentials func() error,
+	collectStats func() (StatsRecord, error),
+) *ClaudeRunner {
+	return &ClaudeRunner{
+		cfg:                cfg,
+		git:                git,
+		tracker:            tracker,
+		sdkQueryFn:         sdkQueryFn,
+		logf:               logf,
+		extractCredentials: extractCredentials,
+		collectStats:       collectStats,
+	}
+}
 
 // historyDir returns the resolved history directory path.
-func (o *Orchestrator) historyDir() string {
-	return claude.HistoryDir(o.cfg.Cobbler.Dir, o.cfg.Cobbler.HistoryDir)
+func (cr *ClaudeRunner) historyDir() string {
+	return claude.HistoryDir(cr.cfg.Cobbler.Dir, cr.cfg.Cobbler.HistoryDir)
 }
 
 // saveHistoryReport writes a stitch report YAML file to the history directory.
-func (o *Orchestrator) saveHistoryReport(ts string, report claude.StitchReport) {
-	claude.SaveHistoryReport(o.historyDir(), ts, report)
+func (cr *ClaudeRunner) saveHistoryReport(ts string, report claude.StitchReport) {
+	claude.SaveHistoryReport(cr.historyDir(), ts, report)
 }
 
 // saveHistoryStats writes a stats YAML file to the history directory.
-func (o *Orchestrator) saveHistoryStats(ts, phase string, stats claude.HistoryStats) {
-	claude.SaveHistoryStats(o.historyDir(), ts, phase, stats)
+func (cr *ClaudeRunner) saveHistoryStats(ts, phase string, stats claude.HistoryStats) {
+	claude.SaveHistoryStats(cr.historyDir(), ts, phase, stats)
 }
 
 // saveHistoryPrompt writes the prompt to the history directory.
-func (o *Orchestrator) saveHistoryPrompt(ts, phase, prompt string) {
-	claude.SaveHistoryPrompt(o.historyDir(), ts, phase, prompt)
+func (cr *ClaudeRunner) saveHistoryPrompt(ts, phase, prompt string) {
+	claude.SaveHistoryPrompt(cr.historyDir(), ts, phase, prompt)
 }
 
 // saveHistoryLog writes the raw Claude output to the history directory.
-func (o *Orchestrator) saveHistoryLog(ts, phase string, rawOutput []byte) {
-	claude.SaveHistoryLog(o.historyDir(), ts, phase, rawOutput)
+func (cr *ClaudeRunner) saveHistoryLog(ts, phase string, rawOutput []byte) {
+	claude.SaveHistoryLog(cr.historyDir(), ts, phase, rawOutput)
 }
 
 // captureLOC returns the current Go LOC counts.
-func (o *Orchestrator) captureLOC() claude.LocSnapshot {
-	rec, err := o.Stats.CollectStats()
+func (cr *ClaudeRunner) captureLOC() claude.LocSnapshot {
+	rec, err := cr.collectStats()
 	if err != nil {
-		o.logf("captureLOC: collectStats error: %v", err)
+		cr.logf("captureLOC: collectStats error: %v", err)
 		return claude.LocSnapshot{}
 	}
 	return claude.LocSnapshot{Production: rec.GoProdLOC, Test: rec.GoTestLOC}
 }
 
 // captureLOCAt returns Go LOC counts measured in dir.
-func (o *Orchestrator) captureLOCAt(dir string) claude.LocSnapshot {
-	return claude.CaptureLOCAt(dir, o.captureLOC)
+func (cr *ClaudeRunner) captureLOCAt(dir string) claude.LocSnapshot {
+	return claude.CaptureLOCAt(dir, cr.captureLOC)
 }
 
 // checkClaude verifies that Claude can be invoked.
-func (o *Orchestrator) checkClaude() error {
+func (cr *ClaudeRunner) checkClaude() error {
 	return claude.CheckClaude(claude.CheckClaudeDeps{
-		EffectiveMode:       o.cfg.Cobbler.effectiveMode(),
-		EnsureCredentialsFn: o.ensureCredentials,
+		EffectiveMode:       cr.cfg.Cobbler.effectiveMode(),
+		EnsureCredentialsFn: cr.ensureCredentials,
 	})
 }
 
 // ensureCredentials checks that the credential file exists in SecretsDir.
-func (o *Orchestrator) ensureCredentials() error {
+func (cr *ClaudeRunner) ensureCredentials() error {
 	return claude.EnsureCredentials(
-		o.cfg.Claude.SecretsDir,
-		o.cfg.EffectiveTokenFile(),
-		o.Builder.ExtractCredentials,
+		cr.cfg.Claude.SecretsDir,
+		cr.cfg.EffectiveTokenFile(),
+		cr.extractCredentials,
 	)
 }
 
 // logConfig prints the resolved configuration for debugging.
-func (o *Orchestrator) logConfig(target string) {
+func (cr *ClaudeRunner) logConfig(target string) {
 	claude.LogConfig(target, claude.LogConfigDeps{
-		Silence:                 o.cfg.Silence(),
-		MaxStitchIssues:         o.cfg.Cobbler.MaxStitchIssues,
-		MaxStitchIssuesPerCycle: o.cfg.Cobbler.MaxStitchIssuesPerCycle,
-		MaxMeasureIssues:        o.cfg.Cobbler.MaxMeasureIssues,
-		GenerationBranch:        o.cfg.Generation.Branch,
-		UserPrompt:              o.cfg.Cobbler.UserPrompt,
+		Silence:                 cr.cfg.Silence(),
+		MaxStitchIssues:         cr.cfg.Cobbler.MaxStitchIssues,
+		MaxStitchIssuesPerCycle: cr.cfg.Cobbler.MaxStitchIssuesPerCycle,
+		MaxMeasureIssues:        cr.cfg.Cobbler.MaxMeasureIssues,
+		GenerationBranch:        cr.cfg.Generation.Branch,
+		UserPrompt:              cr.cfg.Cobbler.UserPrompt,
 	})
 }
 
 // runner returns a Runner for the configured execution mode.
-func (o *Orchestrator) runner() claude.Runner {
-	return claude.NewRunner(o.runClaudeDeps())
+func (cr *ClaudeRunner) runner() claude.Runner {
+	return claude.NewRunner(cr.runClaudeDeps())
 }
 
 // runClaude executes Claude and returns token usage.
-func (o *Orchestrator) runClaude(prompt, dir string, silence bool, extraClaudeArgs ...string) (claude.ClaudeResult, error) {
-	return claude.RunClaude(o.runClaudeDeps(), prompt, dir, silence, extraClaudeArgs...)
+func (cr *ClaudeRunner) runClaude(prompt, dir string, silence bool, extraClaudeArgs ...string) (claude.ClaudeResult, error) {
+	return claude.RunClaude(cr.runClaudeDeps(), prompt, dir, silence, extraClaudeArgs...)
 }
 
 // runClaudeDeps builds the dependency struct for RunClaude.
-func (o *Orchestrator) runClaudeDeps() claude.RunClaudeDeps {
+func (cr *ClaudeRunner) runClaudeDeps() claude.RunClaudeDeps {
 	return claude.RunClaudeDeps{
-		EffectiveMode:        o.cfg.Cobbler.effectiveMode(),
-		ClaudeTimeout:        o.cfg.ClaudeTimeout(),
-		Temperature:          o.cfg.Claude.Temperature,
-		Silence:              o.cfg.Silence(),
-		ClaudeArgs:           o.cfg.Claude.Args,
-		SecretsDir:           o.cfg.Claude.SecretsDir,
-		TokenFile:            o.cfg.EffectiveTokenFile(),
-		IdleTimeoutS:         o.cfg.Cobbler.IdleTimeoutSeconds,
-		SdkQueryFn:           o.sdkQueryFn,
-		ExtractCredentialsFn: o.Builder.ExtractCredentials,
+		EffectiveMode:        cr.cfg.Cobbler.effectiveMode(),
+		ClaudeTimeout:        cr.cfg.ClaudeTimeout(),
+		Temperature:          cr.cfg.Claude.Temperature,
+		Silence:              cr.cfg.Silence(),
+		ClaudeArgs:           cr.cfg.Claude.Args,
+		SecretsDir:           cr.cfg.Claude.SecretsDir,
+		TokenFile:            cr.cfg.EffectiveTokenFile(),
+		IdleTimeoutS:         cr.cfg.Cobbler.IdleTimeoutSeconds,
+		SdkQueryFn:           cr.sdkQueryFn,
+		ExtractCredentialsFn: cr.extractCredentials,
 	}
 }
 
-// runMeasureClaude executes Claude with the measure-specific idle timeout,
-// which is higher than the default to accommodate large prompts that cause
-// extended thinking time (GH-1509).
-func (o *Orchestrator) runMeasureClaude(prompt, dir string, silence bool, extraClaudeArgs ...string) (claude.ClaudeResult, error) {
-	deps := o.runClaudeDeps()
-	deps.IdleTimeoutS = o.cfg.Cobbler.MeasureIdleTimeoutSeconds
+// runMeasureClaude executes Claude with the measure-specific idle timeout.
+func (cr *ClaudeRunner) runMeasureClaude(prompt, dir string, silence bool, extraClaudeArgs ...string) (claude.ClaudeResult, error) {
+	deps := cr.runClaudeDeps()
+	deps.IdleTimeoutS = cr.cfg.Cobbler.MeasureIdleTimeoutSeconds
 	return claude.RunClaude(deps, prompt, dir, silence, extraClaudeArgs...)
 }
 
 // runClaudeSDK executes Claude via the Go Agent SDK.
-func (o *Orchestrator) runClaudeSDK(ctx context.Context, prompt, workDir string, silence bool, extraClaudeArgs ...string) (claude.ClaudeResult, error) {
-	return claude.RunClaudeSDK(o.runClaudeDeps(), ctx, prompt, workDir, silence, extraClaudeArgs...)
+func (cr *ClaudeRunner) runClaudeSDK(ctx context.Context, prompt, workDir string, silence bool, extraClaudeArgs ...string) (claude.ClaudeResult, error) {
+	return claude.RunClaudeSDK(cr.runClaudeDeps(), ctx, prompt, workDir, silence, extraClaudeArgs...)
 }
 
 // buildDirectCmd constructs the exec.Cmd for running claude directly.
-func (o *Orchestrator) buildDirectCmd(ctx context.Context, workDir string, extraClaudeArgs ...string) *exec.Cmd {
-	return claude.BuildDirectCmd(ctx, workDir, o.cfg.Claude.Args, extraClaudeArgs...)
+func (cr *ClaudeRunner) buildDirectCmd(ctx context.Context, workDir string, extraClaudeArgs ...string) *exec.Cmd {
+	return claude.BuildDirectCmd(ctx, workDir, cr.cfg.Claude.Args, extraClaudeArgs...)
 }
 
 // hasOpenIssues returns true if there are open orchestrator issues.
-func (o *Orchestrator) hasOpenIssues() (bool, error) {
+func (cr *ClaudeRunner) hasOpenIssues() (bool, error) {
 	return claude.HasOpenIssues(claude.HasOpenIssuesDeps{
 		DetectGitHubRepoFn: func(repoRoot string) (string, error) {
-			return o.tracker.DetectGitHubRepo(repoRoot)
+			return cr.tracker.DetectGitHubRepo(repoRoot)
 		},
-		GitReader: o.git,
+		GitReader: cr.git,
 		ListOpenCobblerIssuesFn: func(repo, branch string) (int, error) {
-			issues, err := o.tracker.ListOpenCobblerIssues(repo, branch)
+			issues, err := cr.tracker.ListOpenCobblerIssues(repo, branch)
 			return len(issues), err
 		},
 	})
 }
 
 // hasOnlySkippedIssues returns true when there are open cobbler issues but
-// every one of them carries the cobbler-skipped label (GH-1699). This lets
-// the generator stop cleanly instead of looping on tasks that cannot succeed.
-func (o *Orchestrator) hasOnlySkippedIssues() (bool, error) {
-	repo, err := o.tracker.DetectGitHubRepo(".")
+// every one of them carries the cobbler-skipped label (GH-1699).
+func (cr *ClaudeRunner) hasOnlySkippedIssues() (bool, error) {
+	repo, err := cr.tracker.DetectGitHubRepo(".")
 	if err != nil {
 		return false, err
 	}
-	generation, err := o.git.CurrentBranch(".")
+	generation, err := cr.git.CurrentBranch(".")
 	if err != nil {
 		return false, err
 	}
-	issues, err := o.tracker.ListOpenCobblerIssues(repo, generation)
+	issues, err := cr.tracker.ListOpenCobblerIssues(repo, generation)
 	if err != nil {
 		return false, err
 	}
 	if len(issues) == 0 {
-		return false, nil // no open issues at all
+		return false, nil
 	}
 	for _, iss := range issues {
 		if !gh.HasLabel(iss, gh.LabelSkipped) {
-			return false, nil // at least one non-skipped issue
+			return false, nil
 		}
 	}
 	return true, nil
 }
 
 // HistoryClean removes the history subdirectory.
-func (o *Orchestrator) HistoryClean() error {
-	return claude.HistoryClean(o.historyDir())
+func (cr *ClaudeRunner) HistoryClean() error {
+	return claude.HistoryClean(cr.historyDir())
 }
 
 // CobblerReset removes the cobbler scratch directory.
-func (o *Orchestrator) CobblerReset() error {
-	return claude.CobblerReset(o.cfg.Cobbler.Dir)
+func (cr *ClaudeRunner) CobblerReset() error {
+	return claude.CobblerReset(cr.cfg.Cobbler.Dir)
 }

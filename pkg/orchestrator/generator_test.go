@@ -89,7 +89,7 @@ func TestWriteBaseBranch_CreatesFile(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	cobblerDir := filepath.Join(dir, ".cobbler")
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: cobblerDir}})
 
 	if err := o.writeBaseBranch("feature-branch"); err != nil {
 		t.Fatalf("writeBaseBranch() error = %v", err)
@@ -109,7 +109,7 @@ func TestWriteBaseBranch_CreatesDir(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	cobblerDir := filepath.Join(dir, "nested", "cobbler")
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: cobblerDir}})
 
 	if err := o.writeBaseBranch("main"); err != nil {
 		t.Fatalf("writeBaseBranch() error = %v", err)
@@ -131,7 +131,7 @@ func TestReadBaseBranch_FileExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: cobblerDir}})
 	got := o.readBaseBranch()
 	if got != "develop" {
 		t.Errorf("readBaseBranch() = %q, want %q", got, "develop")
@@ -141,7 +141,7 @@ func TestReadBaseBranch_FileExists(t *testing.T) {
 func TestReadBaseBranch_FileMissing_ReturnsMain(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: filepath.Join(dir, "nonexistent")}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: filepath.Join(dir, "nonexistent")}})
 
 	got := o.readBaseBranch()
 	if got != "main" {
@@ -160,7 +160,7 @@ func TestReadBaseBranch_EmptyFile_ReturnsMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: cobblerDir}})
 	got := o.readBaseBranch()
 	if got != "main" {
 		t.Errorf("readBaseBranch() = %q, want %q", got, "main")
@@ -171,7 +171,7 @@ func TestWriteReadBaseBranch_RoundTrip(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	cobblerDir := filepath.Join(dir, ".cobbler")
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: cobblerDir}})
 
 	branches := []string{"main", "develop", "feature/my-feature", "release-1.0"}
 	for _, branch := range branches {
@@ -190,14 +190,14 @@ func TestWriteReadBaseBranch_RoundTrip(t *testing.T) {
 func TestSeedFiles_CreatesFiles(t *testing.T) {
 	dir := chdirTemp(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{
 			ModulePath: "example.com/test",
 			SeedFiles: map[string]string{
 				"hello.go": "package main\n",
 			},
 		},
-	}}
+	})
 
 	if err := o.seedFiles("v1"); err != nil {
 		t.Fatalf("seedFiles() error = %v", err)
@@ -215,7 +215,7 @@ func TestSeedFiles_CreatesFiles(t *testing.T) {
 func TestSeedFiles_TemplateExpansion(t *testing.T) {
 	dir := chdirTemp(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{
 			ModulePath: "example.com/myproject",
 			SeedFiles: map[string]string{
@@ -225,7 +225,7 @@ const Module = "{{.ModulePath}}"
 `,
 			},
 		},
-	}}
+	})
 
 	if err := o.seedFiles("v2.0.0"); err != nil {
 		t.Fatalf("seedFiles() error = %v", err)
@@ -248,14 +248,14 @@ const Module = "{{.ModulePath}}"
 func TestSeedFiles_CreatesSubdirectories(t *testing.T) {
 	dir := chdirTemp(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{
 			ModulePath: "example.com/test",
 			SeedFiles: map[string]string{
 				"pkg/internal/deep/file.go": "package deep\n",
 			},
 		},
-	}}
+	})
 
 	if err := o.seedFiles("main"); err != nil {
 		t.Fatalf("seedFiles() error = %v", err)
@@ -270,13 +270,13 @@ func TestSeedFiles_CreatesSubdirectories(t *testing.T) {
 func TestSeedFiles_InvalidTemplate(t *testing.T) {
 	chdirTemp(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{
 			SeedFiles: map[string]string{
 				"bad.go": "{{.Invalid",
 			},
 		},
-	}}
+	})
 
 	err := o.seedFiles("main")
 	if err == nil {
@@ -286,11 +286,11 @@ func TestSeedFiles_InvalidTemplate(t *testing.T) {
 
 func TestSeedFiles_EmptyMap(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{
 			SeedFiles: map[string]string{},
 		},
-	}}
+	})
 
 	if err := o.seedFiles("main"); err != nil {
 		t.Fatalf("seedFiles() with empty map error = %v", err)
@@ -306,7 +306,7 @@ func TestDeleteGoFiles_RemovesGoFiles(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, "pkg"), 0o755)
 	os.WriteFile(filepath.Join(dir, "pkg", "lib.go"), []byte("package pkg"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Project: ProjectConfig{MagefilesDir: "magefiles"}}}
+	o := testOrchWithCfg( Config{Project: ProjectConfig{MagefilesDir: "magefiles"}})
 	o.deleteGoFiles(".")
 
 	if _, err := os.Stat(filepath.Join(dir, "main.go")); !os.IsNotExist(err) {
@@ -323,7 +323,7 @@ func TestDeleteGoFiles_SkipsMagefilesDir(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, "magefiles"), 0o755)
 	os.WriteFile(filepath.Join(dir, "magefiles", "magefile.go"), []byte("package main"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Project: ProjectConfig{MagefilesDir: "magefiles"}}}
+	o := testOrchWithCfg( Config{Project: ProjectConfig{MagefilesDir: "magefiles"}})
 	o.deleteGoFiles(".")
 
 	if _, err := os.Stat(filepath.Join(dir, "magefiles", "magefile.go")); os.IsNotExist(err) {
@@ -337,7 +337,7 @@ func TestDeleteGoFiles_SkipsGitDir(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, ".git", "hooks"), 0o755)
 	os.WriteFile(filepath.Join(dir, ".git", "hooks", "pre-commit.go"), []byte("package hooks"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Project: ProjectConfig{MagefilesDir: "magefiles"}}}
+	o := testOrchWithCfg( Config{Project: ProjectConfig{MagefilesDir: "magefiles"}})
 	o.deleteGoFiles(".")
 
 	if _, err := os.Stat(filepath.Join(dir, ".git", "hooks", "pre-commit.go")); os.IsNotExist(err) {
@@ -352,7 +352,7 @@ func TestDeleteGoFiles_PreservesNonGoFiles(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("key: value"), 0o644)
 	os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Project: ProjectConfig{MagefilesDir: "magefiles"}}}
+	o := testOrchWithCfg( Config{Project: ProjectConfig{MagefilesDir: "magefiles"}})
 	o.deleteGoFiles(".")
 
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); os.IsNotExist(err) {
@@ -417,9 +417,9 @@ func TestCleanupDirs_RemovesDirs(t *testing.T) {
 	os.MkdirAll(d2, 0o755)
 	os.WriteFile(filepath.Join(d1, "file.txt"), []byte("data"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{CleanupDirs: []string{d1, d2}},
-	}}
+	})
 	o.cleanupDirs()
 
 	if _, err := os.Stat(d1); !os.IsNotExist(err) {
@@ -432,17 +432,17 @@ func TestCleanupDirs_RemovesDirs(t *testing.T) {
 
 func TestCleanupDirs_IgnoresNonExistent(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{CleanupDirs: []string{"/nonexistent/dir/abc123"}},
-	}}
+	})
 	o.cleanupDirs()
 }
 
 func TestCleanupDirs_EmptyList(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{CleanupDirs: nil},
-	}}
+	})
 	o.cleanupDirs()
 }
 
@@ -547,7 +547,7 @@ func TestResolveBranch_ExplicitBranchExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	got, err := o.resolveBranch("explicit-branch")
 	if err != nil {
 		t.Fatalf("resolveBranch() error = %v", err)
@@ -560,7 +560,7 @@ func TestResolveBranch_ExplicitBranchExists(t *testing.T) {
 func TestResolveBranch_ExplicitBranchNotExist(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	_, err := o.resolveBranch("nonexistent-branch")
 	if err == nil {
 		t.Error("resolveBranch() expected error for nonexistent branch")
@@ -570,7 +570,7 @@ func TestResolveBranch_ExplicitBranchNotExist(t *testing.T) {
 func TestResolveBranch_NoGenerationBranches(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	got, err := o.resolveBranch("")
 	if err != nil {
 		t.Fatalf("resolveBranch() error = %v", err)
@@ -589,7 +589,7 @@ func TestResolveBranch_SingleGenerationBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	got, err := o.resolveBranch("")
 	if err != nil {
 		t.Fatalf("resolveBranch() error = %v", err)
@@ -605,7 +605,7 @@ func TestResolveBranch_MultipleGenerationBranches(t *testing.T) {
 	testGitOps().CreateBranch("generation-2026-02-28-12-00-00", "")
 	testGitOps().CreateBranch("generation-2026-02-28-13-00-00", "")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	_, err := o.resolveBranch("")
 	if err == nil {
 		t.Error("resolveBranch() expected error for multiple generation branches")
@@ -620,7 +620,7 @@ func TestResolveBranch_MultipleGenerationBranches(t *testing.T) {
 func TestListGenerationBranches_NoBranches(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	got := o.listGenerationBranches()
 	if len(got) != 0 {
 		t.Errorf("listGenerationBranches() = %v, want empty", got)
@@ -634,7 +634,7 @@ func TestListGenerationBranches_WithBranches(t *testing.T) {
 	testGitOps().CreateBranch("generation-2026-02-28-13-00-00", "")
 	testGitOps().CreateBranch("other-branch", "")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	got := o.listGenerationBranches()
 	if len(got) != 2 {
 		t.Errorf("listGenerationBranches() returned %d branches, want 2: %v", len(got), got)
@@ -645,12 +645,12 @@ func TestListGenerationBranches_WithBranches(t *testing.T) {
 
 func TestGeneratorResume_NotGenerationBranch(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix: "generation-",
 			Branch: "main",
 		},
-	}}
+	})
 	err := o.GeneratorResume()
 	if err == nil {
 		t.Error("GeneratorResume() expected error for non-generation branch")
@@ -668,10 +668,10 @@ func TestGeneratorStart_DirtyWorkingTree(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "dirty.txt"), []byte("uncommitted"), 0o644)
 	exec.Command("git", "add", "dirty.txt").Run()
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-"},
 		Project:    ProjectConfig{MagefilesDir: "magefiles"},
-	}}
+	})
 
 	err := o.GeneratorStart()
 	if err == nil {
@@ -706,14 +706,14 @@ func TestGeneratorStart_PreserveSources(t *testing.T) {
 		}
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			PreserveSources: true,
 		},
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
 		Cobbler: CobblerConfig{Dir: ".cobbler/"},
-	}}
+	})
 
 	if err := o.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart() error = %v", err)
@@ -729,7 +729,7 @@ func TestGeneratorStart_PreserveSources(t *testing.T) {
 func TestGeneratorStart_CustomName(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			Name:            "gh-42",
@@ -737,7 +737,7 @@ func TestGeneratorStart_CustomName(t *testing.T) {
 		},
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
 		Cobbler: CobblerConfig{Dir: ".cobbler/"},
-	}}
+	})
 
 	if err := o.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart() error = %v", err)
@@ -762,7 +762,7 @@ func TestGeneratorStart_EnvNameOverridesConfig(t *testing.T) {
 	initTestGitRepo(t)
 	t.Setenv("COBBLER_GEN_NAME", "my-feature")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			Name:            "config-name",
@@ -770,7 +770,7 @@ func TestGeneratorStart_EnvNameOverridesConfig(t *testing.T) {
 		},
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
 		Cobbler: CobblerConfig{Dir: ".cobbler/"},
-	}}
+	})
 
 	if err := o.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart() error = %v", err)
@@ -791,14 +791,14 @@ func TestGeneratorStart_EnvNameOverridesConfig(t *testing.T) {
 func TestGeneratorStart_AddsBinToGitignore(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			PreserveSources: true,
 		},
 		Project: ProjectConfig{MagefilesDir: "magefiles", BinaryDir: "bin"},
 		Cobbler: CobblerConfig{Dir: ".cobbler/"},
-	}}
+	})
 
 	if err := o.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart() error = %v", err)
@@ -820,7 +820,7 @@ func TestGeneratorStart_AddsBinToGitignore(t *testing.T) {
 func TestGeneratorStart_CreatesWorktree(t *testing.T) {
 	repoDir := initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			Name:            "wt-test",
@@ -828,7 +828,7 @@ func TestGeneratorStart_CreatesWorktree(t *testing.T) {
 		},
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
 		Cobbler: CobblerConfig{Dir: ".cobbler/"},
-	}}
+	})
 
 	if err := o.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart() error = %v", err)
@@ -879,9 +879,9 @@ func TestGeneratorStart_CreatesWorktree(t *testing.T) {
 func TestGeneratorStart_WorktreeRecordsRepoRoot(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")},
-	}}
+	})
 
 	if err := o.writeRepoRoot("/some/path"); err != nil {
 		t.Fatalf("writeRepoRoot: %v", err)
@@ -897,9 +897,9 @@ func TestGeneratorStart_WorktreeRecordsRepoRoot(t *testing.T) {
 func TestGeneratorStart_WorktreeReadRepoRoot_Missing(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")},
-	}}
+	})
 	got := o.readRepoRoot()
 	if got != "" {
 		t.Errorf("readRepoRoot() = %q, want empty string", got)
@@ -911,7 +911,7 @@ func TestGeneratorStart_WorktreeReadRepoRoot_Missing(t *testing.T) {
 func TestGeneratorStop_CleansUpWorktree(t *testing.T) {
 	repoDir := initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			Name:            "stop-test",
@@ -919,7 +919,7 @@ func TestGeneratorStop_CleansUpWorktree(t *testing.T) {
 		},
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
 		Cobbler: CobblerConfig{Dir: ".cobbler/"},
-	}}
+	})
 
 	if err := o.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart() error = %v", err)
@@ -988,7 +988,7 @@ func TestGeneratorStop_CleansUpWorktree(t *testing.T) {
 func TestGeneratorStop_CleansSourcesOnGenerationBranch(t *testing.T) {
 	repoDir := initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			Name:            "clean-test",
@@ -1000,7 +1000,7 @@ func TestGeneratorStop_CleansSourcesOnGenerationBranch(t *testing.T) {
 			GoSourceDirs: []string{"cmd", "pkg"},
 		},
 		Cobbler: CobblerConfig{Dir: ".cobbler/"},
-	}}
+	})
 
 	if err := o.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart() error = %v", err)
@@ -1107,9 +1107,9 @@ func TestAppendToGitignore_AppendsToExistingFile(t *testing.T) {
 func TestGeneratorSwitch_NoBranchConfigured(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-", Branch: ""},
-	}}
+	})
 
 	err := o.GeneratorSwitch()
 	if err == nil {
@@ -1123,9 +1123,9 @@ func TestGeneratorSwitch_NoBranchConfigured(t *testing.T) {
 func TestGeneratorSwitch_NotGenerationBranch(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-", Branch: "feature-branch"},
-	}}
+	})
 
 	err := o.GeneratorSwitch()
 	if err == nil {
@@ -1139,9 +1139,9 @@ func TestGeneratorSwitch_NotGenerationBranch(t *testing.T) {
 func TestGeneratorSwitch_BranchNotExist(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-", Branch: "generation-2026-01-01-00-00-00"},
-	}}
+	})
 
 	err := o.GeneratorSwitch()
 	if err == nil {
@@ -1160,9 +1160,9 @@ func TestGeneratorSwitch_AlreadyOnBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-", Branch: branch},
-	}}
+	})
 
 	if err := o.GeneratorSwitch(); err != nil {
 		t.Errorf("GeneratorSwitch() already on branch error = %v", err)
@@ -1181,10 +1181,10 @@ func TestGeneratorSwitch_SwitchToMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-", Branch: "main"},
 		Cobbler:    CobblerConfig{BaseBranch: "main"},
-	}}
+	})
 
 	if err := o.GeneratorSwitch(); err != nil {
 		t.Errorf("GeneratorSwitch() to main error = %v", err)
@@ -1201,11 +1201,11 @@ func TestGeneratorReset_UsesConfiguredBaseBranch(t *testing.T) {
 
 	// Configure a non-existent base branch; GeneratorReset must attempt to switch
 	// to it (not to the hardcoded string "main") and return an error that names it.
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-"},
 		Cobbler:    CobblerConfig{BaseBranch: "trunk", Dir: ".cobbler/"},
 		Project:    ProjectConfig{MagefilesDir: "magefiles"},
-	}}
+	})
 
 	err := o.GeneratorReset()
 	if err == nil {
@@ -1228,7 +1228,7 @@ func TestCleanupUnmergedTags_MergedNotTouched(t *testing.T) {
 	testGitOps().Tag("generation-2026-02-28-12-00-00-finished", "")
 	testGitOps().Tag("generation-2026-02-28-12-00-00-merged", "")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	o.cleanupUnmergedTags()
 
 	tags := testGitOps().ListTags("generation-2026-02-28-12-00-00-*", "")
@@ -1243,7 +1243,7 @@ func TestCleanupUnmergedTags_UnmergedAbandoned(t *testing.T) {
 	testGitOps().Tag("generation-2026-02-28-12-00-00-start", "")
 	testGitOps().Tag("generation-2026-02-28-12-00-00-finished", "")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Generation: GenerationConfig{Prefix: "generation-"}}}
+	o := testOrchWithCfg( Config{Generation: GenerationConfig{Prefix: "generation-"}})
 	o.cleanupUnmergedTags()
 
 	tags := testGitOps().ListTags("generation-2026-02-28-12-00-00-*", "")
@@ -1293,7 +1293,7 @@ func TestCleanGoSources_RemovesGoFiles(t *testing.T) {
 	os.WriteFile("magefiles/build.go", []byte("package main"), 0o644) // should be preserved
 	os.WriteFile("bin/binary", []byte("binary"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	o.cfg.applyDefaults()
 	o.cfg.Project.GoSourceDirs = []string{"pkg"}
 	o.cleanGoSources()
@@ -1362,7 +1362,7 @@ func TestGitCurrentBranch_ExplicitDir(t *testing.T) {
 
 func TestInit_NoOp(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	if err := o.Init(); err != nil {
 		t.Errorf("Init() error = %v", err)
 	}
@@ -1372,9 +1372,9 @@ func TestInit_NoOp(t *testing.T) {
 
 func TestGeneratorList_NoGenerations(t *testing.T) {
 	initTestGitRepo(t)
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-"},
-	}}
+	})
 	if err := o.GeneratorList(); err != nil {
 		t.Fatalf("GeneratorList() error = %v", err)
 	}
@@ -1386,9 +1386,9 @@ func TestGeneratorList_WithBranchAndTags(t *testing.T) {
 	gitRun(t, "checkout", "main")
 	gitRun(t, "tag", "generation-2026-01-01-start")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-"},
-	}}
+	})
 	if err := o.GeneratorList(); err != nil {
 		t.Fatalf("GeneratorList() error = %v", err)
 	}
@@ -1413,9 +1413,9 @@ func TestRestoreFromStartTag_RestoresMissingGoFiles(t *testing.T) {
 	gitRun(t, "rm", "foo.go")
 	gitRun(t, "commit", "--no-verify", "-m", "delete foo.go")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
-	}}
+	})
 	if err := o.restoreFromStartTag("gen-start"); err != nil {
 		t.Fatalf("restoreFromStartTag: %v", err)
 	}
@@ -1442,9 +1442,9 @@ func TestRestoreFromStartTag_SkipsExistingFiles(t *testing.T) {
 	// Modify the file (should NOT be overwritten by restore).
 	os.WriteFile(filepath.Join("pkg", "existing.go"), []byte("package pkg\n// modified\n"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
-	}}
+	})
 	if err := o.restoreFromStartTag("gen-start-exist"); err != nil {
 		t.Fatalf("restoreFromStartTag: %v", err)
 	}
@@ -1471,9 +1471,9 @@ func TestRestoreFromStartTag_SkipsNonGoFiles(t *testing.T) {
 	// Delete it so restore would try to bring it back.
 	os.Remove("readme.md")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
-	}}
+	})
 	if err := o.restoreFromStartTag("gen-start-nongo"); err != nil {
 		t.Fatalf("restoreFromStartTag: %v", err)
 	}
@@ -1487,9 +1487,9 @@ func TestRestoreFromStartTag_SkipsNonGoFiles(t *testing.T) {
 func TestCleanupUnmergedTags_NoTags(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-"},
-	}}
+	})
 	// Must not panic with no tags.
 	o.cleanupUnmergedTags()
 }
@@ -1502,9 +1502,9 @@ func TestCleanupUnmergedTags_AllMerged(t *testing.T) {
 	gitRun(t, "tag", "generation-2026-01-01-finished")
 	gitRun(t, "tag", "generation-2026-01-01-merged")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "generation-"},
-	}}
+	})
 	o.cleanupUnmergedTags()
 
 	// All tags should still exist (nothing abandoned).
@@ -1521,9 +1521,9 @@ func TestListGenerationBranches_CustomPrefix(t *testing.T) {
 	gitRun(t, "branch", "myprefix-2026-01-02")
 	gitRun(t, "branch", "other-branch")
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{Prefix: "myprefix-"},
-	}}
+	})
 	branches := o.listGenerationBranches()
 
 	if len(branches) != 2 {
@@ -1558,9 +1558,9 @@ func TestRestoreFromStartTag_SkipsMagefiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Project: ProjectConfig{MagefilesDir: "magefiles"},
-	}}
+	})
 	if err := o.restoreFromStartTag("gen-start-mf"); err != nil {
 		t.Fatalf("restoreFromStartTag: %v", err)
 	}
@@ -1691,7 +1691,7 @@ touchpoints:
 `
 	os.WriteFile(filepath.Join(cobblerDir, "requirements.yaml"), []byte(reqContent), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: cobblerDir}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: cobblerDir}})
 	o.validateAndMarkUCs()
 
 	rmPath := filepath.Join(dir, "docs", "road-map.yaml")
@@ -1743,7 +1743,7 @@ releases:
 `
 	writeRoadmapFile(t, dir, roadmapContent)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	o.validateAndMarkUCs()
 
 	// 01.0 UC has no tests → should remain spec_complete (not blindly marked).
@@ -1762,7 +1762,7 @@ releases:
 func TestValidateAndMarkUCs_NoRoadmap(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	// Should be a no-op, no panic.
 	o.validateAndMarkUCs()
 }
@@ -1798,7 +1798,7 @@ releases:
 	cfgPath := filepath.Join(dir, DefaultConfigFile)
 	writeConfigFile(t, cfgPath, []string{"00.0", "01.0"})
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	advanced, ver := o.checkAutoAdvanceRelease()
 	if !advanced {
 		t.Fatal("expected auto-advance, got false")
@@ -1838,7 +1838,7 @@ func TestCheckAutoAdvanceRelease_NotAllDone(t *testing.T) {
 	cfgPath := filepath.Join(dir, DefaultConfigFile)
 	writeConfigFile(t, cfgPath, []string{"00.0"})
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	advanced, ver := o.checkAutoAdvanceRelease()
 	if advanced {
 		t.Errorf("should not advance when UCs are pending, got version=%q", ver)
@@ -1848,7 +1848,7 @@ func TestCheckAutoAdvanceRelease_NotAllDone(t *testing.T) {
 func TestCheckAutoAdvanceRelease_NoRoadmap(t *testing.T) {
 	_ = chdirTemp(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	advanced, _ := o.checkAutoAdvanceRelease()
 	if advanced {
 		t.Error("should not advance when no road-map.yaml exists")
@@ -1871,7 +1871,7 @@ releases:
 `
 	writeRoadmapFile(t, dir, roadmapContent)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	advanced, _ := o.checkAutoAdvanceRelease()
 	if advanced {
 		t.Error("should not advance when all releases already done")
@@ -1925,7 +1925,7 @@ touchpoints:
 `
 	os.WriteFile(filepath.Join(cobblerDir, "requirements.yaml"), []byte(reqContent), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: ".cobbler/"}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: ".cobbler/"}})
 	advanced, _ := o.checkAutoAdvanceRelease()
 	if advanced {
 		t.Error("should not advance when PRD requirements are still ready")
@@ -1972,7 +1972,7 @@ touchpoints:
 `
 	os.WriteFile(filepath.Join(cobblerDir, "requirements.yaml"), []byte(reqContent), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: ".cobbler/"}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: ".cobbler/"}})
 	advanced, _ := o.checkAutoAdvanceRelease()
 	if advanced {
 		t.Error("should not advance when bare PRD touchpoint has ready requirements (GH-1960)")
@@ -2013,7 +2013,7 @@ releases:
 	cfgPath := filepath.Join(dir, DefaultConfigFile)
 	writeConfigFile(t, cfgPath, []string{"02.0"})
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	if err := o.resetImplementedReleases(); err != nil {
 		t.Fatalf("resetImplementedReleases error: %v", err)
 	}
@@ -2090,7 +2090,7 @@ releases:
 `
 	writeRoadmapFile(t, dir, roadmapContent)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	if err := o.resetImplementedReleases(); err != nil {
 		t.Fatalf("resetImplementedReleases error: %v", err)
 	}
@@ -2137,14 +2137,14 @@ func TestGeneratorStop_CommitsHistoryBeforeTag(t *testing.T) {
 	// Add an UNCOMMITTED orchestrator log — this is the file GH-1452 is about.
 	os.WriteFile(filepath.Join(histDir, "stitch-orchestrator.log"), []byte("orchestrator log content\n"), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{
+	o := testOrchWithCfg( Config{
 		Generation: GenerationConfig{
 			Prefix:          "generation-",
 			Branch:          "generation-test",
 			PreserveSources: true,
 		},
 		Cobbler: CobblerConfig{Dir: ".cobbler", HistoryDir: "history"},
-	}}
+	})
 
 	err := o.GeneratorStop()
 	if err != nil {
@@ -2199,7 +2199,7 @@ func TestResetImplementedReleases_RevertsUCStatuses(t *testing.T) {
 	cmd.Dir = dir
 	cmd.CombinedOutput()
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	if err := o.resetImplementedReleases(); err != nil {
 		t.Fatalf("resetImplementedReleases error: %v", err)
 	}
@@ -2271,7 +2271,7 @@ func TestStripGoModRequires_NoFile(t *testing.T) {
 func TestResetImplementedReleases_NoRoadmap(t *testing.T) {
 	initTestGitRepo(t)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{}}
+	o := testOrchWithCfg(Config{})
 	if err := o.resetImplementedReleases(); err != nil {
 		t.Fatalf("resetImplementedReleases error: %v", err)
 	}
@@ -2293,7 +2293,7 @@ func TestHasUnresolvedRequirements_ReadyItems(t *testing.T) {
 `
 	os.WriteFile(filepath.Join(dir, ".cobbler", "requirements.yaml"), []byte(reqYAML), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")}})
 	if !o.hasUnresolvedRequirements() {
 		t.Error("expected true: R1.2 is still ready")
 	}
@@ -2313,7 +2313,7 @@ func TestHasUnresolvedRequirements_AllComplete(t *testing.T) {
 `
 	os.WriteFile(filepath.Join(dir, ".cobbler", "requirements.yaml"), []byte(reqYAML), 0o644)
 
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: filepath.Join(dir, ".cobbler")}})
 	if o.hasUnresolvedRequirements() {
 		t.Error("expected false: all items are complete or skip")
 	}
@@ -2321,7 +2321,7 @@ func TestHasUnresolvedRequirements_AllComplete(t *testing.T) {
 
 func TestHasUnresolvedRequirements_NoFile(t *testing.T) {
 	t.Parallel()
-	o := &Orchestrator{git: testOrch().git, tracker: testOrch().tracker, cfg: Config{Cobbler: CobblerConfig{Dir: "/nonexistent"}}}
+	o := testOrchWithCfg( Config{Cobbler: CobblerConfig{Dir: "/nonexistent"}})
 	if o.hasUnresolvedRequirements() {
 		t.Error("expected false: no requirements file")
 	}

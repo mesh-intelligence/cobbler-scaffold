@@ -437,14 +437,14 @@ func (o *Orchestrator) RunCycles(label string) error {
 		o.Analyzer.RunPreCycleAnalysis()
 
 		// Capture LOC before stitch to detect zero-change cycles.
-		locBefore := o.captureLOC()
+		locBefore := o.ClaudeRunner.captureLOC()
 		o.logf("generator %s: cycle %d — stitch (limit=%d, stitched so far=%d)", label, cycle, perCycle, totalStitched)
 		n, err := o.RunStitchN(perCycle)
 		totalStitched += n
 		if err != nil {
 			return fmt.Errorf("cycle %d stitch: %w", cycle, err)
 		}
-		locAfter := o.captureLOC()
+		locAfter := o.ClaudeRunner.captureLOC()
 		locDelta := (locAfter.Production - locBefore.Production) + (locAfter.Test - locBefore.Test)
 		o.logf("generator %s: cycle %d — LOC delta=%d (prod %d→%d, test %d→%d)",
 			label, cycle, locDelta, locBefore.Production, locAfter.Production, locBefore.Test, locAfter.Test)
@@ -476,13 +476,13 @@ func (o *Orchestrator) RunCycles(label string) error {
 
 		// If the only remaining open issues are skipped, stop the generation
 		// immediately rather than wasting cycles (GH-1699).
-		if onlySkipped, skippedErr := o.hasOnlySkippedIssues(); skippedErr == nil && onlySkipped {
+		if onlySkipped, skippedErr := o.ClaudeRunner.hasOnlySkippedIssues(); skippedErr == nil && onlySkipped {
 			o.logf("generator %s: cycle %d — only skipped tasks remain, stopping", label, cycle)
 			break
 		}
 
 		// Skip measure if open issues remain — stitch should drain them first (GH-1352).
-		if openBefore, err := o.hasOpenIssues(); err == nil && openBefore {
+		if openBefore, err := o.ClaudeRunner.hasOpenIssues(); err == nil && openBefore {
 			o.logf("generator %s: cycle %d — skipping measure, open issues remain", label, cycle)
 		} else {
 			o.logf("generator %s: cycle %d — measure", label, cycle)
@@ -491,7 +491,7 @@ func (o *Orchestrator) RunCycles(label string) error {
 			}
 		}
 
-		open, err := o.hasOpenIssues()
+		open, err := o.ClaudeRunner.hasOpenIssues()
 		if err != nil {
 			o.logf("generator %s: hasOpenIssues error (assuming open): %v", label, err)
 		}
@@ -756,7 +756,7 @@ func (o *Orchestrator) GeneratorStart() error {
 	// starts with a clean slate (GH-1356). The history directory may
 	// survive across generations when it is gitignored or when
 	// generator:stop was not called.
-	if err := o.HistoryClean(); err != nil {
+	if err := o.ClaudeRunner.HistoryClean(); err != nil {
 		o.logf("generator:start: warning clearing history: %v", err)
 	}
 
@@ -1056,7 +1056,7 @@ func (o *Orchestrator) GeneratorStop() error {
 
 	// Commit any uncommitted history files (orchestrator logs, late stats)
 	// so they are captured in the finished tag for post-hoc analysis (GH-1452).
-	if hdir := o.historyDir(); hdir != "" {
+	if hdir := o.ClaudeRunner.historyDir(); hdir != "" {
 		if err := o.git.StageDir(hdir, "."); err == nil && o.git.HasChanges(".") {
 			o.logf("generator:stop: committing history files before tagging")
 			_ = o.git.Commit("Commit history files before generator:stop tag", ".")
@@ -1075,7 +1075,7 @@ func (o *Orchestrator) GeneratorStop() error {
 	if !o.cfg.Generation.PreserveSources {
 		o.logf("generator:stop: adding specs-only cleanup to generation branch")
 		o.cleanGoSources()
-		if err := o.HistoryClean(); err != nil {
+		if err := o.ClaudeRunner.HistoryClean(); err != nil {
 			o.logf("generator:stop: warning cleaning history on generation branch: %v", err)
 		}
 		_ = o.git.StageAll(".")
@@ -1103,7 +1103,7 @@ func (o *Orchestrator) GeneratorStop() error {
 	// Clean up untracked history files on the base branch so they don't
 	// persist across branches (GH-1356). The history is preserved in the
 	// finished tag above (GH-1452).
-	if err := o.HistoryClean(); err != nil {
+	if err := o.ClaudeRunner.HistoryClean(); err != nil {
 		o.logf("generator:stop: warning clearing history: %v", err)
 	}
 
@@ -1168,7 +1168,7 @@ func (o *Orchestrator) mergeGeneration(branch, baseBranch string) error {
 	}
 
 	// Clean history files that may have leaked onto the base branch.
-	if err := o.HistoryClean(); err != nil {
+	if err := o.ClaudeRunner.HistoryClean(); err != nil {
 		o.logf("generator:stop: warning cleaning history: %v", err)
 	}
 	_ = o.git.StageAll(".")
@@ -1698,7 +1698,7 @@ func (o *Orchestrator) Init() error {
 
 // FullReset performs a full reset: cobbler and generator.
 func (o *Orchestrator) FullReset() error {
-	if err := o.CobblerReset(); err != nil {
+	if err := o.ClaudeRunner.CobblerReset(); err != nil {
 		return err
 	}
 	return o.GeneratorReset()
