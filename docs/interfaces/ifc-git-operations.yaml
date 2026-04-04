@@ -1,0 +1,272 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-git-operations
+name: Git Operations
+summary: |
+  We abstract all git operations behind a GitOps interface with six role-based
+  sub-interfaces. The ShellGitOps implementation executes git commands via
+  exec.Command. Components declare dependencies on the narrowest sub-interface
+  they need, enabling testability and future non-shell backends.
+
+data_structures:
+  - name: DiffStat
+    description: Parsed output from a git diff --shortstat command.
+    schema:
+      type: object
+      properties:
+        files_changed:
+          type: integer
+          description: Number of files changed.
+        insertions:
+          type: integer
+          description: Number of lines added.
+        deletions:
+          type: integer
+          description: Number of lines removed.
+      required: [files_changed, insertions, deletions]
+
+  - name: FileChange
+    description: Per-file diff information from git diff --name-status.
+    schema:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File path relative to the repository root.
+        status:
+          type: string
+          description: Git status code (A, M, D, R).
+        insertions:
+          type: integer
+          description: Lines added in this file.
+        deletions:
+          type: integer
+          description: Lines removed from this file.
+      required: [path, status]
+
+operations:
+  # RepoReader sub-interface
+  - name: CurrentBranch
+    description: Return the name of the currently checked-out branch.
+    parameters: []
+    returns:
+      - name: branch
+        type: string
+      - name: error
+        type: error
+  - name: BranchExists
+    description: Check whether a branch exists locally.
+    parameters:
+      - name: branch
+        type: string
+        description: Branch name to check.
+    returns:
+      - name: exists
+        type: boolean
+      - name: error
+        type: error
+  - name: ListBranches
+    description: List all local branches.
+    parameters: []
+    returns:
+      - name: branches
+        type: array
+        description: List of branch names.
+      - name: error
+        type: error
+  - name: ListTags
+    description: List all tags matching an optional pattern.
+    parameters:
+      - name: pattern
+        type: string
+        description: Glob pattern for filtering tags. Empty returns all.
+    returns:
+      - name: tags
+        type: array
+        description: List of tag names.
+      - name: error
+        type: error
+  - name: LsFiles
+    description: List tracked files matching a pattern.
+    parameters:
+      - name: pattern
+        type: string
+        description: File glob pattern.
+    returns:
+      - name: files
+        type: array
+      - name: error
+        type: error
+  - name: RevParseHEAD
+    description: Return the commit hash of HEAD.
+    parameters: []
+    returns:
+      - name: hash
+        type: string
+      - name: error
+        type: error
+
+  # WorktreeManager sub-interface
+  - name: WorktreeAdd
+    description: Create a new git worktree at the given path on a new branch.
+    parameters:
+      - name: path
+        type: string
+        description: Filesystem path for the new worktree.
+      - name: branch
+        type: string
+        description: Branch name for the worktree.
+    returns:
+      - name: error
+        type: error
+  - name: WorktreeRemove
+    description: Remove an existing git worktree.
+    parameters:
+      - name: path
+        type: string
+        description: Filesystem path of the worktree to remove.
+    returns:
+      - name: error
+        type: error
+  - name: WorktreePrune
+    description: Prune stale worktree metadata.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  # BranchManager sub-interface
+  - name: Checkout
+    description: Check out an existing branch.
+    parameters:
+      - name: branch
+        type: string
+        description: Branch name to check out.
+    returns:
+      - name: error
+        type: error
+  - name: CheckoutNew
+    description: Create and check out a new branch from the current HEAD.
+    parameters:
+      - name: branch
+        type: string
+        description: New branch name.
+    returns:
+      - name: error
+        type: error
+  - name: CreateBranch
+    description: Create a new branch without switching to it.
+    parameters:
+      - name: branch
+        type: string
+        description: New branch name.
+    returns:
+      - name: error
+        type: error
+  - name: DeleteBranch
+    description: Delete a local branch (safe delete, fails if unmerged).
+    parameters:
+      - name: branch
+        type: string
+        description: Branch name to delete.
+    returns:
+      - name: error
+        type: error
+  - name: MergeCmd
+    description: Merge a branch into the current branch.
+    parameters:
+      - name: branch
+        type: string
+        description: Branch name to merge.
+    returns:
+      - name: error
+        type: error
+
+  # CommitWriter sub-interface
+  - name: StageAll
+    description: Stage all changes in the working directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: HasChanges
+    description: Check whether the working directory has uncommitted changes.
+    parameters: []
+    returns:
+      - name: has_changes
+        type: boolean
+      - name: error
+        type: error
+  - name: Commit
+    description: Create a commit with the given message.
+    parameters:
+      - name: message
+        type: string
+        description: Commit message.
+    returns:
+      - name: error
+        type: error
+  - name: CommitAllowEmpty
+    description: Create a commit even if there are no staged changes.
+    parameters:
+      - name: message
+        type: string
+        description: Commit message.
+    returns:
+      - name: error
+        type: error
+
+  # TagManager sub-interface
+  - name: Tag
+    description: Create a lightweight tag at HEAD.
+    parameters:
+      - name: name
+        type: string
+        description: Tag name.
+    returns:
+      - name: error
+        type: error
+  - name: DeleteTag
+    description: Delete a local tag.
+    parameters:
+      - name: name
+        type: string
+        description: Tag name to delete.
+    returns:
+      - name: error
+        type: error
+
+  # DiffInspector sub-interface
+  - name: DiffShortstat
+    description: Return parsed diff statistics between two references.
+    parameters:
+      - name: from_ref
+        type: string
+        description: Base reference (commit, branch, or tag).
+      - name: to_ref
+        type: string
+        description: Target reference.
+    returns:
+      - name: stat
+        type: DiffStat
+      - name: error
+        type: error
+  - name: DiffNameStatus
+    description: Return per-file change information between two references.
+    parameters:
+      - name: from_ref
+        type: string
+        description: Base reference.
+      - name: to_ref
+        type: string
+        description: Target reference.
+    returns:
+      - name: changes
+        type: array
+        description: List of FileChange entries.
+      - name: error
+        type: error
+
+references:
+  - prd001-orchestrator-core
