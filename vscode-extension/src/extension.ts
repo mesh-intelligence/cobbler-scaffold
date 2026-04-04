@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension R1, R3, R5, R7
+// srd: srd006-vscode-extension R1, R3, R5, R7
 // uc: rel02.0-uc001-lifecycle-commands
 // uc: rel02.0-uc003-branch-comparison
 
@@ -94,7 +94,7 @@ export function activate(context: vscode.ExtensionContext): void {
       )
     );
 
-    // Generation Browser tree view (prd006 R2).
+    // Generation Browser tree view (srd006 R2).
     const genBrowser = new GenerationBrowserProvider(root);
     context.subscriptions.push(
       vscode.window.registerTreeDataProvider(
@@ -108,7 +108,7 @@ export function activate(context: vscode.ExtensionContext): void {
       gitRefsWatcher.onDidDelete(safeCallback("genBrowser.refresh", () => genBrowser.refresh()))
     );
 
-    // Branch and Tag Comparison view (prd006 R3).
+    // Branch and Tag Comparison view (srd006 R3).
     const comparisonBrowser = new ComparisonBrowserProvider(root);
     context.subscriptions.push(
       vscode.window.registerTreeDataProvider(
@@ -168,7 +168,7 @@ export function activate(context: vscode.ExtensionContext): void {
       )
     );
 
-    // Specification Browser tree view (prd006 R8).
+    // Specification Browser tree view (srd006 R8).
     const specBrowser = new SpecBrowserProvider(root);
     context.subscriptions.push(
       vscode.window.registerTreeDataProvider(
@@ -187,7 +187,7 @@ export function activate(context: vscode.ExtensionContext): void {
       specsWatcher.onDidDelete(safeCallback("specBrowser.refresh", () => specBrowser.refresh()))
     );
 
-    // Issue tracker tree view (prd006 R4).
+    // Issue tracker tree view (srd006 R4).
     const issuesStore = new IssuesStore(root);
     const issueBrowser = new IssueBrowserProvider(issuesStore);
     context.subscriptions.push(
@@ -197,7 +197,7 @@ export function activate(context: vscode.ExtensionContext): void {
       )
     );
 
-    // Metrics dashboard webview (prd006 R5).
+    // Metrics dashboard webview (srd006 R5).
     const dashboard = new MetricsDashboard(issuesStore);
     context.subscriptions.push(
       vscode.commands.registerCommand("mageOrchestrator.showDashboard", () =>
@@ -240,7 +240,7 @@ export function activate(context: vscode.ExtensionContext): void {
       )
     );
 
-    // Spec and engineering YAML preview panel (prd006).
+    // Spec and engineering YAML preview panel (srd006).
     const specPreview = new SpecPreview();
     context.subscriptions.push(
       vscode.commands.registerCommand(
@@ -258,7 +258,7 @@ export function activate(context: vscode.ExtensionContext): void {
       )
     );
 
-    // Code-to-spec traceability CodeLens (prd006 R9).
+    // Code-to-spec traceability CodeLens (srd006 R9).
     const traceGraph = new SpecGraph(root);
     context.subscriptions.push(
       vscode.languages.registerCodeLensProvider(

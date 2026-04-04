@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension R5
-// prd: prd005-metrics-collection R1
+// srd: srd006-vscode-extension R5
+// srd: srd005-metrics-collection R1
 
 import * as vscode from "vscode";
 import { IssuesStore, InvocationRecord } from "./issuesModel";

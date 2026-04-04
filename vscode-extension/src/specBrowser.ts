@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension R8
+// srd: srd006-vscode-extension R8
 // uc: rel02.0-uc006-specification-browser
 
 import * as vscode from "vscode";
@@ -9,7 +9,7 @@ import * as path from "path";
 import {
   SpecGraph,
   UseCase,
-  Prd,
+  Srd,
   TestSuite,
   Touchpoint,
   SourceRef,
@@ -22,7 +22,7 @@ export type SpecTreeItem =
   | CategoryItem
   | UseCaseItem
   | TouchpointItem
-  | PrdItem
+  | SrdItem
   | TestSuiteItem
   | SourceRefItem;
 
@@ -41,9 +41,9 @@ interface TouchpointItem {
   touchpoint: Touchpoint;
 }
 
-interface PrdItem {
-  kind: "prd";
-  prd: Prd;
+interface SrdItem {
+  kind: "srd";
+  srd: Srd;
 }
 
 interface TestSuiteItem {
@@ -61,9 +61,9 @@ interface SourceRefItem {
 
 /**
  * TreeDataProvider for the mageOrchestrator.specs view. Renders three
- * top-level categories (Use Cases, PRDs, Test Suites) backed by SpecGraph.
+ * top-level categories (Use Cases, SRDs, Test Suites) backed by SpecGraph.
  * Expanding a use case reveals its touchpoints; expanding a touchpoint
- * with a PRD reference reveals Go source files that implement it.
+ * with a SRD reference reveals Go source files that implement it.
  */
 export class SpecBrowserProvider
   implements vscode.TreeDataProvider<SpecTreeItem>
@@ -95,8 +95,8 @@ export class SpecBrowserProvider
         return this.useCaseTreeItem(element);
       case "touchpoint":
         return this.touchpointTreeItem(element);
-      case "prd":
-        return this.prdTreeItem(element);
+      case "srd":
+        return this.srdTreeItem(element);
       case "testSuite":
         return this.testSuiteTreeItem(element);
       case "sourceRef":
@@ -110,7 +110,7 @@ export class SpecBrowserProvider
     if (!element) {
       return [
         { kind: "category", label: "Use Cases" },
-        { kind: "category", label: "PRDs" },
+        { kind: "category", label: "SRDs" },
         { kind: "category", label: "Test Suites" },
       ];
     }
@@ -137,10 +137,10 @@ export class SpecBrowserProvider
         return this.graph
           .listUseCases()
           .map((uc): UseCaseItem => ({ kind: "useCase", useCase: uc }));
-      case "PRDs":
+      case "SRDs":
         return this.graph
-          .listPrds()
-          .map((prd): PrdItem => ({ kind: "prd", prd }));
+          .listSrds()
+          .map((srd): SrdItem => ({ kind: "srd", srd }));
       case "Test Suites":
         return this.graph
           .listTestSuites()
@@ -153,11 +153,11 @@ export class SpecBrowserProvider
   // ---- Touchpoint children (source refs) ----
 
   private touchpointChildren(tp: Touchpoint): SpecTreeItem[] {
-    if (!tp.prdId) {
+    if (!tp.srdId) {
       return [];
     }
     return this.graph
-      .getSourceFiles(tp.prdId)
+      .getSourceFiles(tp.srdId)
       .map(
         (ref): SourceRefItem => ({
           kind: "sourceRef",
@@ -196,10 +196,10 @@ export class SpecBrowserProvider
 
   private touchpointTreeItem(item: TouchpointItem): vscode.TreeItem {
     const tp = item.touchpoint;
-    const label = tp.prdId
-      ? `${tp.key}: ${tp.prdId} ${tp.requirementIds.join(", ")}`
+    const label = tp.srdId
+      ? `${tp.key}: ${tp.srdId} ${tp.requirementIds.join(", ")}`
       : `${tp.key}: ${tp.description}`;
-    const expandable = tp.prdId !== undefined;
+    const expandable = tp.srdId !== undefined;
     const ti = new vscode.TreeItem(
       label,
       expandable
@@ -208,30 +208,30 @@ export class SpecBrowserProvider
     );
     ti.tooltip = tp.description;
     ti.contextValue = "specTouchpoint";
-    if (tp.prdId) {
-      const prd = this.graph.getPrd(tp.prdId);
-      if (prd) {
+    if (tp.srdId) {
+      const srd = this.graph.getSrd(tp.srdId);
+      if (srd) {
         ti.command = {
           command: "vscode.open",
-          title: "Open PRD",
-          arguments: [vscode.Uri.file(prd.filePath)],
+          title: "Open SRD",
+          arguments: [vscode.Uri.file(srd.filePath)],
         };
       }
     }
     return ti;
   }
 
-  private prdTreeItem(item: PrdItem): vscode.TreeItem {
-    const prd = item.prd;
+  private srdTreeItem(item: SrdItem): vscode.TreeItem {
+    const srd = item.srd;
     const ti = new vscode.TreeItem(
-      `${prd.id}: ${prd.title}`,
+      `${srd.id}: ${srd.title}`,
       vscode.TreeItemCollapsibleState.None
     );
     ti.contextValue = "specPrd";
     ti.command = {
       command: "vscode.open",
-      title: "Open PRD",
-      arguments: [vscode.Uri.file(prd.filePath)],
+      title: "Open SRD",
+      arguments: [vscode.Uri.file(srd.filePath)],
     };
     return ti;
   }

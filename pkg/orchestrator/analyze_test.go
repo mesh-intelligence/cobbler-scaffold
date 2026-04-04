@@ -1099,7 +1099,7 @@ func TestPrintReport_AllClear(t *testing.T) {
 
 func TestPrintReport_WithIssues(t *testing.T) {
 	r := AnalyzeResult{
-		OrphanedSRDs:    []string{"prd099-unused"},
+		OrphanedSRDs:    []string{"srd099-unused"},
 		BrokenCitations: []string{"uc001 T1: srd001 R99 not found"},
 	}
 	out := captureStdout(t, func() {
@@ -1114,7 +1114,7 @@ func TestPrintReport_WithIssues(t *testing.T) {
 	if !strings.Contains(out, "Orphaned SRDs") {
 		t.Errorf("output missing orphaned SRDs section, got %q", out)
 	}
-	if !strings.Contains(out, "prd099-unused") {
+	if !strings.Contains(out, "srd099-unused") {
 		t.Errorf("output missing orphaned SRD item, got %q", out)
 	}
 	if !strings.Contains(out, "Broken citations") {
@@ -1229,7 +1229,7 @@ func TestCollectAnalyzeResult_DependsOnViolation_MissingSRD(t *testing.T) {
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 depends_on:
-  - prd_id: srd001-pkg
+  - srd_id: srd001-pkg
     symbols_used:
       - SomeFunc
 `), 0o644)
@@ -1266,7 +1266,7 @@ package_contract:
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 depends_on:
-  - prd_id: srd001-pkg
+  - srd_id: srd001-pkg
     symbols_used:
       - FuncA
       - FuncB
@@ -1304,7 +1304,7 @@ package_contract:
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 depends_on:
-  - prd_id: srd001-pkg
+  - srd_id: srd001-pkg
     symbols_used:
       - FuncA
       - FuncB
@@ -1409,7 +1409,7 @@ func TestCollectAnalyzeResult_BrokenStructRef_MissingSRD(t *testing.T) {
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 struct_refs:
-  - prd_id: srd999-missing
+  - srd_id: srd999-missing
     requirement: R1
 `), 0o644)
 
@@ -1446,7 +1446,7 @@ requirements:
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 struct_refs:
-  - prd_id: srd001-pkg
+  - srd_id: srd001-pkg
     requirement: R9
 `), 0o644)
 
@@ -1483,7 +1483,7 @@ requirements:
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 struct_refs:
-  - prd_id: srd001-pkg
+  - srd_id: srd001-pkg
     requirement: R1
 `), 0o644)
 
@@ -1515,7 +1515,7 @@ title: Pkg
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 depends_on:
-  - prd_id: srd001-pkg
+  - srd_id: srd001-pkg
 `), 0o644)
 	os.WriteFile("docs/ARCHITECTURE.yaml", []byte(`id: arch-test
 title: Test Architecture
@@ -1556,7 +1556,7 @@ title: Pkg
 	os.WriteFile("docs/specs/software-requirements/srd002-cmd.yaml", []byte(`id: srd002-cmd
 title: Cmd
 depends_on:
-  - prd_id: srd001-pkg
+  - srd_id: srd001-pkg
 `), 0o644)
 	// Architecture with no component_dependencies.
 	os.WriteFile("docs/ARCHITECTURE.yaml", []byte(`id: arch-test

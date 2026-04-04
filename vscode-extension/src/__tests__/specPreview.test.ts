@@ -20,10 +20,10 @@ import {
 // ---- detectDocType ----
 
 describe("detectDocType", () => {
-  it("detects prd from product-requirements path", () => {
+  it("detects srd from software-requirements path", () => {
     expect(
-      detectDocType("/workspace/docs/specs/product-requirements/prd001-orchestrator-core.yaml")
-    ).toBe("prd");
+      detectDocType("/workspace/docs/specs/software-requirements/srd001-orchestrator-core.yaml")
+    ).toBe("srd");
   });
 
   it("detects useCase from use-cases path", () => {
@@ -48,10 +48,10 @@ describe("detectDocType", () => {
     expect(detectDocType("/workspace/some/other/file.yaml")).toBe("generic");
   });
 
-  it("falls back to key detection for prd when path is non-standard", () => {
+  it("falls back to key detection for srd when path is non-standard", () => {
     expect(
       detectDocType("/tmp/spec.yaml", { id: "x", requirements: {} })
-    ).toBe("prd");
+    ).toBe("srd");
   });
 
   it("falls back to key detection for useCase when path is non-standard", () => {
@@ -142,9 +142,9 @@ describe("escapeHtml", () => {
 // ---- renderPrdHtml ----
 
 describe("renderPrdHtml", () => {
-  const minimalPrd: PrdDoc = {
-    id: "prd001-test",
-    title: "Test PRD",
+  const minimalPrd: SrdDoc = {
+    id: "srd001-test",
+    title: "Test SRD",
     problem: "There is a problem.\n",
     goals: [{ G1: "Solve the problem" }, { G2: "Do it well" }],
     requirements: {
@@ -156,34 +156,34 @@ describe("renderPrdHtml", () => {
   };
 
   it("produces a DOCTYPE html document", () => {
-    const html = renderPrdHtml("prd001.yaml", minimalPrd);
+    const html = renderPrdHtml("srd001.yaml", minimalPrd);
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("<html");
   });
 
   it("includes the title in an h1 tag", () => {
-    const html = renderPrdHtml("prd001.yaml", minimalPrd);
-    expect(html).toContain("<h1>Test PRD</h1>");
+    const html = renderPrdHtml("srd001.yaml", minimalPrd);
+    expect(html).toContain("<h1>Test SRD</h1>");
   });
 
   it("falls back to file name when title is absent", () => {
-    const html = renderPrdHtml("prd001.yaml", {});
-    expect(html).toContain("<h1>prd001.yaml</h1>");
+    const html = renderPrdHtml("srd001.yaml", {});
+    expect(html).toContain("<h1>srd001.yaml</h1>");
   });
 
   it("renders the id badge", () => {
-    const html = renderPrdHtml("prd001.yaml", minimalPrd);
-    expect(html).toContain("prd001-test");
+    const html = renderPrdHtml("srd001.yaml", minimalPrd);
+    expect(html).toContain("srd001-test");
   });
 
   it("renders the problem section", () => {
-    const html = renderPrdHtml("prd001.yaml", minimalPrd);
+    const html = renderPrdHtml("srd001.yaml", minimalPrd);
     expect(html).toContain("<h2>Problem</h2>");
     expect(html).toContain("There is a problem.");
   });
 
   it("renders goals as a table with IDs and text", () => {
-    const html = renderPrdHtml("prd001.yaml", minimalPrd);
+    const html = renderPrdHtml("srd001.yaml", minimalPrd);
     expect(html).toContain("<h2>Goals</h2>");
     expect(html).toContain("G1");
     expect(html).toContain("Solve the problem");
@@ -191,7 +191,7 @@ describe("renderPrdHtml", () => {
   });
 
   it("renders requirements with group headings and items", () => {
-    const html = renderPrdHtml("prd001.yaml", minimalPrd);
+    const html = renderPrdHtml("srd001.yaml", minimalPrd);
     expect(html).toContain("<h2>Requirements</h2>");
     expect(html).toContain("R1");
     expect(html).toContain("Core Requirements");
@@ -237,7 +237,7 @@ describe("renderUseCaseHtml", () => {
     actor: "Developer",
     trigger: "First-time setup",
     flow: [{ F1: "Create Config" }, { F2: "Call New()" }],
-    touchpoints: [{ T1: "Config struct per prd001 R1" }],
+    touchpoints: [{ T1: "Config struct per srd001 R1" }],
     success_criteria: [{ S1: "Non-nil Orchestrator returned" }],
   };
 
@@ -275,7 +275,7 @@ describe("renderUseCaseHtml", () => {
     const html = renderUseCaseHtml("uc001.yaml", minimalUc);
     expect(html).toContain("<h2>Touchpoints</h2>");
     expect(html).toContain("T1");
-    expect(html).toContain("Config struct per prd001 R1");
+    expect(html).toContain("Config struct per srd001 R1");
   });
 
   it("renders success criteria as a list", () => {

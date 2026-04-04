@@ -730,10 +730,10 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 			}
 		}
 		for idx, count := range measureChildCounts {
-			prds := measureChildSRDs[idx]
-			if len(prds) > 0 {
-				sort.Strings(prds)
-				tableRows[idx].Title = fmt.Sprintf("measure (%d tasks: %s)", count, strings.Join(prds, ", "))
+			srds := measureChildSRDs[idx]
+			if len(srds) > 0 {
+				sort.Strings(srds)
+				tableRows[idx].Title = fmt.Sprintf("measure (%d tasks: %s)", count, strings.Join(srds, ", "))
 			} else {
 				tableRows[idx].Title = fmt.Sprintf("measure (%d tasks)", count)
 			}
@@ -759,16 +759,16 @@ func PrintGeneratorStats(deps GeneratorStatsDeps) error {
 
 	// SRD coverage table.
 	if len(srdStatus) > 0 {
-		prds := make([]string, 0, len(srdStatus))
+		srds := make([]string, 0, len(srdStatus))
 		for srd := range srdStatus {
-			prds = append(prds, srd)
+			srds = append(srds, srd)
 		}
-		sort.Strings(prds)
+		sort.Strings(srds)
 
 		fmt.Println()
 		pw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		fmt.Fprintln(pw, "SRD\tStatus")
-		for _, srd := range prds {
+		for _, srd := range srds {
 			fmt.Fprintf(pw, "%s\t%s\n", srd, srdStatus[srd])
 		}
 		if err := pw.Flush(); err != nil {
@@ -1005,10 +1005,10 @@ func CountDescriptionWeight(description string, reqStates map[string]map[string]
 	}
 	total := 0
 	for _, m := range refs {
-		prdStem, group, item := m[1], m[2], m[3]
+		srdStem, group, item := m[1], m[2], m[3]
 		key := "R" + group + "." + item
 		w := 1
-		if srdReqs, ok := reqStates[prdStem]; ok {
+		if srdReqs, ok := reqStates[srdStem]; ok {
 			if st, ok := srdReqs[key]; ok && st.Weight > 0 {
 				w = st.Weight
 			}
@@ -1059,7 +1059,7 @@ func FormatBytes(b int) string {
 // Both "srd-auth-flow" and "srd006-cat" formats are recognized.
 func ExtractSRDRefs(text string) []string {
 	seen := make(map[string]bool)
-	var prds []string
+	var srds []string
 	for _, word := range strings.Fields(text) {
 		w := strings.ToLower(strings.Trim(word, ".,;:()[]`\"'"))
 		// Strip .yaml/.yml suffix so "srd001-foo.yaml" deduplicates with
@@ -1080,8 +1080,8 @@ func ExtractSRDRefs(text string) []string {
 		}
 		if isSRD && !seen[w] {
 			seen[w] = true
-			prds = append(prds, w)
+			srds = append(srds, w)
 		}
 	}
-	return prds
+	return srds
 }

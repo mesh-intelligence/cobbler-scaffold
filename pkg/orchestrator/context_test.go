@@ -1799,7 +1799,7 @@ func TestBuildProjectContext_SourceMode_Full(t *testing.T) {
 func TestParseTouchpointPackages_EmDash(t *testing.T) {
 	t.Parallel()
 	touchpoints := []map[string]string{
-		{"T1": "cmd/du \u2014 prd009-du R1, R2, R3"},
+		{"T1": "cmd/du \u2014 srd009-du R1, R2, R3"},
 		{"T2": "pkg/sys \u2014 srd003-sys"},
 	}
 	got := ictx.ParseTouchpointPackages(touchpoints)
@@ -1814,7 +1814,7 @@ func TestParseTouchpointPackages_EmDash(t *testing.T) {
 func TestParseTouchpointPackages_EnDash(t *testing.T) {
 	t.Parallel()
 	touchpoints := []map[string]string{
-		{"T1": "pkg/format \u2013 prd007-format R1"},
+		{"T1": "pkg/format \u2013 srd007-format R1"},
 	}
 	got := ictx.ParseTouchpointPackages(touchpoints)
 	if len(got) != 1 || got[0] != "pkg/format" {

@@ -118,19 +118,19 @@ func BuildReleaseRows() ([]ReleaseRow, error) {
 	}
 
 	// Map SRD short names to release versions via use case touchpoints.
-	prdRel := BuildSRDReleaseMap()
+	srdRel := BuildSRDReleaseMap()
 
 	// Load requirement counts per SRD.
 	_, reqsBySRD := CountTotalSRDRequirements()
 
 	// Group SRDs by release.
-	type prdInfo struct {
+	type srdInfo struct {
 		short string
 		reqs  int
 	}
-	relSRDs := make(map[string][]prdInfo)
-	for stem, rel := range prdRel {
-		relSRDs[rel] = append(relSRDs[rel], prdInfo{short: stem, reqs: reqsBySRD[stem]})
+	relSRDs := make(map[string][]srdInfo)
+	for stem, rel := range srdRel {
+		relSRDs[rel] = append(relSRDs[rel], srdInfo{short: stem, reqs: reqsBySRD[stem]})
 	}
 
 	// Determine which SRDs are "complete" by checking if all use cases in that
@@ -150,15 +150,15 @@ func BuildReleaseRows() ([]ReleaseRow, error) {
 			Status:  rel.Status,
 		}
 
-		prds := relSRDs[rel.Version]
-		sort.Slice(prds, func(i, j int) bool { return prds[i].short < prds[j].short })
-		r.SRDs = len(prds)
+		srds := relSRDs[rel.Version]
+		sort.Slice(srds, func(i, j int) bool { return srds[i].short < srds[j].short })
+		r.SRDs = len(srds)
 
 		// Count total requirements and determine SRD completion.
 		allDone := ReleaseAllUCsDone(ucStatuses[rel.Version])
 		anyDone := ReleaseAnyUCDone(ucStatuses[rel.Version])
 
-		for _, p := range prds {
+		for _, p := range srds {
 			r.Reqs += p.reqs
 			if p.reqs == 0 {
 				r.SRDsNoReqs++
@@ -232,7 +232,7 @@ func CountTotalSRDRequirements() (int, map[string]int) {
 // "srd-003") to their roadmap release version by parsing touchpoint references.
 func BuildSRDReleaseMap() map[string]string {
 	paths, _ := filepath.Glob("docs/specs/use-cases/rel*.yaml")
-	prdRelease := make(map[string]string)
+	srdRelease := make(map[string]string)
 	for _, path := range paths {
 		base := filepath.Base(path)
 		// Extract release from filename: "rel01.0-uc003-..." → "01.0"
@@ -268,13 +268,13 @@ func BuildSRDReleaseMap() map[string]string {
 						if !strings.ContainsRune(w[3:], '-') {
 							continue
 						}
-						if _, exists := prdRelease[w]; !exists {
-							prdRelease[w] = rel
+						if _, exists := srdRelease[w]; !exists {
+							srdRelease[w] = rel
 						}
 					}
 				}
 			}
 		}
 	}
-	return prdRelease
+	return srdRelease
 }

@@ -255,8 +255,8 @@ func AllRefsAlreadyComplete(description string, reqStates map[string]map[string]
 	return true
 }
 
-// prdRef holds a parsed SRD requirement reference.
-type prdRef struct {
+// srdRef holds a parsed SRD requirement reference.
+type srdRef struct {
 	SRDStem string // e.g. "srd001" or "srd001-orchestrator-core"
 	Group   string // e.g. "1" from R1
 	SubItem string // e.g. "2" from R1.2; empty for group refs
@@ -264,16 +264,16 @@ type prdRef struct {
 
 // extractSRDRefsFromDescription parses the YAML description's requirements
 // section and returns all SRD refs found in requirement text fields.
-func extractSRDRefsFromDescription(description string) []prdRef {
+func extractSRDRefsFromDescription(description string) []srdRef {
 	var desc IssueDescription
 	if err := yaml.Unmarshal([]byte(description), &desc); err != nil {
 		return nil
 	}
-	var refs []prdRef
+	var refs []srdRef
 	for _, req := range desc.Requirements {
 		matches := SRDRefPattern.FindAllStringSubmatch(req.Text, -1)
 		for _, m := range matches {
-			refs = append(refs, prdRef{
+			refs = append(refs, srdRef{
 				SRDStem: m[1],
 				Group:   m[2],
 				SubItem: m[3],

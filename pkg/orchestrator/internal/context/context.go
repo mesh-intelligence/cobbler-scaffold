@@ -510,14 +510,14 @@ type SRDExport struct {
 // SRDDependsOn declares that a cmd/ SRD depends on a pkg/ SRD,
 // listing the specific symbols consumed.
 type SRDDependsOn struct {
-	SRDID       string   `yaml:"prd_id"`
+	SRDID       string   `yaml:"srd_id"`
 	SymbolsUsed []string `yaml:"symbols_used,omitempty"`
 }
 
 // SRDStructRef cross-references a type definition in another SRD
 // to avoid inline duplication.
 type SRDStructRef struct {
-	SRDID       string `yaml:"prd_id"`
+	SRDID       string `yaml:"srd_id"`
 	Requirement string `yaml:"requirement"`
 }
 
@@ -568,7 +568,7 @@ type UCInteractionStep struct {
 // OODPackageContractRef bundles a SRD ID with its package_contract for
 // injection into measure and stitch prompts as structured API context.
 type OODPackageContractRef struct {
-	SRDID    string             `yaml:"prd_id"`
+	SRDID    string             `yaml:"srd_id"`
 	Contract SRDPackageContract `yaml:"contract"`
 }
 
@@ -585,8 +585,8 @@ func LoadOODPromptContext() (contracts []OODPackageContractRef, sharedProtocols 
 	contracts = []OODPackageContractRef{}
 	sharedProtocols = []ArchSharedProtocol{}
 
-	prdFiles, _ := filepath.Glob("docs/specs/software-requirements/srd*.yaml")
-	for _, path := range prdFiles {
+	srdFiles, _ := filepath.Glob("docs/specs/software-requirements/srd*.yaml")
+	for _, path := range srdFiles {
 		srd := LoadYAML[SRDDoc](path)
 		if srd == nil || srd.PackageContract == nil || len(srd.PackageContract.Exports) == 0 {
 			continue
@@ -614,8 +614,8 @@ func LoadOODPromptContext() (contracts []OODPackageContractRef, sharedProtocols 
 // because yaml.v3 does not populate *yaml.Node fields when unmarshaling
 // into a struct (the node ends up with Kind=0).
 func LoadSRDSemanticModel() *yaml.Node {
-	prdFiles, _ := filepath.Glob("docs/specs/software-requirements/srd*.yaml")
-	for _, path := range prdFiles {
+	srdFiles, _ := filepath.Glob("docs/specs/software-requirements/srd*.yaml")
+	for _, path := range srdFiles {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
@@ -1911,12 +1911,12 @@ func BuildProjectContext(existingIssuesJSON string, project ContextConfig, phase
 	}
 
 	standardSet := make(map[string]bool, len(docFiles))
-	var prdPaths []string
+	var srdPaths []string
 
 	for _, path := range docFiles {
 		standardSet[path] = true
 		if ClassifyContextFile(path) == "srd" {
-			prdPaths = append(prdPaths, path)
+			srdPaths = append(srdPaths, path)
 			continue
 		}
 		LoadContextFileInto(ctx, path, rf)
@@ -1925,7 +1925,7 @@ func BuildProjectContext(existingIssuesJSON string, project ContextConfig, phase
 	// Load SRDs filtered by release: when a release filter is active, only
 	// include SRDs referenced by the loaded (release-scoped) use cases.
 	if !rf.Active() {
-		for _, path := range prdPaths {
+		for _, path := range srdPaths {
 			if v := LoadYAML[SRDDoc](path); v != nil {
 				v.File = path
 				ctx.Specs.SoftwareRequirements = append(ctx.Specs.SoftwareRequirements, v)
@@ -1933,7 +1933,7 @@ func BuildProjectContext(existingIssuesJSON string, project ContextConfig, phase
 		}
 	} else {
 		referencedSRDs := SRDIDsFromUseCases(ctx.Specs.UseCases)
-		for _, path := range prdPaths {
+		for _, path := range srdPaths {
 			stem := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 			if referencedSRDs[stem] {
 				if v := LoadYAML[SRDDoc](path); v != nil {
@@ -2171,9 +2171,9 @@ func (d *RoadmapDoc) Validate() []string {
 	return errs
 }
 
-// prdItemIDRe matches valid SRD requirement item IDs: R{group}.{item} (e.g., R1.1, R2.3).
+// srdItemIDRe matches valid SRD requirement item IDs: R{group}.{item} (e.g., R1.1, R2.3).
 // Letter suffixes like R2a are not valid (GH-536).
-var prdItemIDRe = regexp.MustCompile(`^R\d+\.\d+$`)
+var srdItemIDRe = regexp.MustCompile(`^R\d+\.\d+$`)
 
 // Validate checks that all required fields in SRDDoc are non-empty, including
 // each requirement group's title, items, and item ID format (GH-536).
@@ -2202,7 +2202,7 @@ func (d *SRDDoc) Validate() []string {
 			errs = append(errs, fmt.Sprintf("requirements.%s.items is required", k))
 		}
 		for _, item := range g.Items {
-			if !prdItemIDRe.MatchString(item.ID) {
+			if !srdItemIDRe.MatchString(item.ID) {
 				errs = append(errs, fmt.Sprintf("requirements.%s: item ID %q must use numeric dotted format (e.g., R1.1)", k, item.ID))
 			}
 		}

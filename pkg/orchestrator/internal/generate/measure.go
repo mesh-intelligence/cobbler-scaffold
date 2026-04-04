@@ -201,10 +201,10 @@ func ValidateMeasureOutput(issues []ProposedIssue, maxReqs, maxWeight int, subIt
 			for _, req := range desc.Requirements {
 				matches := SRDRefPattern.FindAllStringSubmatch(req.Text, -1)
 				for _, m := range matches {
-					prdStem := m[1]
+					srdStem := m[1]
 					groupNum := m[2]
 					subItem := m[3]
-					srdReqs := findSRDReqStates(reqStates, prdStem)
+					srdReqs := findSRDReqStates(reqStates, srdStem)
 					if srdReqs == nil {
 						continue
 					}
@@ -212,7 +212,7 @@ func ValidateMeasureOutput(issues []ProposedIssue, maxReqs, maxWeight int, subIt
 						key := fmt.Sprintf("R%s.%s", groupNum, subItem)
 						if st, ok := srdReqs[key]; ok && isRequirementComplete(st.Status) {
 							msg := fmt.Sprintf("[%d] %q: requirement %s %s is already complete (issue #%d)",
-								issue.Index, issue.Title, prdStem, key, st.Issue)
+								issue.Index, issue.Title, srdStem, key, st.Issue)
 							Log("validateMeasureOutput: %s", msg)
 							result.Errors = append(result.Errors, msg)
 						}
@@ -237,7 +237,7 @@ func ValidateMeasureOutput(issues []ProposedIssue, maxReqs, maxWeight int, subIt
 							}
 							if hasItems {
 								msg := fmt.Sprintf("[%d] %q: requirement group %s R%s is already fully complete",
-									issue.Index, issue.Title, prdStem, groupNum)
+									issue.Index, issue.Title, srdStem, groupNum)
 								Log("validateMeasureOutput: %s", msg)
 								result.Errors = append(result.Errors, msg)
 							}
@@ -281,15 +281,15 @@ func ExpandedRequirementWeight(reqs []IssueDescItem, subItemCounts map[string]ma
 			total++
 			continue
 		}
-		prdStem := matches[1]
+		srdStem := matches[1]
 		groupNum := matches[2]
 		subItem := matches[3]
 
-		srdReqs := reqStates[prdStem]
+		srdReqs := reqStates[srdStem]
 		if srdReqs == nil {
 			// Try short prefix (e.g., "srd003" for "srd003-core").
 			for k, v := range reqStates {
-				if idx := indexByte(k, '-'); idx > 0 && k[:idx] == prdStem {
+				if idx := indexByte(k, '-'); idx > 0 && k[:idx] == srdStem {
 					srdReqs = v
 					break
 				}
@@ -360,7 +360,7 @@ func ExpandedRequirementCount(reqs []IssueDescItem, subItemCounts map[string]map
 			total++
 			continue
 		}
-		prdStem := matches[1]
+		srdStem := matches[1]
 		groupNum := matches[2]
 		subItem := matches[3]
 
@@ -372,7 +372,7 @@ func ExpandedRequirementCount(reqs []IssueDescItem, subItemCounts map[string]map
 
 		// Group reference (e.g., R2). Look up sub-item count.
 		groupKey := "R" + groupNum
-		if groups, ok := subItemCounts[prdStem]; ok {
+		if groups, ok := subItemCounts[srdStem]; ok {
 			if count, found := groups[groupKey]; found {
 				total += count
 				continue

@@ -1737,7 +1737,7 @@ func TestLoadSRDSubItemCounts_ShortPrefixNotDuplicated(t *testing.T) {
 	defer cleanup()
 
 	// Two SRDs with the same prefix (srd001) — short entry maps to the first.
-	prd1 := `id: srd001-alpha
+	srd1 := `id: srd001-alpha
 title: Alpha
 problem: test
 goals: []
@@ -1749,7 +1749,7 @@ requirements:
 non_goals: []
 acceptance_criteria: []
 `
-	prd2 := `id: srd001-beta
+	srd2 := `id: srd001-beta
 title: Beta
 problem: test
 goals: []
@@ -1762,8 +1762,8 @@ requirements:
 non_goals: []
 acceptance_criteria: []
 `
-	os.WriteFile("docs/specs/software-requirements/srd001-alpha.yaml", []byte(prd1), 0o644)
-	os.WriteFile("docs/specs/software-requirements/srd001-beta.yaml", []byte(prd2), 0o644)
+	os.WriteFile("docs/specs/software-requirements/srd001-alpha.yaml", []byte(srd1), 0o644)
+	os.WriteFile("docs/specs/software-requirements/srd001-beta.yaml", []byte(srd2), 0o644)
 
 	counts := loadSRDSubItemCounts()
 

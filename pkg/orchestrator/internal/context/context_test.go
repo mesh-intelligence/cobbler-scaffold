@@ -1161,7 +1161,7 @@ non_goals: []
 acceptance_criteria: []
 `
 	var srd SRDDoc
-	if err := yaml.Unmarshal(data, &srd); err != nil {
+	if err := yaml.Unmarshal([]byte(input), &srd); err != nil {
 		t.Fatalf("unmarshal SRDDoc: %v", err)
 	}
 	r1 := srd.Requirements["R1"]

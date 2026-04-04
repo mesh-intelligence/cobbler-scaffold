@@ -86,13 +86,13 @@ type SRDExport struct {
 
 // SRDDependsOn declares that a cmd/ SRD depends on a pkg/ SRD.
 type SRDDependsOn struct {
-	SRDID       string   `yaml:"prd_id"`
+	SRDID       string   `yaml:"srd_id"`
 	SymbolsUsed []string `yaml:"symbols_used,omitempty"`
 }
 
 // SRDStructRef cross-references a type definition in another SRD.
 type SRDStructRef struct {
-	SRDID       string `yaml:"prd_id"`
+	SRDID       string `yaml:"srd_id"`
 	Requirement string `yaml:"requirement"`
 }
 

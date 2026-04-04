@@ -15,7 +15,7 @@ import (
 func TestGenerateRequirementsFile(t *testing.T) {
 	t.Run("scans SRDs and produces requirements.yaml", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 
@@ -71,7 +71,7 @@ func TestGenerateRequirementsFile(t *testing.T) {
 
 	t.Run("empty SRD directory", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 
@@ -97,7 +97,7 @@ func TestGenerateRequirementsFile(t *testing.T) {
 
 	t.Run("SRD with no items", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 
@@ -131,25 +131,25 @@ func TestGenerateRequirementsFile(t *testing.T) {
 
 	t.Run("multiple SRDs", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 
-		prd1 := `requirements:
+		srd1 := `requirements:
   R1:
     title: "First"
     items:
       - R1.1: "item A"
 `
-		prd2 := `requirements:
+		srd2 := `requirements:
   R1:
     title: "Second"
     items:
       - R1.1: "item B"
       - R1.2: "item C"
 `
-		os.WriteFile(filepath.Join(srdDir, "srd001-alpha.yaml"), []byte(prd1), 0o644)
-		os.WriteFile(filepath.Join(srdDir, "srd002-beta.yaml"), []byte(prd2), 0o644)
+		os.WriteFile(filepath.Join(srdDir, "srd001-alpha.yaml"), []byte(srd1), 0o644)
+		os.WriteFile(filepath.Join(srdDir, "srd002-beta.yaml"), []byte(srd2), 0o644)
 
 		path, err := GenerateRequirementsFile(srdDir, cobblerDir, false)
 		if err != nil {
@@ -181,7 +181,7 @@ func TestGenerateRequirementsFile(t *testing.T) {
 func TestGenerateRequirementsFile_PreserveExisting(t *testing.T) {
 	t.Run("preserves completed states from previous run", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 		os.MkdirAll(cobblerDir, 0o755)
@@ -227,7 +227,7 @@ func TestGenerateRequirementsFile_PreserveExisting(t *testing.T) {
 
 	t.Run("new R-items default to ready", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 		os.MkdirAll(cobblerDir, 0o755)
@@ -264,7 +264,7 @@ func TestGenerateRequirementsFile_PreserveExisting(t *testing.T) {
 
 	t.Run("removed R-items are dropped", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 		os.MkdirAll(cobblerDir, 0o755)
@@ -304,7 +304,7 @@ func TestGenerateRequirementsFile_PreserveExisting(t *testing.T) {
 
 	t.Run("no existing file behaves like fresh generation", func(t *testing.T) {
 		tmp := t.TempDir()
-		srdDir := filepath.Join(tmp, "prds")
+		srdDir := filepath.Join(tmp, "srds")
 		cobblerDir := filepath.Join(tmp, ".cobbler")
 		os.MkdirAll(srdDir, 0o755)
 
@@ -650,9 +650,9 @@ func TestExtractTouchpointCitations(t *testing.T) {
 func TestFindSRDRequirements(t *testing.T) {
 	reqs := map[string]map[string]RequirementState{
 		"srd001-core":      {"R1.1": {Status: "ready"}},
-		"prd010-ext":       {"R2.1": {Status: "ready"}},
-		"prd053-logname":   {"R3.1": {Status: "ready"}},
-		"prd053-sort":      {"R3.2": {Status: "ready"}},
+		"srd010-ext":       {"R2.1": {Status: "ready"}},
+		"srd053-logname":   {"R3.1": {Status: "ready"}},
+		"srd053-sort":      {"R3.2": {Status: "ready"}},
 	}
 
 	t.Run("exact match", func(t *testing.T) {
@@ -670,10 +670,10 @@ func TestFindSRDRequirements(t *testing.T) {
 	})
 
 	t.Run("greedy prefix rejected", func(t *testing.T) {
-		// "prd01" must NOT match "prd010-ext" — the numeric portions differ.
-		r := findSRDRequirements(reqs, "prd01")
+		// "srd01" must NOT match "srd010-ext" — the numeric portions differ.
+		r := findSRDRequirements(reqs, "srd01")
 		if r != nil {
-			t.Errorf("prd01 should not match prd010-ext, got %v", r)
+			t.Errorf("srd01 should not match srd010-ext, got %v", r)
 		}
 	})
 
@@ -685,15 +685,15 @@ func TestFindSRDRequirements(t *testing.T) {
 	})
 
 	t.Run("ambiguous prefix picks longest key", func(t *testing.T) {
-		// Both "prd053-logname" and "prd053-sort" match "prd053".
-		// Longest key is "prd053-logname" (14 chars vs 10).
-		r := findSRDRequirements(reqs, "prd053")
+		// Both "srd053-logname" and "srd053-sort" match "srd053".
+		// Longest key is "srd053-logname" (14 chars vs 10).
+		r := findSRDRequirements(reqs, "srd053")
 		if r == nil {
-			t.Fatal("expected a match for prd053")
+			t.Fatal("expected a match for srd053")
 		}
-		// Should pick prd053-logname (longest key).
+		// Should pick srd053-logname (longest key).
 		if _, ok := r["R3.1"]; !ok {
-			t.Errorf("expected prd053 to match prd053-logname (longest), got %v", r)
+			t.Errorf("expected srd053 to match srd053-logname (longest), got %v", r)
 		}
 	})
 }
@@ -772,7 +772,7 @@ const srd002LifecycleFixture = `requirements:
 
 func TestGenerateRequirementsFile_SDDHelloWorldFixture(t *testing.T) {
 	tmp := t.TempDir()
-	srdDir := filepath.Join(tmp, "prds")
+	srdDir := filepath.Join(tmp, "srds")
 	cobblerDir := filepath.Join(tmp, ".cobbler")
 	os.MkdirAll(srdDir, 0o755)
 
@@ -837,7 +837,7 @@ func TestPartialCompletionSequence(t *testing.T) {
 	// Task 2: srd003-config R2, R3 (6 items) → 9 complete, 3 ready
 	// Task 3: srd003-config R4 (3 items) → 12 complete, 0 ready
 	tmp := t.TempDir()
-	srdDir := filepath.Join(tmp, "prds")
+	srdDir := filepath.Join(tmp, "srds")
 	cobblerDir := filepath.Join(tmp, ".cobbler")
 	os.MkdirAll(srdDir, 0o755)
 
@@ -1322,7 +1322,7 @@ func TestUCRequirementsComplete_SkipStatus(t *testing.T) {
 
 		initial := RequirementsFile{
 			Requirements: map[string]map[string]RequirementState{
-				"prd011-magefiles": {
+				"srd011-magefiles": {
 					"R1.1": {Status: "skip"},
 					"R2.1": {Status: "complete", Issue: 42},
 					"R3.1": {Status: "skip"},
@@ -1333,7 +1333,7 @@ func TestUCRequirementsComplete_SkipStatus(t *testing.T) {
 		os.WriteFile(filepath.Join(cobblerDir, RequirementsFileName), data, 0o644)
 
 		touchpoints := []string{
-			"T1: Magefiles per prd011-magefiles R1, R2, R3",
+			"T1: Magefiles per srd011-magefiles R1, R2, R3",
 		}
 
 		complete, remaining := UCRequirementsComplete(cobblerDir, touchpoints)
@@ -1349,7 +1349,7 @@ func TestUCRequirementsComplete_SkipStatus(t *testing.T) {
 
 		initial := RequirementsFile{
 			Requirements: map[string]map[string]RequirementState{
-				"prd011-magefiles": {
+				"srd011-magefiles": {
 					"R1.1": {Status: "skip"},
 					"R2.1": {Status: "ready"},
 				},
@@ -1359,7 +1359,7 @@ func TestUCRequirementsComplete_SkipStatus(t *testing.T) {
 		os.WriteFile(filepath.Join(cobblerDir, RequirementsFileName), data, 0o644)
 
 		touchpoints := []string{
-			"T1: per prd011-magefiles R1, R2",
+			"T1: per srd011-magefiles R1, R2",
 		}
 
 		complete, remaining := UCRequirementsComplete(cobblerDir, touchpoints)
@@ -1374,7 +1374,7 @@ func TestUCRequirementsComplete_SkipStatus(t *testing.T) {
 
 func TestCrossBatchDuplicatePrevention_SkipStatus(t *testing.T) {
 	reqStates := map[string]map[string]RequirementState{
-		"prd011-magefiles": {
+		"srd011-magefiles": {
 			"R1.1": {Status: "skip"},
 			"R2.1": {Status: "ready"},
 		},
@@ -1416,7 +1416,7 @@ files:
 	}
 
 	t.Run("rejects proposal targeting skipped R-item", func(t *testing.T) {
-		desc := makeDesc("prd011-magefiles R1.1 — implement mage target")
+		desc := makeDesc("srd011-magefiles R1.1 — implement mage target")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
 		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		found := false
@@ -1431,7 +1431,7 @@ files:
 	})
 
 	t.Run("accepts proposal targeting ready R-item alongside skip", func(t *testing.T) {
-		desc := makeDesc("prd011-magefiles R2.1 — implement something")
+		desc := makeDesc("srd011-magefiles R2.1 — implement something")
 		issues := []ProposedIssue{{Index: 0, Title: "test", Description: desc}}
 		result := ValidateMeasureOutput(issues, 0, 0, nil, reqStates)
 		for _, e := range result.Errors {
@@ -1444,7 +1444,7 @@ files:
 
 func TestGenerateRequirementsFile_PreservesSkipStatus(t *testing.T) {
 	tmp := t.TempDir()
-	srdDir := filepath.Join(tmp, "prds")
+	srdDir := filepath.Join(tmp, "srds")
 	cobblerDir := filepath.Join(tmp, ".cobbler")
 	os.MkdirAll(srdDir, 0o755)
 	os.MkdirAll(cobblerDir, 0o755)
@@ -1456,11 +1456,11 @@ func TestGenerateRequirementsFile_PreservesSkipStatus(t *testing.T) {
       - R1.1: "build target"
       - R1.2: "test target"
 `
-	os.WriteFile(filepath.Join(srdDir, "prd011-magefiles.yaml"), []byte(srd), 0o644)
+	os.WriteFile(filepath.Join(srdDir, "srd011-magefiles.yaml"), []byte(srd), 0o644)
 
 	existing := RequirementsFile{
 		Requirements: map[string]map[string]RequirementState{
-			"prd011-magefiles": {
+			"srd011-magefiles": {
 				"R1.1": {Status: "skip"},
 				"R1.2": {Status: "ready"},
 			},
@@ -1475,8 +1475,8 @@ func TestGenerateRequirementsFile_PreservesSkipStatus(t *testing.T) {
 	}
 
 	result := readReqFile(t, path)
-	assertReqState(t, result, "prd011-magefiles", "R1.1", "skip", 0)
-	assertReqState(t, result, "prd011-magefiles", "R1.2", "ready", 0)
+	assertReqState(t, result, "srd011-magefiles", "R1.1", "skip", 0)
+	assertReqState(t, result, "srd011-magefiles", "R1.2", "ready", 0)
 }
 
 func readReqFile(t *testing.T, path string) RequirementsFile {
@@ -1519,7 +1519,7 @@ func assertReqState(t *testing.T, rf RequirementsFile, srd, rItem, wantStatus st
 func TestExtractRItemsWeighted_SimpleFormat(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	prdPath := filepath.Join(dir, "srd001-test.yaml")
+	srdPath := filepath.Join(dir, "srd001-test.yaml")
 	srd := `id: srd001
 title: Test
 problem: test
@@ -1534,9 +1534,9 @@ requirements:
 non_goals: []
 acceptance_criteria: []
 `
-	os.WriteFile(prdPath, []byte(srd), 0o644)
+	os.WriteFile(srdPath, []byte(srd), 0o644)
 
-	items := extractRItemsWeighted(prdPath)
+	items := extractRItemsWeighted(srdPath)
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
@@ -1550,7 +1550,7 @@ acceptance_criteria: []
 func TestExtractRItemsWeighted_WithWeights(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	prdPath := filepath.Join(dir, "srd002-test.yaml")
+	srdPath := filepath.Join(dir, "srd002-test.yaml")
 	srd := `id: srd002
 title: Test
 problem: test
@@ -1570,9 +1570,9 @@ requirements:
 non_goals: []
 acceptance_criteria: []
 `
-	os.WriteFile(prdPath, []byte(srd), 0o644)
+	os.WriteFile(srdPath, []byte(srd), 0o644)
 
-	items := extractRItemsWeighted(prdPath)
+	items := extractRItemsWeighted(srdPath)
 	if len(items) != 3 {
 		t.Fatalf("expected 3 items, got %d", len(items))
 	}
@@ -1625,15 +1625,15 @@ acceptance_criteria: []
 		t.Fatal("LoadRequirementStates returned nil")
 	}
 
-	prdStates := states["srd001-test"]
-	if prdStates == nil {
+	srdStates := states["srd001-test"]
+	if srdStates == nil {
 		t.Fatal("no states for srd001-test")
 	}
 
-	if w := prdStates["R1.1"].Weight; w != 1 {
+	if w := srdStates["R1.1"].Weight; w != 1 {
 		t.Errorf("R1.1 weight = %d, want 1", w)
 	}
-	if w := prdStates["R1.2"].Weight; w != 5 {
+	if w := srdStates["R1.2"].Weight; w != 5 {
 		t.Errorf("R1.2 weight = %d, want 5", w)
 	}
 }

@@ -907,12 +907,12 @@ func MarkAllRequirementsComplete(t testing.TB, dir string) {
 	if err := yaml.Unmarshal(data, &rf); err != nil {
 		t.Fatalf("MarkAllRequirementsComplete: parse: %v", err)
 	}
-	for prd, items := range rf.Requirements {
+	for srd, items := range rf.Requirements {
 		for id, st := range items {
 			st.Status = "complete"
 			items[id] = st
 		}
-		rf.Requirements[prd] = items
+		rf.Requirements[srd] = items
 	}
 	out, err := yaml.Marshal(&rf)
 	if err != nil {

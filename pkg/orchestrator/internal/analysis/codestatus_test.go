@@ -738,7 +738,7 @@ func TestComputeReqCompletion_MissingSRDInReqs(t *testing.T) {
 	os.MkdirAll("docs/specs/use-cases", 0o755)
 
 	os.WriteFile(filepath.Join(cobblerDir, "requirements.yaml"), []byte(`requirements:
-  prd099-other:
+  srd099-other:
     R1.1:
       status: complete
 `), 0o644)

@@ -1253,7 +1253,7 @@ func TestRequirementsCountUsesPerItemState(t *testing.T) {
 	// Create a SRD with 6 R-items across 2 groups.
 	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
 	os.MkdirAll(srdDir, 0o755)
-	prdYAML := `id: srd001-testutils
+	srdYAML := `id: srd001-testutils
 requirements:
   R1:
     title: "Group 1"
@@ -1268,7 +1268,7 @@ requirements:
       - R2.2: "fifth"
       - R2.3: "sixth"
 `
-	os.WriteFile(filepath.Join(srdDir, "srd001-testutils.yaml"), []byte(prdYAML), 0o644)
+	os.WriteFile(filepath.Join(srdDir, "srd001-testutils.yaml"), []byte(srdYAML), 0o644)
 
 	// Create requirements.yaml with only 2 of 6 R-items completed.
 	cobblerDir := filepath.Join(dir, ".cobbler")
@@ -1441,7 +1441,7 @@ func TestPrintGeneratorStats_ReqsFromBranch(t *testing.T) {
 	// Create a SRD with 4 R-items.
 	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
 	os.MkdirAll(srdDir, 0o755)
-	prdYAML := `id: srd001-test
+	srdYAML := `id: srd001-test
 requirements:
   R1:
     title: "Group"
@@ -1451,7 +1451,7 @@ requirements:
       - R1.3: "third"
       - R1.4: "fourth"
 `
-	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(prdYAML), 0o644)
+	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(srdYAML), 0o644)
 
 	// Stale CWD requirements.yaml: shows 3 of 4 addressed (wrong).
 	cobblerDir := filepath.Join(dir, ".cobbler")
@@ -1544,7 +1544,7 @@ func TestPrintGeneratorStats_ReqsFallbackToCWD(t *testing.T) {
 
 	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
 	os.MkdirAll(srdDir, 0o755)
-	prdYAML := `id: srd001-test
+	srdYAML := `id: srd001-test
 requirements:
   R1:
     title: "Group"
@@ -1552,7 +1552,7 @@ requirements:
       - R1.1: "first"
       - R1.2: "second"
 `
-	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(prdYAML), 0o644)
+	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(srdYAML), 0o644)
 
 	cobblerDir := filepath.Join(dir, ".cobbler")
 	os.MkdirAll(cobblerDir, 0o755)
@@ -1713,7 +1713,7 @@ func TestPrintGeneratorStats_ETAAndCost(t *testing.T) {
 	// Create a SRD with 10 R-items.
 	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
 	os.MkdirAll(srdDir, 0o755)
-	prdYAML := `id: srd001-test
+	srdYAML := `id: srd001-test
 requirements:
   R1:
     title: "Group"
@@ -1729,7 +1729,7 @@ requirements:
       - R1.9: "i"
       - R1.10: "j"
 `
-	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(prdYAML), 0o644)
+	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(srdYAML), 0o644)
 
 	// requirements.yaml: 2 of 10 addressed.
 	cobblerDir := filepath.Join(dir, ".cobbler")
@@ -1875,7 +1875,7 @@ func TestPrintGeneratorStats_ETACalculating(t *testing.T) {
 
 	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
 	os.MkdirAll(srdDir, 0o755)
-	prdYAML := `id: srd001-test
+	srdYAML := `id: srd001-test
 requirements:
   R1:
     title: "Group"
@@ -1883,7 +1883,7 @@ requirements:
       - R1.1: "a"
       - R1.2: "b"
 `
-	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(prdYAML), 0o644)
+	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(srdYAML), 0o644)
 
 	cobblerDir := filepath.Join(dir, ".cobbler")
 	os.MkdirAll(cobblerDir, 0o755)

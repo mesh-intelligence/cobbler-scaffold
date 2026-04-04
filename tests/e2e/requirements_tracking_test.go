@@ -27,7 +27,7 @@ type reqFile struct {
 }
 
 // TestRequirementTracking_GeneratorStartProducesRequirements exercises the
-// full GeneratorStart pipeline with a minimal repo containing 3 PRDs (29
+// full GeneratorStart pipeline with a minimal repo containing 3 SRDs (29
 // R-items). Validates that .cobbler/requirements.yaml is generated with
 // all items in "ready" status.
 func TestRequirementTracking_GeneratorStartProducesRequirements(t *testing.T) {
@@ -76,26 +76,26 @@ func TestRequirementTracking_GeneratorStartProducesRequirements(t *testing.T) {
 		t.Fatalf("parsing requirements.yaml: %v", err)
 	}
 
-	// Verify all 3 PRDs are present.
+	// Verify all 3 SRDs are present.
 	if len(rf.Requirements) != 3 {
-		t.Fatalf("expected 3 PRDs, got %d: %v", len(rf.Requirements), keys(rf.Requirements))
+		t.Fatalf("expected 3 SRDs, got %d: %v", len(rf.Requirements), keys(rf.Requirements))
 	}
 
-	// Verify item counts: prd001=6, prd002=11, prd003=12, total=29.
+	// Verify item counts: srd001=6, srd002=11, srd003=12, total=29.
 	wantCounts := map[string]int{
-		"prd001-core":      6,
-		"prd002-lifecycle": 11,
-		"prd003-config":    12,
+		"srd001-core":      6,
+		"srd002-lifecycle": 11,
+		"srd003-config":    12,
 	}
 	totalItems := 0
-	for prd, wantCount := range wantCounts {
-		items, ok := rf.Requirements[prd]
+	for srd, wantCount := range wantCounts {
+		items, ok := rf.Requirements[srd]
 		if !ok {
-			t.Errorf("missing PRD %s in requirements.yaml", prd)
+			t.Errorf("missing SRD %s in requirements.yaml", srd)
 			continue
 		}
 		if len(items) != wantCount {
-			t.Errorf("%s: expected %d R-items, got %d", prd, wantCount, len(items))
+			t.Errorf("%s: expected %d R-items, got %d", srd, wantCount, len(items))
 		}
 		totalItems += len(items)
 	}
@@ -104,15 +104,15 @@ func TestRequirementTracking_GeneratorStartProducesRequirements(t *testing.T) {
 	}
 
 	// Verify all items have status "ready".
-	for prd, items := range rf.Requirements {
+	for srd, items := range rf.Requirements {
 		for rItem, st := range items {
 			if st.Status != "ready" {
-				t.Errorf("%s %s: expected status ready, got %s", prd, rItem, st.Status)
+				t.Errorf("%s %s: expected status ready, got %s", srd, rItem, st.Status)
 			}
 		}
 	}
 
-	t.Logf("requirements.yaml: %d PRDs, %d total R-items, all ready", len(rf.Requirements), totalItems)
+	t.Logf("requirements.yaml: %d SRDs, %d total R-items, all ready", len(rf.Requirements), totalItems)
 }
 
 // --- helpers ---
@@ -139,16 +139,16 @@ func setupReqTrackingRepo(t *testing.T) string {
 	os.MkdirAll(filepath.Join(dir, "docs"), 0o755)
 	writeFile(t, dir, "docs/VISION.yaml", "id: v1\ntitle: Test Vision\n")
 
-	// PRD fixtures matching sdd-hello-world structure.
-	prdDir := filepath.Join(dir, "docs", "specs", "product-requirements")
-	os.MkdirAll(prdDir, 0o755)
+	// SRD fixtures matching sdd-hello-world structure.
+	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
+	os.MkdirAll(srdDir, 0o755)
 
-	writeFile(t, dir, "docs/specs/product-requirements/prd001-core.yaml",
-		prd001Fixture)
-	writeFile(t, dir, "docs/specs/product-requirements/prd002-lifecycle.yaml",
-		prd002Fixture)
-	writeFile(t, dir, "docs/specs/product-requirements/prd003-config.yaml",
-		prd003Fixture)
+	writeFile(t, dir, "docs/specs/software-requirements/srd001-core.yaml",
+		srd001Fixture)
+	writeFile(t, dir, "docs/specs/software-requirements/srd002-lifecycle.yaml",
+		srd002Fixture)
+	writeFile(t, dir, "docs/specs/software-requirements/srd003-config.yaml",
+		srd003Fixture)
 
 	// Configuration file.
 	writeFile(t, dir, "configuration.yaml", `project:
@@ -192,10 +192,10 @@ func writeFile(t *testing.T, dir, rel, content string) {
 	}
 }
 
-// PRD fixtures mimicking sdd-hello-world's spec structure (GH-1394).
-// prd001: 6 R-items, prd002: 11 R-items, prd003: 12 R-items = 29 total.
+// SRD fixtures mimicking sdd-hello-world's spec structure (GH-1394).
+// srd001: 6 R-items, srd002: 11 R-items, srd003: 12 R-items = 29 total.
 
-const prd001Fixture = `requirements:
+const srd001Fixture = `requirements:
   R1:
     title: "Core operations"
     items:
@@ -210,7 +210,7 @@ const prd001Fixture = `requirements:
       - R2.3: "Exit codes"
 `
 
-const prd002Fixture = `requirements:
+const srd002Fixture = `requirements:
   R1:
     title: "Lifecycle init"
     items:
@@ -233,7 +233,7 @@ const prd002Fixture = `requirements:
       - R3.4: "Exit with appropriate code"
 `
 
-const prd003Fixture = `requirements:
+const srd003Fixture = `requirements:
   R1:
     title: "Config file loading"
     items:

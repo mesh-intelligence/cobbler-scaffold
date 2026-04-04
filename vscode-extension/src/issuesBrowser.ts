@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension R4
+// srd: srd006-vscode-extension R4
 // uc: rel02.0-uc004-issue-tracker-view
 
 import * as vscode from "vscode";

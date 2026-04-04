@@ -5,10 +5,10 @@ summary: |
   A use case with multiple touchpoints in different formats.
 
 touchpoints:
-  - T1: "Config struct: prd001-orchestrator-core R1.1, R1.2"
-  - T2: "Constructor: prd002-generation-lifecycle R2"
-  - T3: "No PRD reference here"
+  - T1: "Config struct: srd001-orchestrator-core R1.1, R1.2"
+  - T2: "Constructor: srd002-generation-lifecycle R2"
+  - T3: "No SRD reference here"
 
 success_criteria:
   - S1: All touchpoints are parsed correctly
-  - S2: PRD references are extracted where present
+  - S2: SRD references are extracted where present

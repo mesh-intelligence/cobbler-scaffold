@@ -1,8 +1,8 @@
-id: prd001-basic
-title: Basic PRD
+id: srd001-basic
+title: Basic SRD
 
 problem: |
-  A basic PRD for testing the spec model parser.
+  A basic SRD for testing the spec model parser.
 
 requirements:
   R1:
