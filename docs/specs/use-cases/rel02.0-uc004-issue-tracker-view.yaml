@@ -27,33 +27,33 @@ flow:
   - F8: "Auto-refresh: extension polls the GitHub Issues API on a configurable interval and rebuilds the tree when issues change"
 
 touchpoints:
-  - T1: "Issue tree view provider: prd006-vscode-extension R4.1"
-  - T2: "GitHub Issues API fetch: prd006-vscode-extension R4.2"
-  - T3: "Status grouping: prd006-vscode-extension R4.3"
-  - T4: "Issue node display (title, type, ID): prd006-vscode-extension R4.4"
-  - T5: "Expandable details (description, dependencies, comments): prd006-vscode-extension R4.5"
-  - T6: "InvocationRecord formatting: prd006-vscode-extension R4.6"
-  - T7: "Polling auto-refresh: prd006-vscode-extension R4.7"
-  - T8: "Context menu open in editor: prd006-vscode-extension R4.8"
+  - T1: "Issue tree view provider: srd006-vscode-extension R4.1"
+  - T2: "GitHub Issues API fetch: srd006-vscode-extension R4.2"
+  - T3: "Status grouping: srd006-vscode-extension R4.3"
+  - T4: "Issue node display (title, type, ID): srd006-vscode-extension R4.4"
+  - T5: "Expandable details (description, dependencies, comments): srd006-vscode-extension R4.5"
+  - T6: "InvocationRecord formatting: srd006-vscode-extension R4.6"
+  - T7: "Polling auto-refresh: srd006-vscode-extension R4.7"
+  - T8: "Context menu open in editor: srd006-vscode-extension R4.8"
   - T9: "InvocationRecord data shape: fields input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cost, loc_before, loc_after, duration_sec, git_diff_stat parsed from issue comments"
 
 success_criteria:
   - id: S1
     criterion: Expanding an issue reveals description, dependencies, and comments as child nodes, providing multi-layer navigation without leaving the sidebar
     traces:
-      - prd006-vscode-extension AC5
+      - srd006-vscode-extension AC5
   - id: S2
-    criterion: InvocationRecord JSON embedded in issue comments is parsed and displayed as formatted child nodes showing tokens, LOC delta, duration, and diff stats (cross-PRD data from prd005 rendered in prd006 UI)
+    criterion: InvocationRecord JSON embedded in issue comments is parsed and displayed as formatted child nodes showing tokens, LOC delta, duration, and diff stats (cross-SRD data from srd005 rendered in srd006 UI)
     traces:
-      - prd006-vscode-extension AC6
+      - srd006-vscode-extension AC6
   - id: S3
     criterion: Tree refreshes automatically on the configured polling interval via GitHub Issues API polling
     traces:
-      - prd006-vscode-extension AC9
+      - srd006-vscode-extension AC9
   - id: S4
     criterion: Tree handles an empty issue list or GitHub API error without crashing, displaying an informational message
     traces:
-      - prd006-vscode-extension AC11
+      - srd006-vscode-extension AC11
 
 out_of_scope:
   - Creating, editing, or closing issues from the tree view (read-only display)
@@ -62,9 +62,9 @@ out_of_scope:
   - Real-time streaming of issue updates from concurrent processes
 
 dependencies:
-  - D1: prd006-vscode-extension R4 (Issue Tracker Tree View requirements)
-  - D2: prd005-metrics-collection R1 (InvocationRecord format for parsing comments)
-  - D3: Extension infrastructure (prd006 R7) must be in place for tree views and watchers to register
+  - D1: srd006-vscode-extension R4 (Issue Tracker Tree View requirements)
+  - D2: srd005-metrics-collection R1 (InvocationRecord format for parsing comments)
+  - D3: Extension infrastructure (srd006 R7) must be in place for tree views and watchers to register
   - D4: GitHub repository must be configured in configuration.yaml (issues_repo field)
 
 risks:

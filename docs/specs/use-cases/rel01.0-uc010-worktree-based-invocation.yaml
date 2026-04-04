@@ -29,24 +29,24 @@ flow:
   - F9: "Clean up: stale task worktrees and branches are removed; orphaned issues are reset to ready"
 
 touchpoints:
-  - T1: "Stable worktree base path: prd003-cobbler-workflows R3.17"
-  - T2: "Recovery across invocation directories: prd003-cobbler-workflows R4.7"
-  - T3: "Stitch worktree management: prd003-cobbler-workflows R3.7, R3.15"
-  - T4: "Resume and recovery: prd003-cobbler-workflows R4.1, R4.2"
+  - T1: "Stable worktree base path: srd003-cobbler-workflows R3.17"
+  - T2: "Recovery across invocation directories: srd003-cobbler-workflows R4.7"
+  - T3: "Stitch worktree management: srd003-cobbler-workflows R3.7, R3.15"
+  - T4: "Resume and recovery: srd003-cobbler-workflows R4.1, R4.2"
 
 success_criteria:
   - id: S1
     criterion: worktreeBasePath returns the same temp directory path when called from the main repo root and from any of its git worktrees, ensuring task worktrees land under a single stable location
     traces:
-      - prd003-cobbler-workflows AC2
+      - srd003-cobbler-workflows AC2
   - id: S2
     criterion: mage generator:resume invoked from a git worktree finds and removes stale task worktrees created by a previous run from a different directory (cross-directory recovery)
     traces:
-      - prd003-cobbler-workflows AC3
+      - srd003-cobbler-workflows AC3
   - id: S3
     criterion: worktreeBasePath falls back to filepath.Base(os.Getwd()) when git rev-parse --git-common-dir fails, maintaining functionality outside git repositories
     traces:
-      - prd003-cobbler-workflows AC2
+      - srd003-cobbler-workflows AC2
 
 out_of_scope:
   - Running multiple concurrent orchestrators from different worktrees simultaneously

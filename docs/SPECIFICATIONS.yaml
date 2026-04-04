@@ -7,7 +7,7 @@ title: Cobbler Scaffold Specifications
 overview: |
   We build a Go library that automates AI-driven code generation through a
   two-phase cobbler workflow: measure proposes tasks, stitch executes them in
-  isolated git worktrees. This document indexes every PRD, use case, and test
+  isolated git worktrees. This document indexes every SRD, use case, and test
   suite in the project and shows how they trace to each other. For goals and
   boundaries see VISION.yaml. For components and interfaces see ARCHITECTURE.yaml.
 
@@ -36,36 +36,36 @@ roadmap_summary:
     use_cases_total: 0
     status: not started
 
-prd_index:
-  - id: prd001-orchestrator-core
+srd_index:
+  - id: srd001-orchestrator-core
     title: Orchestrator Core Interface
     summary: Defines the Config struct, constructor, defaults, YAML loading, and initialization for consuming projects
-    path: specs/product-requirements/prd001-orchestrator-core.yaml
+    path: specs/software-requirements/srd001-orchestrator-core.yaml
 
-  - id: prd002-generation-lifecycle
+  - id: srd002-generation-lifecycle
     title: Generation Lifecycle Management
     summary: Defines generation branch naming, start, run, resume, stop, reset, list, and switch operations
-    path: specs/product-requirements/prd002-generation-lifecycle.yaml
+    path: specs/software-requirements/srd002-generation-lifecycle.yaml
 
-  - id: prd003-cobbler-workflows
+  - id: srd003-cobbler-workflows
     title: Cobbler Measure and Stitch Workflows
     summary: Defines the measure and stitch phases, prompt templates, Claude invocation, recovery, and phase-specific context files
-    path: specs/product-requirements/prd003-cobbler-workflows.yaml
+    path: specs/software-requirements/srd003-cobbler-workflows.yaml
 
-  - id: prd004-differential-comparison
+  - id: srd004-differential-comparison
     title: Cross-Generation Differential Comparison
     summary: Defines BinaryResolver interface, git tag and GNU resolution, test case loading, and comparison execution
-    path: specs/product-requirements/prd004-differential-comparison.yaml
+    path: specs/software-requirements/srd004-differential-comparison.yaml
 
-  - id: prd005-metrics-collection
+  - id: srd005-metrics-collection
     title: Metrics Collection and Reporting
     summary: Defines InvocationRecord, LOC snapshots, stats collection, and token parsing
-    path: specs/product-requirements/prd005-metrics-collection.yaml
+    path: specs/software-requirements/srd005-metrics-collection.yaml
 
-  - id: prd006-vscode-extension
+  - id: srd006-vscode-extension
     title: VS Code Extension
     summary: Defines lifecycle commands, generation browser, branch comparison, issue tracker, metrics dashboard, specification browser, and code-to-spec traceability
-    path: specs/product-requirements/prd006-vscode-extension.yaml
+    path: specs/software-requirements/srd006-vscode-extension.yaml
 
 use_case_index:
   - id: rel01.0-uc001-orchestrator-initialization
@@ -209,126 +209,126 @@ test_suite_index:
     test_case_count: 11
     path: specs/test-suites/test-rel03.0.yaml
 
-prd_to_use_case_mapping:
+srd_to_use_case_mapping:
   - use_case: rel01.0-uc001-orchestrator-initialization
-    prd: prd001-orchestrator-core
+    srd: srd001-orchestrator-core
     why_required: Validates Config struct, constructor defaults, and Init method
     coverage: R1, R2, R5
 
   - use_case: rel01.0-uc002-generation-lifecycle
-    prd: prd002-generation-lifecycle
+    srd: srd002-generation-lifecycle
     why_required: Exercises generation start, run, stop, and list operations
     coverage: R2, R3, R5, R7
 
   - use_case: rel01.0-uc003-measure-workflow
-    prd: prd001-orchestrator-core
+    srd: srd001-orchestrator-core
     why_required: Uses Config workflow fields for measure configuration
     coverage: R1 (partial)
 
   - use_case: rel01.0-uc003-measure-workflow
-    prd: prd003-cobbler-workflows
+    srd: srd003-cobbler-workflows
     why_required: Validates measure phase - prompt rendering, Claude invocation, issue import
     coverage: R1, R2, R5, R6, R7
 
   - use_case: rel01.0-uc003-measure-workflow
-    prd: prd005-metrics-collection
+    srd: srd005-metrics-collection
     why_required: Records InvocationRecord on each created issue
     coverage: R1 (partial)
 
   - use_case: rel01.0-uc004-stitch-workflow
-    prd: prd001-orchestrator-core
+    srd: srd001-orchestrator-core
     why_required: Uses Config workflow fields for stitch configuration
     coverage: R1 (partial)
 
   - use_case: rel01.0-uc004-stitch-workflow
-    prd: prd003-cobbler-workflows
+    srd: srd003-cobbler-workflows
     why_required: Validates stitch phase - worktree isolation, Claude execution, merge, close
     coverage: R1, R3, R4, R6
 
   - use_case: rel01.0-uc004-stitch-workflow
-    prd: prd005-metrics-collection
+    srd: srd005-metrics-collection
     why_required: Records InvocationRecord with LOC snapshots and diff stats
     coverage: R1, R2, R5
 
   - use_case: rel01.0-uc005-resume-recovery
-    prd: prd002-generation-lifecycle
+    srd: srd002-generation-lifecycle
     why_required: Exercises resume and branch resolution logic
     coverage: R4, R9
 
   - use_case: rel01.0-uc005-resume-recovery
-    prd: prd003-cobbler-workflows
+    srd: srd003-cobbler-workflows
     why_required: Exercises stale task recovery and orphaned issue reset
     coverage: R4
 
   - use_case: rel01.0-uc006-scaffold-operations
-    prd: prd001-orchestrator-core
+    srd: srd001-orchestrator-core
     why_required: Validates scaffold detection using Config fields, SeedFiles, and YAML loading
     coverage: R1, R2, R4, R6
 
   - use_case: rel01.0-uc007-build-tooling
-    prd: prd001-orchestrator-core
+    srd: srd001-orchestrator-core
     why_required: Validates BinaryDir, BinaryName, and MainPackage Config fields through build targets
     coverage: R1 (partial)
 
   - use_case: rel01.0-uc008-performance-benchmarks
-    prd: prd003-cobbler-workflows
+    srd: srd003-cobbler-workflows
     why_required: Benchmarks measure and stitch workflow wall-clock time
     coverage: R1, R3 (partial)
 
   - use_case: rel01.0-uc009-phase-context-files
-    prd: prd003-cobbler-workflows
+    srd: srd003-cobbler-workflows
     why_required: Validates PhaseContext loading, override logic, and fallback behavior
     coverage: R9
 
   - use_case: rel01.0-uc010-worktree-based-invocation
-    prd: prd003-cobbler-workflows
+    srd: srd003-cobbler-workflows
     why_required: Validates stable worktree base path and recovery when invoked from a worktree
     coverage: R3 (partial), R4 (partial)
 
   - use_case: rel03.0-uc001-cross-generation-comparison
-    prd: prd004-differential-comparison
+    srd: srd004-differential-comparison
     why_required: Validates BinaryResolver, test case loading, comparison execution, and mage integration
     coverage: R1, R2, R3, R3b, R4, R5, R6
 
   - use_case: rel02.0-uc001-lifecycle-commands
-    prd: prd006-vscode-extension
+    srd: srd006-vscode-extension
     why_required: Validates lifecycle command registration, terminal execution, and confirmation dialogs
     coverage: R1
 
   - use_case: rel02.0-uc002-generation-browser
-    prd: prd006-vscode-extension
+    srd: srd006-vscode-extension
     why_required: Validates generation tree discovery from git tags with lifecycle state
     coverage: R2
 
   - use_case: rel02.0-uc003-branch-comparison
-    prd: prd006-vscode-extension
+    srd: srd006-vscode-extension
     why_required: Validates tag-to-tag and generation-to-generation diff views
     coverage: R3
 
   - use_case: rel02.0-uc004-issue-tracker-view
-    prd: prd006-vscode-extension
+    srd: srd006-vscode-extension
     why_required: Validates issue tree parsing, status grouping, and InvocationRecord display
     coverage: R4
 
   - use_case: rel02.0-uc005-metrics-dashboard
-    prd: prd006-vscode-extension
+    srd: srd006-vscode-extension
     why_required: Validates metrics aggregation, dashboard rendering, and data refresh
     coverage: R5
 
   - use_case: rel02.0-uc006-specification-browser
-    prd: prd006-vscode-extension
+    srd: srd006-vscode-extension
     why_required: Validates spec tree navigation, touchpoint expansion, and CodeLens traceability
     coverage: R8, R9
 
 traceability_diagram: |
   graph LR
-      subgraph PRDs
-          prd1["prd001\norchestrator-core"]
-          prd2["prd002\ngeneration-lifecycle"]
-          prd3["prd003\ncobbler-workflows"]
-          prd4["prd004\ndifferential-comparison"]
-          prd5["prd005\nmetrics-collection"]
-          prd6["prd006\nvscode-extension"]
+      subgraph SRDs
+          srd1["srd001\norchestrator-core"]
+          srd2["srd002\ngeneration-lifecycle"]
+          srd3["srd003\ncobbler-workflows"]
+          srd4["srd004\ndifferential-comparison"]
+          srd5["srd005\nmetrics-collection"]
+          srd6["srd006\nvscode-extension"]
       end
 
       subgraph UseCases01["Release 01.0 Use Cases"]
@@ -362,28 +362,28 @@ traceability_diagram: |
           ts3["test-rel03.0\n11 cases"]
       end
 
-      uc1 --> prd1
-      uc2 --> prd2
-      uc3 --> prd1
-      uc3 --> prd3
-      uc3 --> prd5
-      uc4 --> prd1
-      uc4 --> prd3
-      uc4 --> prd5
-      uc5 --> prd2
-      uc5 --> prd3
-      uc6 --> prd1
-      uc7 --> prd1
-      uc8 --> prd3
-      uc9 --> prd3
-      cuc1 --> prd4
+      uc1 --> srd1
+      uc2 --> srd2
+      uc3 --> srd1
+      uc3 --> srd3
+      uc3 --> srd5
+      uc4 --> srd1
+      uc4 --> srd3
+      uc4 --> srd5
+      uc5 --> srd2
+      uc5 --> srd3
+      uc6 --> srd1
+      uc7 --> srd1
+      uc8 --> srd3
+      uc9 --> srd3
+      cuc1 --> srd4
 
-      vuc1 --> prd6
-      vuc2 --> prd6
-      vuc3 --> prd6
-      vuc4 --> prd6
-      vuc5 --> prd6
-      vuc6 --> prd6
+      vuc1 --> srd6
+      vuc2 --> srd6
+      vuc3 --> srd6
+      vuc4 --> srd6
+      vuc5 --> srd6
+      vuc6 --> srd6
 
       ts1 --> uc1
       ts1 --> uc2
@@ -407,22 +407,22 @@ traceability_diagram: |
 coverage_gaps: |
   We identify the following gaps in specification coverage:
 
-  PRDs with no dedicated use case:
-  - prd005-metrics-collection is exercised indirectly through uc003 (measure)
+  SRDs with no dedicated use case:
+  - srd005-metrics-collection is exercised indirectly through uc003 (measure)
     and uc004 (stitch), which record InvocationRecords. A dedicated use case
     would provide more thorough validation.
 
-  Implemented features with no PRD:
+  Implemented features with no SRD:
   - Context assembly (context.go): ~30 struct types and buildProjectContext() —
     assembles all docs, specs, source code, and issues into a YAML blob for
-    prompt injection. No PRD.
+    prompt injection. No SRD.
   - History saving (cobbler.go, measure.go, stitch.go): HistoryDir config,
     saveHistory(), saveHistoryStats(), saveHistoryPromptAndLog() — persists
-    prompt, log, and stats per invocation. No PRD.
-  - Tag/versioning (tag.go): Tag() creates v0.YYYYMMDD.N doc-release tags. No PRD.
+    prompt, log, and stats per invocation. No SRD.
+  - Tag/versioning (tag.go): Tag() creates v0.YYYYMMDD.N doc-release tags. No SRD.
   - Reserved (Docker/image management removed — podman support dropped).
   - Phase-aware logging (orchestrator.go): setPhase/clearPhase, logf with
-    [phase +elapsed]. No PRD.
+    [phase +elapsed]. No SRD.
 
   Stale specifications:
   - Planning constitution P2 says 300-700 lines; config defaults are 250-350.

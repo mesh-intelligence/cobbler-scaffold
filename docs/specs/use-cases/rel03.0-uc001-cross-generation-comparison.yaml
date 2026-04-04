@@ -26,30 +26,30 @@ flow:
   - F10: "Report: return success if all tests passed, error if any failed"
 
 touchpoints:
-  - T1: "BinaryResolver interface: prd004-differential-comparison R1"
-  - T2: "GitTagResolver (worktree + build): prd004-differential-comparison R2"
-  - T3: "GNUResolver (Homebrew lookup): prd004-differential-comparison R3"
-  - T4: "Path-based resolver: prd004-differential-comparison R4"
-  - T5: "Test case loading from YAML specs: prd004-differential-comparison R5"
-  - T6: "Comparison execution and timeout: prd004-differential-comparison R6"
-  - T7: "Output formatting and mage target: prd004-differential-comparison R7"
+  - T1: "BinaryResolver interface: srd004-differential-comparison R1"
+  - T2: "GitTagResolver (worktree + build): srd004-differential-comparison R2"
+  - T3: "GNUResolver (Homebrew lookup): srd004-differential-comparison R3"
+  - T4: "Path-based resolver: srd004-differential-comparison R4"
+  - T5: "Test case loading from YAML specs: srd004-differential-comparison R5"
+  - T6: "Comparison execution and timeout: srd004-differential-comparison R6"
+  - T7: "Output formatting and mage target: srd004-differential-comparison R7"
   - T8: "Git worktree management: git worktree add/remove pattern reused from stitch workflow (create branch worktree, build, clean up)"
 
 success_criteria:
   - id: S1
     criterion: The full comparison pipeline (resolve binaries, load test cases, execute both binaries, compare outputs, format results, clean up) completes end-to-end for two git tags
     traces:
-      - prd004-differential-comparison AC1
-      - prd004-differential-comparison AC4
-      - prd004-differential-comparison AC5
+      - srd004-differential-comparison AC1
+      - srd004-differential-comparison AC4
+      - srd004-differential-comparison AC5
   - id: S2
     criterion: The gnu pseudo-tag resolves Homebrew coreutils with g-prefix mapping and moreutils with unprefixed names, enabling comparison against reference implementations
     traces:
-      - prd004-differential-comparison AC2
+      - srd004-differential-comparison AC2
   - id: S3
     criterion: A single utility can be tested by setting the UTILITY environment variable, filtering the test case set before execution
     traces:
-      - prd004-differential-comparison AC3
+      - srd004-differential-comparison AC3
 
 out_of_scope:
   - Performance comparison between generations (we compare correctness only)

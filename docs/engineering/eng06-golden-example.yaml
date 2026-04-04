@@ -60,9 +60,9 @@ sections:
       The example should demonstrate:
       - Correct requirement count (5-8 for code tasks per P9)
       - Correct acceptance criteria count (5-8 for code tasks per P9)
-      - Design decisions derived from PRDs, not invented (3-5 per P9)
-      - File names derived from architecture and PRD names (P7)
-      - Required reading that includes the relevant PRD
+      - Design decisions derived from SRDs, not invented (3-5 per P9)
+      - File names derived from architecture and SRD names (P7)
+      - Required reading that includes the relevant SRD
       - Canonical ordering (P8): types before implementation, implementation
         before tests
 
@@ -80,7 +80,7 @@ sections:
       - 4 design decisions (within P9 range of 3-5)
       - File names derived from the primary exported type (P7: difftest.go,
         not testutils.go)
-      - Required reading includes the relevant PRD
+      - Required reading includes the relevant SRD
       - Implementation task before test task (P8 ordering)
 
   - title: Updating the Golden Example
@@ -92,6 +92,6 @@ sections:
       details.
 
 references:
-  - prd003-cobbler-workflows
+  - srd003-cobbler-workflows
   - eng02-prompt-templates
   - pkg/orchestrator/constitutions/planning.yaml

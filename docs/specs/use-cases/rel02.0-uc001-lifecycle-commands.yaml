@@ -25,41 +25,41 @@ flow:
   - F7: "Refresh views: extension refreshes generation browser and issue tracker views after command completes"
 
 touchpoints:
-  - T1: "VS Code commands API: prd006-vscode-extension R1.1, R1.2"
-  - T2: "Integrated terminal API: prd006-vscode-extension R1.2"
-  - T3: "Quick pick for switch: prd006-vscode-extension R1.3"
-  - T4: "Confirmation dialogs: prd006-vscode-extension R1.4"
-  - T5: "View refresh: prd006-vscode-extension R1.5"
-  - T6: "Command enablement: prd006-vscode-extension R1.6"
+  - T1: "VS Code commands API: srd006-vscode-extension R1.1, R1.2"
+  - T2: "Integrated terminal API: srd006-vscode-extension R1.2"
+  - T3: "Quick pick for switch: srd006-vscode-extension R1.3"
+  - T4: "Confirmation dialogs: srd006-vscode-extension R1.4"
+  - T5: "View refresh: srd006-vscode-extension R1.5"
+  - T6: "Command enablement: srd006-vscode-extension R1.6"
   - T7: "Generation lifecycle operations: GeneratorStart, Run, Resume, Stop, Reset, Switch mage targets invoked via integrated terminal"
 
 success_criteria:
   - id: S1
     criterion: Destructive commands (Start, Stop, Reset) show a confirmation dialog and abort when the developer cancels, preventing accidental state changes
     traces:
-      - prd006-vscode-extension AC1
+      - srd006-vscode-extension AC1
   - id: S2
     criterion: Commands that are invalid for the current git state are disabled (e.g., Start disabled on a generation branch, Resume disabled on main), preventing confusing error messages
     traces:
-      - prd006-vscode-extension AC1
+      - srd006-vscode-extension AC1
   - id: S3
     criterion: All extension views (generation browser, issue tracker, metrics dashboard) refresh automatically after a lifecycle command completes, keeping the UI consistent with git state
     traces:
-      - prd006-vscode-extension AC1
-      - prd006-vscode-extension AC9
+      - srd006-vscode-extension AC1
+      - srd006-vscode-extension AC9
 
 out_of_scope:
-  - Real-time streaming of Claude agent output (see prd006 non-goals)
-  - Automated test execution from extension (see prd006 non-goals)
+  - Real-time streaming of Claude agent output (see srd006 non-goals)
+  - Automated test execution from extension (see srd006 non-goals)
   - Generation browser tree view implementation (see rel02.0-uc002)
   - Issue tracker view implementation (see rel02.0-uc004)
   - Metrics dashboard implementation (see rel02.0-uc005)
 
 
 dependencies:
-  - D1: prd006-vscode-extension R1 (lifecycle commands requirements)
-  - D2: prd002-generation-lifecycle (defines the lifecycle operations that commands execute)
-  - D3: Extension infrastructure (prd006 R7) must be in place for commands to register
+  - D1: srd006-vscode-extension R1 (lifecycle commands requirements)
+  - D2: srd002-generation-lifecycle (defines the lifecycle operations that commands execute)
+  - D3: Extension infrastructure (srd006 R7) must be in place for commands to register
 
 risks:
   - K1: "Terminal state detection is unreliable | Use git ref checks instead of terminal parsing"

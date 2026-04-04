@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension R8
+// srd: srd006-vscode-extension R8
 // uc: rel02.0-uc006-specification-browser
 
 import * as fs from "fs";
@@ -20,28 +20,28 @@ export interface UseCase {
   filePath: string;
 }
 
-/** A touchpoint linking a use case to PRD requirements. */
+/** A touchpoint linking a use case to SRD requirements. */
 export interface Touchpoint {
   /** Touchpoint key, e.g. "T1". */
   key: string;
   /** Full description text. */
   description: string;
-  /** PRD id referenced, if parseable. */
-  prdId: string | undefined;
+  /** SRD id referenced, if parseable. */
+  srdId: string | undefined;
   /** Specific requirement IDs referenced (e.g. ["R1.1", "R1.2"]). */
   requirementIds: string[];
 }
 
-/** A product requirements document parsed from docs/specs/product-requirements/*.yaml. */
-export interface Prd {
+/** A product requirements document parsed from docs/specs/software-requirements/*.yaml. */
+export interface Srd {
   id: string;
   title: string;
   requirements: Record<string, PrdRequirement>;
   filePath: string;
 }
 
-/** A single requirement group within a PRD. */
-export interface PrdRequirement {
+/** A single requirement group within a SRD. */
+export interface SrdRequirement {
   title: string;
   items: string[];
 }
@@ -55,7 +55,7 @@ export interface TestSuite {
   filePath: string;
 }
 
-/** A source file reference where a PRD ID appears. */
+/** A source file reference where a SRD ID appears. */
 export interface SourceRef {
   file: string;
   line: number;
@@ -64,13 +64,13 @@ export interface SourceRef {
 // ---- SpecGraph ----
 
 /**
- * In-memory graph of specification artifacts. Parses use cases, PRDs, and
+ * In-memory graph of specification artifacts. Parses use cases, SRDs, and
  * test suites from docs/specs/ and indexes them for navigation. Caches the
  * result and invalidates when the caller signals a file change.
  */
 export class SpecGraph {
   private useCases = new Map<string, UseCase>();
-  private prds = new Map<string, Prd>();
+  private srds = new Map<string, Srd>();
   private testSuites = new Map<string, TestSuite>();
   private sourceRefCache = new Map<string, SourceRef[]>();
   private built = false;
@@ -94,7 +94,7 @@ export class SpecGraph {
   /** Clears all cached data. The next ensureBuilt() call will re-parse. */
   invalidate(): void {
     this.useCases.clear();
-    this.prds.clear();
+    this.srds.clear();
     this.testSuites.clear();
     this.sourceRefCache.clear();
     this.built = false;
@@ -104,16 +104,16 @@ export class SpecGraph {
     return this.useCases.get(id);
   }
 
-  getPrd(id: string): Prd | undefined {
-    return this.prds.get(id);
+  getSrd(id: string): Srd | undefined {
+    return this.srds.get(id);
   }
 
   listUseCases(): UseCase[] {
     return Array.from(this.useCases.values());
   }
 
-  listPrds(): Prd[] {
-    return Array.from(this.prds.values());
+  listSrds(): Srd[] {
+    return Array.from(this.srds.values());
   }
 
   listTestSuites(): TestSuite[] {
@@ -122,15 +122,15 @@ export class SpecGraph {
 
   /**
    * Returns source files under pkg/ and magefiles/ that reference the given
-   * PRD ID string. Results are cached per prdId until invalidate().
+   * SRD ID string. Results are cached per srdId until invalidate().
    */
-  getSourceFiles(prdId: string): SourceRef[] {
-    const cached = this.sourceRefCache.get(prdId);
+  getSourceFiles(srdId: string): SourceRef[] {
+    const cached = this.sourceRefCache.get(srdId);
     if (cached !== undefined) {
       return cached;
     }
-    const refs = grepForPrdId(this.root, prdId);
-    this.sourceRefCache.set(prdId, refs);
+    const refs = grepForPrdId(this.root, srdId);
+    this.sourceRefCache.set(srdId, refs);
     return refs;
   }
 
@@ -159,7 +159,7 @@ export class SpecGraph {
   }
 
   private parsePrds(): void {
-    const dir = path.join(this.root, "docs", "specs", "product-requirements");
+    const dir = path.join(this.root, "docs", "specs", "software-requirements");
     for (const file of listYamlFiles(dir)) {
       const filePath = path.join(dir, file);
       const doc = loadYaml(filePath);
@@ -167,14 +167,14 @@ export class SpecGraph {
         continue;
       }
       const raw = doc as Record<string, unknown>;
-      const prd: Prd = {
+      const srd: Srd = {
         id: String(raw.id ?? ""),
         title: String(raw.title ?? ""),
         requirements: parseRequirements(raw.requirements),
         filePath,
       };
-      if (prd.id) {
-        this.prds.set(prd.id, prd);
+      if (srd.id) {
+        this.srds.set(srd.id, srd);
       }
     }
   }
@@ -231,7 +231,7 @@ export function loadYaml(filePath: string): unknown {
  * Parses the touchpoints field from a use case YAML.
  *
  * Touchpoints are YAML list items with single-key maps:
- *   - T1: "Description: prd006-vscode-extension R8.1, R8.2"
+ *   - T1: "Description: srd006-vscode-extension R8.1, R8.2"
  *
  * After YAML parsing each item is an object like { T1: "..." }.
  */
@@ -259,7 +259,7 @@ export function parseTouchpoints(raw: unknown): Touchpoint[] {
   return result;
 }
 
-/** Parses a touchpoint from a plain string like "T1: description: prdId R1.1". */
+/** Parses a touchpoint from a plain string like "T1: description: srdId R1.1". */
 export function parseTouchpointString(s: string): Touchpoint | undefined {
   const colonIdx = s.indexOf(":");
   if (colonIdx < 0) {
@@ -278,9 +278,9 @@ export function parseTouchpointFromKV(key: string, value: string): Touchpoint {
     desc = desc.slice(1, -1);
   }
 
-  // Try to extract PRD reference: look for prdNNN-... pattern.
-  const prdMatch = desc.match(/(prd\d{3}-[\w-]+)/);
-  const prdId = prdMatch ? prdMatch[1] : undefined;
+  // Try to extract SRD reference: look for srdNNN-... pattern.
+  const srdMatch = desc.match(/(srd\d{3}-[\w-]+)/);
+  const srdId = srdMatch ? srdMatch[1] : undefined;
 
   // Extract requirement IDs: R followed by digits and optional dot-digits.
   const reqMatches = desc.match(/R\d+(?:\.\d+)?/g) ?? [];
@@ -288,13 +288,13 @@ export function parseTouchpointFromKV(key: string, value: string): Touchpoint {
   return {
     key,
     description: desc,
-    prdId,
+    srdId,
     requirementIds: reqMatches,
   };
 }
 
 /**
- * Parses the requirements field from a PRD YAML.
+ * Parses the requirements field from a SRD YAML.
  *
  * Requirements are a map of requirement groups:
  *   R1:
@@ -326,10 +326,10 @@ export function parseRequirements(
 }
 
 /**
- * Searches pkg/ and magefiles/ for lines containing the PRD ID string.
+ * Searches pkg/ and magefiles/ for lines containing the SRD ID string.
  * Uses grep via child_process for simplicity and performance.
  */
-export function grepForPrdId(root: string, prdId: string): SourceRef[] {
+export function grepForPrdId(root: string, srdId: string): SourceRef[] {
   const refs: SourceRef[] = [];
   const dirs = ["pkg", "magefiles"]
     .map((d) => path.join(root, d))
@@ -348,7 +348,7 @@ export function grepForPrdId(root: string, prdId: string): SourceRef[] {
   try {
     // grep -rn returns lines like "file:line:content"
     const output = execFileSync(
-      "grep", ["-rn", "--include=*.go", prdId, ...dirs],
+      "grep", ["-rn", "--include=*.go", srdId, ...dirs],
       { encoding: "utf-8", cwd: root }
     );
     for (const line of output.split("\n")) {

@@ -1,4 +1,4 @@
-id: prd004-differential-comparison
+id: srd004-differential-comparison
 title: Cross-Generation Differential Comparison
 
 implemented_by:
@@ -83,9 +83,9 @@ requirements:
       - R7.6: We expose a mage compare:run target that invokes the Compare method
 
 non_goals:
-  - This PRD does not define concurrent comparison execution (comparisons run sequentially per utility)
-  - This PRD does not define test case authoring or test suite format changes (we consume existing test-rel*.yaml files)
-  - This PRD does not define performance benchmarking between generations (we compare correctness only)
+  - This SRD does not define concurrent comparison execution (comparisons run sequentially per utility)
+  - This SRD does not define test case authoring or test suite format changes (we consume existing test-rel*.yaml files)
+  - This SRD does not define performance benchmarking between generations (we compare correctness only)
 
 acceptance_criteria:
   - id: AC1

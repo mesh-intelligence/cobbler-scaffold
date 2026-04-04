@@ -6,10 +6,10 @@ title: Specification Browser and Code-to-Spec Traceability
 
 summary: |
   A developer opens the Specification Browser panel in VS Code and navigates
-  a tree of use cases, PRDs, and test suites. Expanding a use case reveals
-  its PRD touchpoints; expanding a PRD requirement reveals the Go source
+  a tree of use cases, SRDs, and test suites. Expanding a use case reveals
+  its SRD touchpoints; expanding a SRD requirement reveals the Go source
   files that implement it. Conversely, the developer opens a Go source file
-  containing a // prd: or // uc: comment and activates a CodeLens to jump
+  containing a // srd: or // uc: comment and activates a CodeLens to jump
   directly to the referenced specification YAML.
 
 actor: Developer using VS Code with the orchestrator extension installed
@@ -18,46 +18,46 @@ trigger: Developer opens the Specification Browser panel in the VS Code sidebar,
 
 flow:
   - F1: "Open Specification Browser: developer clicks the mageOrchestrator.specs view in the VS Code sidebar"
-  - F2: "Browse top-level nodes: tree displays three parent nodes (Use Cases, PRDs, Test Suites) listing files from docs/specs/"
-  - F3: "Expand use case: developer expands a use case node to see its PRD touchpoints as child nodes, derived from the touchpoints field in the use case YAML (requires YAML parsing of the use case file)"
-  - F4: "Expand PRD requirement: developer expands a touchpoint node to see Go source files under pkg/ that reference the PRD ID (requires source file scanning triggered by node expansion)"
+  - F2: "Browse top-level nodes: tree displays three parent nodes (Use Cases, SRDs, Test Suites) listing files from docs/specs/"
+  - F3: "Expand use case: developer expands a use case node to see its SRD touchpoints as child nodes, derived from the touchpoints field in the use case YAML (requires YAML parsing of the use case file)"
+  - F4: "Expand SRD requirement: developer expands a touchpoint node to see Go source files under pkg/ that reference the SRD ID (requires source file scanning triggered by node expansion)"
   - F5: "Open file: developer clicks a node to open the corresponding YAML (for specs) or Go file (for source references) in the editor"
   - F6: "Auto-refresh: tree refreshes when files under docs/specs/ change, detected via FileSystemWatcher"
-  - F7: "Open annotated Go file: developer opens a Go source file containing // prd: or // uc: comments"
+  - F7: "Open annotated Go file: developer opens a Go source file containing // srd: or // uc: comments"
   - F8: "View CodeLens: extension renders a View Requirement CodeLens above each detected annotation comment"
-  - F9: "Activate CodeLens: developer clicks the CodeLens to open the referenced specification YAML, resolved from docs/specs/ using the prd-id or uc-id"
+  - F9: "Activate CodeLens: developer clicks the CodeLens to open the referenced specification YAML, resolved from docs/specs/ using the srd-id or uc-id"
 
 touchpoints:
-  - T1: "Spec tree view provider: prd006-vscode-extension R8.1"
-  - T2: "Use case listing and grouping: prd006-vscode-extension R8.2"
-  - T3: "Touchpoint expansion: prd006-vscode-extension R8.3"
-  - T4: "Source file discovery from PRD references: prd006-vscode-extension R8.4"
-  - T5: "Click-to-open for YAML and Go files: prd006-vscode-extension R8.5"
-  - T6: "PRD and test suite parent nodes: prd006-vscode-extension R8.6"
-  - T7: "FileSystemWatcher refresh: prd006-vscode-extension R8.7"
-  - T8: "CodeLensProvider registration: prd006-vscode-extension R9.1"
-  - T9: "PRD annotation comment detection: prd006-vscode-extension R9.2"
-  - T10: "UC annotation comment detection: prd006-vscode-extension R9.3"
-  - T11: "View Requirement CodeLens rendering: prd006-vscode-extension R9.4"
-  - T12: "CodeLens opens spec YAML: prd006-vscode-extension R9.5"
+  - T1: "Spec tree view provider: srd006-vscode-extension R8.1"
+  - T2: "Use case listing and grouping: srd006-vscode-extension R8.2"
+  - T3: "Touchpoint expansion: srd006-vscode-extension R8.3"
+  - T4: "Source file discovery from SRD references: srd006-vscode-extension R8.4"
+  - T5: "Click-to-open for YAML and Go files: srd006-vscode-extension R8.5"
+  - T6: "SRD and test suite parent nodes: srd006-vscode-extension R8.6"
+  - T7: "FileSystemWatcher refresh: srd006-vscode-extension R8.7"
+  - T8: "CodeLensProvider registration: srd006-vscode-extension R9.1"
+  - T9: "SRD annotation comment detection: srd006-vscode-extension R9.2"
+  - T10: "UC annotation comment detection: srd006-vscode-extension R9.3"
+  - T11: "View Requirement CodeLens rendering: srd006-vscode-extension R9.4"
+  - T12: "CodeLens opens spec YAML: srd006-vscode-extension R9.5"
 
 success_criteria:
   - id: S1
-    criterion: Expanding a use case node shows PRD touchpoints, and expanding a touchpoint shows Go source files under pkg/ that reference the PRD ID, providing three-level spec-to-code navigation
+    criterion: Expanding a use case node shows SRD touchpoints, and expanding a touchpoint shows Go source files under pkg/ that reference the SRD ID, providing three-level spec-to-code navigation
     traces:
-      - prd006-vscode-extension AC13
+      - srd006-vscode-extension AC13
   - id: S2
-    criterion: Expanding a PRD requirement node discovers implementing source files by searching for the pattern prd[NNN] in Go files (cross-artifact discovery between spec YAML and Go source)
+    criterion: Expanding a SRD requirement node discovers implementing source files by searching for the pattern srd[NNN] in Go files (cross-artifact discovery between spec YAML and Go source)
     traces:
-      - prd006-vscode-extension AC13
+      - srd006-vscode-extension AC13
   - id: S3
     criterion: Tree refreshes automatically when files under docs/specs/ are added, modified, or deleted via FileSystemWatcher
     traces:
-      - prd006-vscode-extension AC9
+      - srd006-vscode-extension AC9
   - id: S4
-    criterion: CodeLens appears above both prd-annotation and uc-annotation comments in Go files, and activating the CodeLens opens the correct specification YAML resolved from docs/specs/
+    criterion: CodeLens appears above both srd-annotation and uc-annotation comments in Go files, and activating the CodeLens opens the correct specification YAML resolved from docs/specs/
     traces:
-      - prd006-vscode-extension AC14
+      - srd006-vscode-extension AC14
 
 out_of_scope:
   - Editing specification YAML from within the tree view (read-only navigation only)
@@ -66,12 +66,12 @@ out_of_scope:
   - CodeLens for languages other than Go
 
 dependencies:
-  - D1: prd006-vscode-extension R8 (Specification Browser requirements)
-  - D2: prd006-vscode-extension R9 (Code-to-Spec Traceability requirements)
-  - D3: Extension infrastructure (prd006 R7) must be in place for tree views and CodeLens to register
+  - D1: srd006-vscode-extension R8 (Specification Browser requirements)
+  - D2: srd006-vscode-extension R9 (Code-to-Spec Traceability requirements)
+  - D3: Extension infrastructure (srd006 R7) must be in place for tree views and CodeLens to register
   - D4: Specification YAML files must follow the format conventions in docs/constitutions/design.yaml
 
 risks:
   - K1: "Large spec trees may be slow to build | Use lazy loading and expand nodes on demand rather than scanning all files upfront"
-  - K2: "PRD reference search in pkg/ may be slow for large codebases | Cache results and invalidate on file change events"
+  - K2: "SRD reference search in pkg/ may be slow for large codebases | Cache results and invalidate on file change events"
   - K3: "Spec YAML format changes could break tree parsing | Read only the fields defined in the format rule and ignore unknown fields"

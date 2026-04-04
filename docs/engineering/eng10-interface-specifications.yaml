@@ -8,7 +8,7 @@ introduction: |
   Interfaces in ARCHITECTURE.yaml serve as summaries: a name, a paragraph
   of prose, and optional lists of data structures and operations written in
   Go-specific notation. This works for orientation but breaks down when
-  tooling needs to validate contracts, generate stubs, or check that a PRD's
+  tooling needs to validate contracts, generate stubs, or check that a SRD's
   implemented_by claim actually matches the interface it references.
 
   We introduce a standalone interface specification file format that lives in
@@ -46,7 +46,7 @@ sections:
       | data_structures | no | List of typed data structure definitions with field lists |
       | operations | no | List of method definitions with typed parameters and returns |
       | announcements | no | List of events or signals the interface emits |
-      | references | no | List of PRD or use case IDs this interface traces to |
+      | references | no | List of SRD or use case IDs this interface traces to |
 
   - title: Data Structure Definitions
     content: |
@@ -140,7 +140,7 @@ sections:
 
   - title: Relationship to mage analyze
     content: |
-      The analyze target validates that every interface name in a PRD's
+      The analyze target validates that every interface name in a SRD's
       implemented_by and used_by lists resolves to an entry in
       ARCHITECTURE.yaml's interfaces section (I6). When spec_file is
       present, analyze can optionally validate that the specification file

@@ -7,7 +7,7 @@
 #
 # A semantic model is the mutable behavioral layer of an agent specification.
 # It declares what the agent observes, how it reasons, and what it produces—
-# without prescribing code structure. The PRD defines architecture (stable).
+# without prescribing code structure. The SRD defines architecture (stable).
 # The semantic model defines behavior (mutable). Constitutions and guidelines
 # constrain how behavior is implemented (prohibitive). The semantic model
 # declares what behavior IS (declarative).
@@ -20,7 +20,7 @@ articles:
       data_sources, features, algorithm, and output_format. A semantic
       model that omits any section is incomplete. A semantic model that
       adds sections beyond these four is overspecified—move the extra
-      content to the PRD, architectural guidelines, or domain knowledge.
+      content to the SRD, architectural guidelines, or domain knowledge.
 
       data_sources: what the agent observes (inputs)
       features: how the agent interprets observations (derived signals)
@@ -101,15 +101,15 @@ articles:
     title: Output format matches the functional interface
     rule: |
       The output_format section must align with the agent's IFunctional
-      interface as declared in the PRD. Every field in the output format
+      interface as declared in the SRD. Every field in the output format
       must correspond to a return type or response structure in the
       functional interface.
 
       If the semantic model produces outputs that IFunctional cannot
       express, either the semantic model is wrong (specifying behavior
-      the architecture does not support) or the PRD needs a delta (the
+      the architecture does not support) or the SRD needs a delta (the
       architecture must grow to support the new behavior). This cross-
-      reference between semantic model and PRD is what makes specification
+      reference between semantic model and SRD is what makes specification
       layers a graph, not a stack.
 
   - id: SM6
@@ -122,7 +122,7 @@ articles:
 
       Semantic models are composed at the specification level. The
       Specification Selector assembles the set of semantic models an
-      agent instance needs. The PRD defines the architectural slots
+      agent instance needs. The SRD defines the architectural slots
       these models fill. Each slot corresponds to one behavioral
       capability.
 
@@ -233,5 +233,5 @@ sections:
       Version changes signal the scope of regeneration needed. PATCH
       changes tune parameters. MINOR changes add features or modify
       algorithms. MAJOR changes alter inputs or outputs and may
-      require PRD changes. Each semantic model evolves independently
+      require SRD changes. Each semantic model evolves independently
       of others in the same agent.

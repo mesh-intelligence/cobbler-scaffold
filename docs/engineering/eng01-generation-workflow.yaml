@@ -84,5 +84,5 @@ sections:
       See cupboard-workflow for the full offline protocol.
 
 references:
-  - prd002-generation-lifecycle
+  - srd002-generation-lifecycle
   - cupboard-workflow

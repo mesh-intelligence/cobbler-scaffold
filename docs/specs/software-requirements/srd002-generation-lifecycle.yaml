@@ -1,4 +1,4 @@
-id: prd002-generation-lifecycle
+id: srd002-generation-lifecycle
 title: Generation Lifecycle Management
 
 implemented_by:
@@ -115,8 +115,8 @@ requirements:
       - R10.3: generation.preserve_sources defaults to false; repos whose Go source is the generated output keep all existing behaviour unchanged
 
 non_goals:
-  - This PRD does not define what happens inside measure or stitch cycles (see prd003)
-  - This PRD does not define multi-generation concurrency (one generation at a time)
+  - This SRD does not define what happens inside measure or stitch cycles (see srd003)
+  - This SRD does not define multi-generation concurrency (one generation at a time)
 
 acceptance_criteria:
   - id: AC1

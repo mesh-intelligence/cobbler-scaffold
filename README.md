@@ -8,7 +8,7 @@ Specifications are authored in YAML rather than [spec-kit](https://github.com/gi
 
 AI coding assistants handle individual edits well but break down across sessions that require sequenced tasks, dependency management, and clean commit history. Running Claude directly on a working branch conflates exploration with production commits and leaves recovery from failures to the developer.
 
-The primary contribution of this repository is three YAML constitutions — design, planning, and execution — that govern Claude's behavior in each phase of the cobbler workflow. Constitutions enforce specification-first development: Claude may not write code that does not trace to a PRD, must size tasks within defined LOC bounds, and must close the issue with a traceable commit before ending a session. The analyze command validates that produced specifications are internally consistent — no orphaned PRDs, no missing test-suite linkage, no broken use-case references.
+The primary contribution of this repository is three YAML constitutions — design, planning, and execution — that govern Claude's behavior in each phase of the cobbler workflow. Constitutions enforce specification-first development: Claude may not write code that does not trace to a SRD, must size tasks within defined LOC bounds, and must close the issue with a traceable commit before ending a session. The analyze command validates that produced specifications are internally consistent — no orphaned SRDs, no missing test-suite linkage, no broken use-case references.
 
 The cobbler workflow that the constitutions govern separates task proposal (measure) from task execution (stitch). Measure invokes Claude with the project's specification tree and produces a dependency-ordered task list. Stitch executes each task in an isolated git worktree, merges the result to the generation branch, and records metrics. The generation branch accumulates only finished work; the loop runs unattended until the backlog is empty or the cycle budget is exhausted.
 
@@ -53,10 +53,10 @@ graph TD
 
 ## Scope and Status
 
-Release 01.0 (Core Orchestrator and Workflows) is complete: 5 of 5 use cases implemented across 5 PRDs.
+Release 01.0 (Core Orchestrator and Workflows) is complete: 5 of 5 use cases implemented across 5 SRDs.
 Release 02.0 (VS Code Extension) is not started: 5 use cases specified, 0 implemented.
 
-The specification index at [docs/SPECIFICATIONS.yaml](docs/SPECIFICATIONS.yaml) lists every PRD, use case, and test suite with cross-references.
+The specification index at [docs/SPECIFICATIONS.yaml](docs/SPECIFICATIONS.yaml) lists every SRD, use case, and test suite with cross-references.
 
 ## Workflow
 
@@ -102,21 +102,21 @@ Both targets accept `.` for the current directory, but **self-targeting is block
 
 ## Reading the Specifications
 
-The specification tree is the source of truth for requirements and design decisions. Code comments and commit messages reference these documents by ID (e.g., `prd001-orchestrator-core R6`).
+The specification tree is the source of truth for requirements and design decisions. Code comments and commit messages reference these documents by ID (e.g., `srd001-orchestrator-core R6`).
 
 | Document | Path | Purpose |
 | --- | --- | --- |
 | Vision | [docs/VISION.yaml](docs/VISION.yaml) | Goals, boundaries, personas, release definitions |
 | Architecture | [docs/ARCHITECTURE.yaml](docs/ARCHITECTURE.yaml) | Components, interfaces, protocols, data flows |
 | Diagrams | [docs/ARCHITECTURE-diagrams.md](docs/ARCHITECTURE-diagrams.md) | Mermaid companion to ARCHITECTURE.yaml |
-| Specifications index | [docs/SPECIFICATIONS.yaml](docs/SPECIFICATIONS.yaml) | PRD, use case, and test suite index with traceability |
+| Specifications index | [docs/SPECIFICATIONS.yaml](docs/SPECIFICATIONS.yaml) | SRD, use case, and test suite index with traceability |
 | Road map | [docs/road-map.yaml](docs/road-map.yaml) | Releases and the use cases each delivers |
-| PRDs | [docs/specs/product-requirements/](docs/specs/product-requirements/) | Per-feature requirements; each requirement carries an R-number |
+| SRDs | [docs/specs/software-requirements/](docs/specs/software-requirements/) | Per-feature requirements; each requirement carries an R-number |
 | Use cases | [docs/specs/use-cases/](docs/specs/use-cases/) | Concrete user flows keyed to a release; named `rel{N}.{M}-uc{NNN}-slug.yaml` |
 | Test suites | [docs/specs/test-suites/](docs/specs/test-suites/) | Specified test cases with inputs and expected outputs |
 | Constitutions | [docs/constitutions/](docs/constitutions/) | Behavioral rules injected into measure and stitch prompts |
 
-**How to navigate**: Start with [docs/VISION.yaml](docs/VISION.yaml) for context, then [docs/ARCHITECTURE.yaml](docs/ARCHITECTURE.yaml) for component boundaries. When reading code, the file header lists which PRDs it implements. When a requirement is unclear, look up the R-number in the relevant PRD; the use cases for that PRD are listed in [docs/SPECIFICATIONS.yaml](docs/SPECIFICATIONS.yaml).
+**How to navigate**: Start with [docs/VISION.yaml](docs/VISION.yaml) for context, then [docs/ARCHITECTURE.yaml](docs/ARCHITECTURE.yaml) for component boundaries. When reading code, the file header lists which SRDs it implements. When a requirement is unclear, look up the R-number in the relevant SRD; the use cases for that SRD are listed in [docs/SPECIFICATIONS.yaml](docs/SPECIFICATIONS.yaml).
 
 Use cases are stable by numeric ID. The release they belong to is recorded in [docs/road-map.yaml](docs/road-map.yaml), not in the filename — re-prioritizing a use case to a later release does not rename the file.
 
@@ -126,7 +126,7 @@ Use cases are stable by numeric ID. The release they belong to is recorded in [d
 pkg/orchestrator/      — library implementation; exported types are Orchestrator, Config, New, LoadConfig
 orchestrator.go        — Mage target template; scaffold:push copies this to target repos as magefiles/orchestrator.go
 magefiles/magefile.go  — build targets for this repository (includes scaffold:push, podman targets)
-docs/                  — VISION, ARCHITECTURE, PRDs, use cases, test suites, constitutions
+docs/                  — VISION, ARCHITECTURE, SRDs, use cases, test suites, constitutions
 docs/constitutions/    — design/planning/execution/go-style/testing constitutions (scaffolded into consuming projects)
 docs/prompts/          — measure and stitch prompt templates (scaffolded into consuming projects)
 tests/rel01.0/         — release 01 E2E tests; one package per use case (uc001/ through uc007/)

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension
+// srd: srd006-vscode-extension
 
 import * as fs from "fs";
 import * as path from "path";

@@ -1,9 +1,9 @@
 # Interface Constitution
 #
 # This constitution governs the definition, naming, and traceability of
-# interfaces in the architecture and PRDs. It is scaffolded into consuming
+# interfaces in the architecture and SRDs. It is scaffolded into consuming
 # projects so Claude knows how to write well-formed interface specifications
-# and how PRDs reference interfaces.
+# and how SRDs reference interfaces.
 
 articles:
   - id: I1
@@ -12,7 +12,7 @@ articles:
       Every interface is declared in the interfaces section of
       ARCHITECTURE.yaml. An interface groups related data structures and
       operations under a name that components reference. Interfaces are not
-      declared in PRDs; PRDs reference interfaces defined in the architecture.
+      declared in SRDs; SRDs reference interfaces defined in the architecture.
 
       Each interface entry in ARCHITECTURE.yaml may include a spec_file field
       pointing to a standalone specification file in docs/interfaces/. When
@@ -49,33 +49,33 @@ articles:
       ifc-[kebab-case-name].yaml (e.g., ifc-generation-lifecycle.yaml).
 
   - id: I4
-    title: PRD interface references
+    title: SRD interface references
     rule: |
-      PRDs may declare interface relationships using two optional fields:
+      SRDs may declare interface relationships using two optional fields:
       implemented_by and used_by. Both are lists of interface names that
       must resolve to entries in ARCHITECTURE.yaml's interfaces section.
 
-      implemented_by declares that the PRD's requirements define the
-      implementation of the named interface. The PRD's package_contract
+      implemented_by declares that the SRD's requirements define the
+      implementation of the named interface. The SRD's package_contract
       exports correspond to the interface's operations.
 
-      used_by declares that the PRD's implementation consumes the named
-      interface. The PRD depends on the interface being available but does
+      used_by declares that the SRD's implementation consumes the named
+      interface. The SRD depends on the interface being available but does
       not define it.
 
-      A single PRD may appear in both lists for different interfaces. An
-      interface may be implemented by one PRD and used by many.
+      A single SRD may appear in both lists for different interfaces. An
+      interface may be implemented by one SRD and used by many.
 
   - id: I5
     title: Port and adapter semantics
     rule: |
       Interfaces follow the ports and adapters pattern. The interface
       declaration in ARCHITECTURE.yaml is the port: it defines the
-      contract without specifying implementation. PRDs that list the
+      contract without specifying implementation. SRDs that list the
       interface in implemented_by are adapters: they provide a concrete
       implementation of the port.
 
-      This separation means changing an adapter (rewriting a PRD's
+      This separation means changing an adapter (rewriting a SRD's
       implementation) does not change the port (the interface definition).
       Consumers that reference the interface via used_by depend on the
       port, not the adapter. Analysis enforces that every referenced
@@ -92,13 +92,13 @@ articles:
     rule: |
       The traceability chain for interfaces runs: ARCHITECTURE.yaml
       (declares the interface) -> specification file in docs/interfaces/
-      (defines the contract) -> PRD implemented_by (provides the
-      implementation) -> PRD used_by (consumes the interface). Analysis
+      (defines the contract) -> SRD implemented_by (provides the
+      implementation) -> SRD used_by (consumes the interface). Analysis
       validates both directions: every name in implemented_by and used_by
       must match an interface name in ARCHITECTURE.yaml. Broken references
       fail the analysis check.
 
-      Specification files include a references field listing PRD and use
+      Specification files include a references field listing SRD and use
       case IDs that the interface traces to, completing the bidirectional
       link.
 
@@ -110,16 +110,16 @@ sections:
       ARCHITECTURE.yaml with optional specification files in docs/interfaces/
       (I1), required fields are name and summary with spec_file as optional
       (I2), names use title case and specification files use kebab case (I3),
-      PRDs reference interfaces via implemented_by and used_by (I4),
+      SRDs reference interfaces via implemented_by and used_by (I4),
       interfaces follow ports and adapters semantics (I5), and traceability
-      runs from architecture through specification files through PRDs (I6).
+      runs from architecture through specification files through SRDs (I6).
   - tag: structure
     title: Interface Structure
     content: |
       An interface entry in ARCHITECTURE.yaml is a YAML mapping with five
       fields: name (required), summary (required), data_structures
       (optional list), operations (optional list), and spec_file (optional
-      path). PRDs reference interfaces by name using implemented_by and
+      path). SRDs reference interfaces by name using implemented_by and
       used_by string lists.
 
       Specification files in docs/interfaces/ use typed field lists for
@@ -129,7 +129,7 @@ sections:
     title: Analysis Validation
     content: |
       The mage analyze target validates interface references. Every entry
-      in a PRD's implemented_by and used_by lists must match the name
+      in a SRD's implemented_by and used_by lists must match the name
       field of an interface in ARCHITECTURE.yaml. Unresolved references
       are reported as errors. Missing or empty interface lists are not
       errors; the fields are optional. When spec_file is present, analyze

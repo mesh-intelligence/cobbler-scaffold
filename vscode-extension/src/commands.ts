@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension R1, R3
+// srd: srd006-vscode-extension R1, R3
 // uc: rel02.0-uc001-lifecycle-commands
 // uc: rel02.0-uc003-branch-comparison
 
@@ -200,7 +200,7 @@ export function cobblerStitch(output: vscode.OutputChannel): void {
 
 /**
  * Shows quick-pick for selecting two version tags and displays
- * their file-level diff in the comparison tree view. (prd006 R3.1, R3.2)
+ * their file-level diff in the comparison tree view. (srd006 R3.1, R3.2)
  */
 export async function compareTags(
   output: vscode.OutputChannel,
@@ -250,7 +250,7 @@ export async function compareTags(
 /**
  * Compares two generation branches by resolving each to its best
  * available tag ref. Called from the Generation Browser context menu.
- * (prd006 R3.5, R2.8)
+ * (srd006 R3.5, R2.8)
  */
 export async function compareGenerations(
   output: vscode.OutputChannel,
@@ -290,7 +290,7 @@ export async function compareGenerations(
 /**
  * Opens a VS Code diff editor for a file between two refs.
  * Called when a file node in the comparison tree is clicked.
- * (prd006 R3.4)
+ * (srd006 R3.4)
  */
 export async function openComparisonDiff(node: FileNode): Promise<void> {
   const filePath = node.entry.newPath ?? node.entry.path;

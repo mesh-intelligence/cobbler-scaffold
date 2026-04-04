@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension R2, R6
-// prd: prd002-generation-lifecycle R1
+// srd: srd006-vscode-extension R2, R6
+// srd: srd002-generation-lifecycle R1
 // uc: rel02.0-uc002-generation-browser
 
 import * as vscode from "vscode";

@@ -118,5 +118,5 @@ operations:
         type: error
 
 references:
-  - prd002-generation-lifecycle
-  - prd001-orchestrator-core
+  - srd002-generation-lifecycle
+  - srd001-orchestrator-core

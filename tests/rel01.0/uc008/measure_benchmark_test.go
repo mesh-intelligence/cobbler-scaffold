@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// Performance benchmarks for the measure phase (prd003-cobbler-workflows R1, R2, R6).
+// Performance benchmarks for the measure phase (srd003-cobbler-workflows R1, R2, R6).
 // Runs the iterative single-turn measure (post GH-12) at limits 1-5 and collects
 // structured timing, token, and cost data from history stats files.
 

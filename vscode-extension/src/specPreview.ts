@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Petar Djukic. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// prd: prd006-vscode-extension
+// srd: srd006-vscode-extension
 
 import * as fs from "fs";
 import * as path from "path";
@@ -11,7 +11,7 @@ import * as vscode from "vscode";
 // ---- Document type detection ----
 
 /** The document types this module handles. "generic" is the catch-all for any YAML file. */
-export type DocType = "prd" | "useCase" | "testSuite" | "engineering" | "generic";
+export type DocType = "srd" | "useCase" | "testSuite" | "engineering" | "generic";
 
 /**
  * Detects the document type from the file path using path pattern matching.
@@ -20,7 +20,7 @@ export type DocType = "prd" | "useCase" | "testSuite" | "engineering" | "generic
 export function detectDocType(filePath: string, doc?: unknown): DocType {
   const norm = filePath.replace(/\\/g, "/");
 
-  if (/product-requirements\/prd\d/.test(norm)) return "prd";
+  if (/software-requirements\/srd\d/.test(norm)) return "srd";
   if (/use-cases\/rel\d/.test(norm)) return "useCase";
   if (/test-suites\/test-rel/.test(norm)) return "testSuite";
   if (/\/engineering\/eng\d/.test(norm)) return "engineering";
@@ -28,7 +28,7 @@ export function detectDocType(filePath: string, doc?: unknown): DocType {
   // Fallback: key-based detection for non-standard paths.
   if (doc !== null && typeof doc === "object") {
     const keys = Object.keys(doc as Record<string, unknown>);
-    if (keys.includes("requirements")) return "prd";
+    if (keys.includes("requirements")) return "srd";
     if (keys.includes("flow") || keys.includes("actor")) return "useCase";
     if (keys.includes("traces") && keys.includes("test_cases")) return "testSuite";
     if (keys.includes("introduction")) return "engineering";
@@ -116,10 +116,10 @@ export function extractLabelValue(item: unknown): { label: string; value: string
   return { label: "", value: String(item ?? "") };
 }
 
-// ---- PRD renderer ----
+// ---- SRD renderer ----
 
-/** Parsed shape of a PRD YAML document. */
-export interface PrdDoc {
+/** Parsed shape of a SRD YAML document. */
+export interface SrdDoc {
   id?: string;
   title?: string;
   problem?: string;
@@ -129,8 +129,8 @@ export interface PrdDoc {
   acceptance_criteria?: unknown[];
 }
 
-/** Renders a PRD YAML document as a styled HTML string. */
-export function renderPrdHtml(fileName: string, doc: PrdDoc): string {
+/** Renders a SRD YAML document as a styled HTML string. */
+export function renderPrdHtml(fileName: string, doc: SrdDoc): string {
   const title = doc.title ?? fileName;
   const id = doc.id ?? "";
 
@@ -459,7 +459,7 @@ export function renderGenericHtml(fileName: string, doc: unknown): string {
 
 /**
  * Manages a singleton WebviewPanel that renders spec and engineering YAML
- * files as HTML. Supports PRD, use-case, test-suite, and engineering guideline
+ * files as HTML. Supports SRD, use-case, test-suite, and engineering guideline
  * formats. Calling show() with a new URI replaces the panel content in place;
  * a second call while the panel is visible brings it to the foreground.
  */
@@ -488,7 +488,7 @@ export class SpecPreview {
     const docType = detectDocType(filePath, doc);
     let html: string;
     switch (docType) {
-      case "prd":
+      case "srd":
         html = renderPrdHtml(fileName, doc as PrdDoc);
         break;
       case "useCase":

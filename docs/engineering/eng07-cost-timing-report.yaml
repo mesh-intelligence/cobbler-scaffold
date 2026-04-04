@@ -242,7 +242,7 @@ sections:
 
       | Phase         | Tasks | Est. Cost       | Notes                             |
       |---------------|-------|-----------------|-----------------------------------|
-      | Documentation | 10    | $22--$35        | PRDs, use cases, test suites      |
+      | Documentation | 10    | $22--$35        | SRDs, use cases, test suites      |
       | Code          | 20    | $44--$70        | Implementation + tests            |
       | Total         | 30    | $66--$105       | Full release cycle                |
 
@@ -290,6 +290,6 @@ sections:
 references:
   - eng04-measure-scaling
   - eng05-stitch-benchmark-analysis
-  - prd003-cobbler-workflows
-  - prd005-metrics-collection
+  - srd003-cobbler-workflows
+  - srd005-metrics-collection
   - tests/rel01.0/uc008/ (performance benchmarks)

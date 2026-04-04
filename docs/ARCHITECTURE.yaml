@@ -63,7 +63,7 @@ overview:
     the decomposition or intermediate work is valuable. Both paths share the same GitHub issue
     model and git worktree isolation.
 
-    The YAML specification pipeline (PRDs, use cases, test suites) serves as a semantic model
+    The YAML specification pipeline (SRDs, use cases, test suites) serves as a semantic model
     in the sense of Fowler's Domain-Specific Languages: the specs encode behavioral intent,
     Claude "compiles" them into code, and `mage analyze` acts as the type checker validating
     model completeness before generation. See eng09-specification-as-semantic-model for the
@@ -80,7 +80,7 @@ interfaces:
       settings; the YAML file is the sole source of truth for all options.
     data_structures:
       - "Orchestrator: composition root holding Config and 10 domain struct fields (Generator, Measure, Stitch, Builder, Scaffolder, Comparer, VsCode, Stats, Releaser, Analyzer) plus ClaudeRunner"
-      - "Config: all orchestrator settings with YAML tags (see prd001-orchestrator-core for full field spec)"
+      - "Config: all orchestrator settings with YAML tags (see srd001-orchestrator-core for full field spec)"
       - "InvocationRecord: metrics per Claude invocation (Caller, StartedAt, DurationS, Tokens, LOCBefore, LOCAfter, Diff, NumTurns)"
       - "HistoryStats: YAML-serializable per-invocation stats saved to history directory (Caller, TaskID, TaskTitle, StartedAt, Duration, Tokens, CostUSD, LOCBefore, LOCAfter, Diff, NumTurns, DurationAPIMs, RateLimitWaitS, SessionID)"
     operations:
@@ -89,7 +89,7 @@ interfaces:
       - "Config(), Tracker(), Git(): accessor methods for config, tracker, git interfaces"
       - "DumpMeasurePrompt(): write measure prompt to stdout for debugging"
       - "DumpStitchPrompt(): write stitch prompt to stdout for debugging"
-      - "TokenStats(): enumerate context files and report token counts (prd005)"
+      - "TokenStats(): enumerate context files and report token counts (srd005)"
       - "PrintContextFiles(): list files included in Claude prompts with sizes"
       - "ConstitutionPreviewFile(): render constitution YAML to markdown"
       - "GeneratorInit(): package-level function to initialize generator state from configuration.yaml"
@@ -103,16 +103,16 @@ interfaces:
     data_structures:
       - "Generator: standalone struct with cfg, logf, git, tracker, claudeRunner, analyzer, measure, stitch, releaser, setGeneration, clearGeneration"
     operations:
-      - "GeneratorStart(): tag base branch, create generation branch, reset sources unless preserve_sources is true (prd002)"
-      - "GeneratorRun(cycles int): run measure+stitch cycles until all issues are closed (prd002)"
-      - "GeneratorResume(): recover and continue interrupted run (prd002)"
-      - "GeneratorStop(): merge generation into base branch, tag, clean up (prd002)"
-      - "GeneratorReset(): destroy all generations, return to clean main (prd002)"
-      - "GeneratorList(): show active and past generations (prd002)"
-      - "GeneratorSwitch(): switch between generation branches (prd002)"
-      - "RunCycles(label string): run measure+stitch cycles until no open issues remain (prd002)"
-      - "Init(): initialize project (prd001)"
-      - "FullReset(): reset cobbler and generator (prd001)"
+      - "GeneratorStart(): tag base branch, create generation branch, reset sources unless preserve_sources is true (srd002)"
+      - "GeneratorRun(cycles int): run measure+stitch cycles until all issues are closed (srd002)"
+      - "GeneratorResume(): recover and continue interrupted run (srd002)"
+      - "GeneratorStop(): merge generation into base branch, tag, clean up (srd002)"
+      - "GeneratorReset(): destroy all generations, return to clean main (srd002)"
+      - "GeneratorList(): show active and past generations (srd002)"
+      - "GeneratorSwitch(): switch between generation branches (srd002)"
+      - "RunCycles(label string): run measure+stitch cycles until no open issues remain (srd002)"
+      - "Init(): initialize project (srd001)"
+      - "FullReset(): reset cobbler and generator (srd001)"
 
   - name: Measure Workflow
     summary: |
@@ -124,9 +124,9 @@ interfaces:
     data_structures:
       - "Measure: standalone struct with cfg, logf, git, tracker, claudeRunner, analyzer, plus state callbacks and generator helper functions"
     operations:
-      - "Measure(): enter generation worktree and run measure (prd003)"
+      - "Measure(): enter generation worktree and run measure (srd003)"
       - "MeasurePrompt(): print assembled measure prompt to stdout"
-      - "RunMeasure(): run measure phase with full lifecycle (prd003)"
+      - "RunMeasure(): run measure phase with full lifecycle (srd003)"
       - "buildMeasurePrompt(): assemble measure prompt from project context"
       - "importIssues(): import Claude-proposed tasks as GitHub Issues"
 
@@ -139,9 +139,9 @@ interfaces:
     data_structures:
       - "Stitch: standalone struct with cfg, logf, git, tracker, claudeRunner, plus state callbacks and generator helper functions"
     operations:
-      - "Stitch(): enter generation worktree and run stitch (prd003)"
-      - "RunStitch(): run stitch phase, executing all ready tasks (prd003)"
-      - "RunStitchN(limit int): run stitch phase up to limit tasks (prd003)"
+      - "Stitch(): enter generation worktree and run stitch (srd003)"
+      - "RunStitch(): run stitch phase, executing all ready tasks (srd003)"
+      - "RunStitchN(limit int): run stitch phase up to limit tasks (srd003)"
       - "doOneTask(): execute a single task in a worktree"
       - "resetTask(): reset a failed task to ready"
       - "skipTask(): mark a task as skipped after retry limit"
@@ -152,7 +152,7 @@ interfaces:
       It depends only on Config. Created via NewBuilder(cfg Config).
     operations:
       - "Build(): go build the consuming project binary"
-      - "BuildAll(): go build all cmd/ sub-packages when MainPackage is empty (prd003)"
+      - "BuildAll(): go build all cmd/ sub-packages when MainPackage is empty (srd003)"
       - "Lint(): run golangci-lint on the project"
       - "Install(): go install the project binary"
       - "Clean(): remove build artifacts"
@@ -174,10 +174,10 @@ interfaces:
       release statistics, run statistics, and outcome trailer parsing. It depends on
       cfg, logf, git, and tracker. Created via NewStats(cfg, logf, git, tracker).
     operations:
-      - "PrintStats(): print LOC and documentation metrics as YAML (prd005)"
-      - "CollectStats(): collect LOC and doc metrics programmatically (prd005)"
+      - "PrintStats(): print LOC and documentation metrics as YAML (srd005)"
+      - "CollectStats(): collect LOC and doc metrics programmatically (srd005)"
       - "GeneratorStats(): print status report for the current generation run (stats:generator)"
-      - "ReleaseStats(): print per-release table with PRD counts (stats:releases)"
+      - "ReleaseStats(): print per-release table with SRD counts (stats:releases)"
       - "RunStats(name string): print aggregate statistics for a completed generation run (stats:run)"
       - "CompareRunStats(name1, name2 string): compare two generation runs side by side (stats:compare)"
       - "Outcomes(): parse and display outcome trailers from git history (stats:outcomes)"
@@ -198,7 +198,7 @@ interfaces:
       and pre-cycle analysis. It depends on cfg and logf. Created via NewAnalyzer(cfg, logf).
     operations:
       - "Analyze(): cross-artifact consistency checking"
-      - "CodeStatus(): report spec-vs-code gaps per use case and release (prd001)"
+      - "CodeStatus(): report spec-vs-code gaps per use case and release (srd001)"
       - "RunPreCycleAnalysis(): write analysis.yaml before each measure/stitch cycle"
       - "validateDocSchemas(): validate YAML schemas against typed structs"
 
@@ -207,7 +207,7 @@ interfaces:
       The Comparer struct runs cross-generation differential comparison between binary
       sources. It depends on logf and git. Created via NewComparer(logf, git).
     operations:
-      - "Compare(): differential comparison between two git references (prd004)"
+      - "Compare(): differential comparison between two git references (srd004)"
       - "ResolverFromArg(): resolve a BinaryResolver from argument string"
 
   - name: VsCode Manager
@@ -334,8 +334,8 @@ interfaces:
       - "ProjectContext: top-level container (Vision, Architecture, Specifications, Roadmap, Specs, Engineering, Analysis, SourceCode, Issues, CompletedWork, RequirementStates, Extra)"
       - "PhaseContext: per-phase overrides (Include, Exclude, Sources, Release, ExcludeSource, SourcePatterns, ExcludeTests, SourceMode, SummarizeCommand)"
       - "VisionDoc, ArchitectureDoc, SpecificationsDoc, RoadmapDoc: top-level document types"
-      - "PRDDoc: product requirement with RequirementGroups, AcceptanceCriteria, ImplementedBy, UsedBy"
-      - "PRDRequirementItem: individual requirement (ID, Text, Weight)"
+      - "SRDDoc: product requirement with RequirementGroups, AcceptanceCriteria, ImplementedBy, UsedBy"
+      - "SRDRequirementItem: individual requirement (ID, Text, Weight)"
       - "UseCaseDoc: use case with SuccessCriteria, InteractionSteps, Touchpoints"
       - "TestSuiteDoc: test suite with TestCases"
       - "SourceFile: Go source file (File, Lines)"
@@ -355,7 +355,7 @@ components:
       - Provide accessor methods for Config, Tracker, Git
       - Host cross-domain utilities (DumpMeasurePrompt, DumpStitchPrompt, TokenStats, PrintContextFiles, ConstitutionPreviewFile)
     references:
-      - prd001-orchestrator-core
+      - srd001-orchestrator-core
 
   - name: Generator
     responsibility: |
@@ -368,13 +368,13 @@ components:
       - Start, run, resume, stop, reset, list, switch generation branches
       - Tag lifecycle events on git
       - Re-seed template files at start and reset (skipped in library mode)
-      - "Library mode: preserve Go source files when preserve_sources is true (prd002 R10)"
+      - "Library mode: preserve Go source files when preserve_sources is true (srd002 R10)"
       - Stop cleanly when only cobbler-skipped tasks remain (GH-1699)
       - Handle rate limits separately from task failures — rate-limit waits do not count as task retries (GH-1805)
       - Commit specs-only cleanup to generation branch before merge (GH-1876)
       - Block auto-advance when release has ready requirements in requirements.yaml (GH-1952)
     references:
-      - prd002-generation-lifecycle
+      - srd002-generation-lifecycle
 
   - name: Cobbler - Measure
     responsibility: |
@@ -393,10 +393,10 @@ components:
       - Enforce MinMeasureIssues — re-prompt when too few tasks are proposed and unresolved requirements exist (GH-1882)
       - Validate requirement weight per task against MaxWeightPerTask (GH-1951)
       - Include per-requirement completion status in measure prompt code status (GH-1948)
-      - Match bare PRD references in touchpoints for release advance check (GH-1960)
+      - Match bare SRD references in touchpoints for release advance check (GH-1960)
       - Save history artifacts per iteration
     references:
-      - prd003-cobbler-workflows
+      - srd003-cobbler-workflows
 
   - name: Cobbler - Stitch
     responsibility: |
@@ -416,7 +416,7 @@ components:
       - Sweep open tasks after each close, auto-closing any whose R-items are already complete (GH-1647)
       - Track requirement weight in batching and validation (GH-1832)
     references:
-      - prd003-cobbler-workflows
+      - srd003-cobbler-workflows
 
   - name: Cobbler Common
     responsibility: |
@@ -441,8 +441,8 @@ components:
       - Log real-time Claude progress (turns, tool calls, timing)
       - Append outcome trailers to commits via injected gitops function (CommitAmendTrailersFn)
     references:
-      - prd003-cobbler-workflows
-      - prd005-metrics-collection
+      - srd003-cobbler-workflows
+      - srd005-metrics-collection
 
   - name: Commands
     responsibility: |
@@ -453,7 +453,7 @@ components:
       - Git operations (branch, worktree, tag, merge, diff)
       - Go toolchain operations (build, vet)
     references:
-      - prd001-orchestrator-core
+      - srd001-orchestrator-core
 
   - name: GitOps
     responsibility: |
@@ -468,7 +468,7 @@ components:
       - "DiffStat: parsed output from git diff --shortstat (FilesChanged, Insertions, Deletions)"
       - "FileChange: per-file diff information"
     references:
-      - prd001-orchestrator-core
+      - srd001-orchestrator-core
 
   - name: GitHub Issues
     responsibility: |
@@ -492,7 +492,7 @@ components:
       - "GenLabel: truncate/hash generation labels to 50-char GitHub limit"
       - File defects in target repos
     references:
-      - prd003-cobbler-workflows
+      - srd003-cobbler-workflows
       - Design decision 5 (GitHub Issues for task tracking)
 
   - name: Stats
@@ -508,31 +508,31 @@ components:
       - Aggregate per-generation-run statistics from history artifacts (RunStats)
       - Compare two generation runs side by side (CompareRunStats)
     references:
-      - prd005-metrics-collection
+      - srd005-metrics-collection
 
   - name: Analyze
     responsibility: |
-      Standalone Analyzer struct. Cross-artifact consistency checking. Validates that PRDs,
-      use cases, and test suites are properly linked and complete. Reports orphaned PRDs,
+      Standalone Analyzer struct. Cross-artifact consistency checking. Validates that SRDs,
+      use cases, and test suites are properly linked and complete. Reports orphaned SRDs,
       missing test suites, broken touchpoints, use cases not in the roadmap, schema drift,
       and semantic model violations. Validates structured traceability chains: R-items covered
       by acceptance criteria (ACs), ACs covered by test cases, and use case success criteria
-      (S-items) traced to PRD ACs. Created via NewAnalyzer(cfg, logf).
+      (S-items) traced to SRD ACs. Created via NewAnalyzer(cfg, logf).
     capabilities:
-      - Load and index all PRDs, use cases, test suites, and roadmap entries
-      - Check PRD-to-use-case traceability via touchpoints
+      - Load and index all SRDs, use cases, test suites, and roadmap entries
+      - Check SRD-to-use-case traceability via touchpoints
       - Check use-case-to-test-suite linkage
       - Identify orphaned artifacts and broken references
       - Validate YAML schemas against typed structs (strict field checking)
       - Detect constitution drift between docs/constitutions/ and embedded copies
-      - Validate semantic models — SM1 (four required sections), SM3 (feature source traceability), SM7 (name/semver) — in standalone files, PRD shorthand, and prompt full-format
-      - "Validate structured acceptance criteria: AcceptanceCriterion (id, criterion, traces) in PRDs"
+      - Validate semantic models — SM1 (four required sections), SM3 (feature source traceability), SM7 (name/semver) — in standalone files, SRD shorthand, and prompt full-format
+      - "Validate structured acceptance criteria: AcceptanceCriterion (id, criterion, traces) in SRDs"
       - "Validate structured success criteria: SuccessCriterion (id, criterion, traces) in use cases"
       - "Check R-item coverage by ACs, AC coverage by test cases, S-item trace validity"
       - "Warn on R-items without explicit weight annotation (MissingWeights, GH-1946)"
-      - "Warn on touchpoints citing PRDs without R-group references (BareTouchpoints, GH-1961)"
+      - "Warn on touchpoints citing SRDs without R-group references (BareTouchpoints, GH-1961)"
       - "Detect use case ID prefix vs. roadmap release mismatch (UCIDPrefixMismatch, GH-1964)"
-      - "Validate PRD implemented_by/used_by references resolve to ARCHITECTURE.yaml interface names (BrokenInterfaceRefs, GH-1968)"
+      - "Validate SRD implemented_by/used_by references resolve to ARCHITECTURE.yaml interface names (BrokenInterfaceRefs, GH-1968)"
       - Generate detailed consistency report with artifact counts
     references:
       - Similar to spec-kit analyze functionality
@@ -551,7 +551,7 @@ components:
       - Resolve SeedFiles and prompt paths to content
       - Derive MaxWeightPerTask from MaxRequirementsPerTask when unset (GH-1951)
     references:
-      - prd001-orchestrator-core
+      - srd001-orchestrator-core
 
   - name: Scaffold
     responsibility: |
@@ -577,7 +577,7 @@ components:
       Builds a comprehensive YAML blob (ProjectContext) from the consuming project's
       documentation, specifications, source code, and existing issues. This context is
       injected into both measure and stitch prompts so Claude sees the full project state.
-      Over 30 struct types model the document schema (VisionDoc, ArchitectureDoc, PRDDoc,
+      Over 30 struct types model the document schema (VisionDoc, ArchitectureDoc, SRDDoc,
       UseCaseDoc, TestSuiteDoc, EngineeringDoc, ConstitutionsDoc, SourceFile, etc.).
 
       Phase-specific context files (measure_context.yaml and stitch_context.yaml) in the
@@ -587,15 +587,15 @@ components:
       phase context file exists, its non-empty fields replace the corresponding ProjectConfig
       values before context assembly. When absent, Config defaults apply unchanged.
     capabilities:
-      - Load and marshal vision, architecture, specifications, roadmap, PRDs, use cases, test suites
+      - Load and marshal vision, architecture, specifications, roadmap, SRDs, use cases, test suites
       - Load engineering guidelines and constitutions
       - Load Go source files from configured directories
       - Parse existing GitHub issues into structured format
       - Assemble all components into a single YAML string for prompt injection
       - Load per-phase context override files (PhaseContext) at invocation time
-      - "LoadPRDSemanticModel: scan PRD files for semantic_model field, return as raw YAML node for stitch prompt injection"
+      - "LoadSRDSemanticModel: scan SRD files for semantic_model field, return as raw YAML node for stitch prompt injection"
     references:
-      - prd003-cobbler-workflows (prompt building, R9 phase context)
+      - srd003-cobbler-workflows (prompt building, R9 phase context)
       - eng08-phase-context-files
 
   - name: Logging
@@ -628,7 +628,7 @@ components:
       - Go-style constitution (go-style.yaml) defines Go coding conventions, injected into stitch prompts as GoStyleConstitution; includes write-first-compile-later guidance (GH-1954)
       - Issue-format constitution (issue-format.yaml) defines task issue structure, injected into measure prompts as IssueFormatConstitution
       - Testing constitution (testing.yaml) defines test writing standards, injected into analysis
-      - Interface constitution (interface.yaml) defines interface declaration, naming, PRD reference conventions (I1-I6), and analysis validation rules for implemented_by/used_by traceability (GH-1968)
+      - Interface constitution (interface.yaml) defines interface declaration, naming, SRD reference conventions (I1-I6), and analysis validation rules for implemented_by/used_by traceability (GH-1968)
       - ConstitutionToMarkdown converts a constitution's sections slice to markdown
       - ConstitutionPreviewFile reads a constitution YAML file and prints rendered markdown to stdout
     references:
@@ -646,7 +646,7 @@ components:
       - Marshal and write AnalysisDoc to {ScratchDir}/analysis.yaml
       - Load analysis.yaml for inclusion in ProjectContext
     references:
-      - prd003-cobbler-workflows
+      - srd003-cobbler-workflows
 
   - name: Prompt Builder
     responsibility: |
@@ -660,7 +660,7 @@ components:
       - Validate prompt template files for schema conformance
       - Substitute {key} placeholders in template text
     references:
-      - prd003-cobbler-workflows
+      - srd003-cobbler-workflows
 
   - name: Code Status
     responsibility: |
@@ -674,7 +674,7 @@ components:
       - Detect spec-vs-code gaps and report them
       - Write CodeStatusReport into AnalysisDoc for pre-cycle context
     references:
-      - prd001-orchestrator-core
+      - srd001-orchestrator-core
 
   - name: Cross-Generation Comparison
     responsibility: |
@@ -690,7 +690,7 @@ components:
       - Run both binaries with identical inputs and compare stdout, stderr, and exit code byte-for-byte
       - Format and report pass/fail results with diff details and summary counts
     references:
-      - prd004-differential-comparison
+      - srd004-differential-comparison
 
   - name: Token Stats
     responsibility: |
@@ -705,7 +705,7 @@ components:
       - Estimate token counts from byte size (len/4 heuristic)
       - Call Anthropic Token Counting API for exact counts when ANTHROPIC_API_KEY is set
     references:
-      - prd005-metrics-collection
+      - srd005-metrics-collection
 
   - name: Outcomes
     responsibility: |
@@ -718,22 +718,22 @@ components:
       - Extract branch names from commit ref decorations
       - Format summary table with token counts, cost, LOC deltas, and duration
     references:
-      - prd005-metrics-collection
+      - srd005-metrics-collection
 
   - name: Release Stats
     responsibility: |
-      Loads road-map.yaml, PRD files, and use case touchpoints to produce a
-      per-release table showing PRD completion status and requirement counts.
-      Determines PRD-to-release mapping via buildPRDReleaseMap (shared with
+      Loads road-map.yaml, SRD files, and use case touchpoints to produce a
+      per-release table showing SRD completion status and requirement counts.
+      Determines SRD-to-release mapping via buildSRDReleaseMap (shared with
       GeneratorStats). Exposed as mage stats:releases.
     capabilities:
       - Load roadmap releases with use case statuses
-      - Map PRDs to releases via use case touchpoint references
-      - Count requirements per PRD from YAML specification files
-      - Classify PRDs as complete, started, untouched, or no-requirements
-      - Print tabwriter table with release, name, status, PRD counts, requirement counts
+      - Map SRDs to releases via use case touchpoint references
+      - Count requirements per SRD from YAML specification files
+      - Classify SRDs as complete, started, untouched, or no-requirements
+      - Print tabwriter table with release, name, status, SRD counts, requirement counts
     references:
-      - prd005-metrics-collection
+      - srd005-metrics-collection
 
   - name: Prompt Files
     responsibility: |
@@ -746,8 +746,8 @@ components:
       - Resolve extra context sources and Go source files
       - Print annotated file list with token estimates
     references:
-      - prd003-cobbler-workflows
-      - prd005-metrics-collection
+      - srd003-cobbler-workflows
+      - srd005-metrics-collection
 
   - name: VS Code Extension
     responsibility: |
@@ -766,7 +766,7 @@ components:
       - Browse specifications with touchpoint expansion and CodeLens traceability (specBrowser.ts, specModel.ts, traceability.ts)
       - Register extension entry point and wire all providers (extension.ts)
     references:
-      - prd006-vscode-extension
+      - srd006-vscode-extension
 
 design_decisions:
   - id: 1
@@ -998,17 +998,17 @@ project_structure:
   - path: pkg/orchestrator/codestatus.go
     role: Code implementation status — scan tests/ for use-case test directories, compare roadmap spec status with test file presence, detect spec-vs-code gaps
   - path: pkg/orchestrator/compare.go
-    role: Comparer struct — cross-generation differential comparison, binary resolution (prd004)
+    role: Comparer struct — cross-generation differential comparison, binary resolution (srd004)
   - path: pkg/orchestrator/testloader.go
-    role: Load CompareTestCase records from YAML test suite files and run them against both binaries (prd004)
+    role: Load CompareTestCase records from YAML test suite files and run them against both binaries (srd004)
   - path: pkg/orchestrator/outcomes.go
     role: Outcome trailer parsing — scan git history for task metrics (tokens, LOC, cost, duration)
   - path: pkg/orchestrator/prompt_files.go
     role: Context file enumeration — list files included in Claude prompts with sizes and token estimates
   - path: pkg/orchestrator/generator_stats.go
-    role: Generation status report — issue table with status, release, cost, duration, turns, attempts, LOC deltas, parent measure per task; measure rows show task count and PRD refs; per-release task breakdown; PRD coverage table; requirements progress; shared helpers buildPRDReleaseMap, countTotalPRDRequirements, extractPRDRefs (stats:generator target)
+    role: Generation status report — issue table with status, release, cost, duration, turns, attempts, LOC deltas, parent measure per task; measure rows show task count and SRD refs; per-release task breakdown; SRD coverage table; requirements progress; shared helpers buildSRDReleaseMap, countTotalSRDRequirements, extractSRDRefs (stats:generator target)
   - path: pkg/orchestrator/release_stats.go
-    role: Release statistics — per-release table with PRD counts (complete/started/untouched) and requirement totals sourced from road-map.yaml, PRD files, and use case touchpoints (stats:releases target)
+    role: Release statistics — per-release table with SRD counts (complete/started/untouched) and requirement totals sourced from road-map.yaml, SRD files, and use case touchpoints (stats:releases target)
   - path: pkg/orchestrator/run_stats.go
     role: Run statistics — RunStats() and CompareRunStats() delegate to internal/stats for aggregate per-generation-run reporting and side-by-side comparison (stats:run and stats:compare targets)
   - path: pkg/orchestrator/release.go
@@ -1026,7 +1026,7 @@ project_structure:
   - path: pkg/orchestrator/internal/compare/
     role: Differential comparison and test case loader
   - path: pkg/orchestrator/internal/context/
-    role: ProjectContext assembly, prompt document types, constitution markdown, LoadPRDSemanticModel
+    role: ProjectContext assembly, prompt document types, constitution markdown, LoadSRDSemanticModel
   - path: pkg/orchestrator/internal/generate/
     role: Generation lifecycle, measure orchestration, stitch orchestration
   - path: pkg/orchestrator/internal/github/
@@ -1072,8 +1072,8 @@ implementation_status:
     - done: GitOps interface and ShellGitOps implementation for all git operations
     - done: WorkTracker interface and GitHubTracker implementation for issue tracking abstraction
     - done: Structured traceability — AcceptanceCriterion and SuccessCriterion types with id/criterion/traces fields
-    - done: Semantic model injection into stitch prompts via LoadPRDSemanticModel and StitchPromptDoc.SemanticModel
-    - done: Interface constitution (interface.yaml) and PRD interface reference validation in mage analyze (GH-1968)
+    - done: Semantic model injection into stitch prompts via LoadSRDSemanticModel and StitchPromptDoc.SemanticModel
+    - done: Interface constitution (interface.yaml) and SRD interface reference validation in mage analyze (GH-1968)
     - done: Requirement weight parsing, weight-based measure batching, and MaxWeightPerTask derivation (GH-1832, GH-1951)
     - done: Run statistics — aggregate per-generation-run reporting and cross-generation comparison (stats:run, stats:compare targets)
     - done: Rate-limit handling separated from task failures (GH-1805)
@@ -1085,13 +1085,13 @@ related_documents:
     purpose: What we build and why; success criteria and boundaries
   - doc: docs/road-map.yaml
     purpose: Release schedule and use case status
-  - doc: docs/specs/product-requirements/prd001-orchestrator-core.yaml
+  - doc: docs/specs/software-requirements/srd001-orchestrator-core.yaml
     purpose: Config, Orchestrator struct, YAML loading, initialization
-  - doc: docs/specs/product-requirements/prd002-generation-lifecycle.yaml
+  - doc: docs/specs/software-requirements/srd002-generation-lifecycle.yaml
     purpose: Generation start, run, resume, stop, reset, list, switch
-  - doc: docs/specs/product-requirements/prd003-cobbler-workflows.yaml
+  - doc: docs/specs/software-requirements/srd003-cobbler-workflows.yaml
     purpose: Measure and stitch phases, prompt templates, task execution
-  - doc: docs/specs/product-requirements/prd005-metrics-collection.yaml
+  - doc: docs/specs/software-requirements/srd005-metrics-collection.yaml
     purpose: Stats, invocation records, LOC snapshots
   - doc: docs/engineering/eng01-generation-workflow.yaml
     purpose: Generation conventions and task branch naming
@@ -1105,14 +1105,14 @@ related_documents:
     purpose: Stitch benchmark results and task scope recommendations
   - doc: docs/engineering/eng08-phase-context-files.yaml
     purpose: Design decisions and loading semantics for per-phase context override files
-  - doc: docs/specs/product-requirements/prd006-vscode-extension.yaml
+  - doc: docs/specs/software-requirements/srd006-vscode-extension.yaml
     purpose: VS Code extension requirements for lifecycle, browsing, comparison, metrics, and traceability
   - doc: docs/engineering/eng09-specification-as-semantic-model.yaml
     purpose: Specification-as-semantic-model analogy, limits, and integration with generation pipeline
   - doc: docs/constitutions/semantic-model.yaml
     purpose: Ten principles governing semantic model authoring (SM1-SM10)
   - doc: docs/constitutions/interface.yaml
-    purpose: Interface declaration, naming, PRD reference conventions (I1-I6), and analysis validation rules
+    purpose: Interface declaration, naming, SRD reference conventions (I1-I6), and analysis validation rules
 
 figures:
   - path: docs/ARCHITECTURE-diagrams.md

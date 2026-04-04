@@ -30,19 +30,19 @@ describe("parseTouchpointString", () => {
     expect(tp!.description).toBe("some description");
   });
 
-  it("extracts prdId and requirementIds", () => {
+  it("extracts srdId and requirementIds", () => {
     const tp = parseTouchpointString(
-      "T1: Config struct: prd001-orchestrator-core R1.1, R1.2"
+      "T1: Config struct: srd001-orchestrator-core R1.1, R1.2"
     );
     expect(tp).toBeDefined();
-    expect(tp!.prdId).toBe("prd001-orchestrator-core");
+    expect(tp!.srdId).toBe("srd001-orchestrator-core");
     expect(tp!.requirementIds).toEqual(["R1.1", "R1.2"]);
   });
 
-  it("handles string with no PRD reference", () => {
-    const tp = parseTouchpointString("T3: No PRD reference here");
+  it("handles string with no SRD reference", () => {
+    const tp = parseTouchpointString("T3: No SRD reference here");
     expect(tp).toBeDefined();
-    expect(tp!.prdId).toBeUndefined();
+    expect(tp!.srdId).toBeUndefined();
     expect(tp!.requirementIds).toEqual([]);
   });
 
@@ -57,18 +57,18 @@ describe("parseTouchpointString", () => {
 // ---- parseTouchpointFromKV ----
 
 describe("parseTouchpointFromKV", () => {
-  it("extracts prdId from value", () => {
+  it("extracts srdId from value", () => {
     const tp = parseTouchpointFromKV(
       "T1",
-      "Config struct: prd001-orchestrator-core R1"
+      "Config struct: srd001-orchestrator-core R1"
     );
-    expect(tp.prdId).toBe("prd001-orchestrator-core");
+    expect(tp.srdId).toBe("srd001-orchestrator-core");
   });
 
   it("extracts multiple requirement IDs", () => {
     const tp = parseTouchpointFromKV(
       "T1",
-      "fields in prd001-orchestrator-core R1.1, R1.2, R1.3"
+      "fields in srd001-orchestrator-core R1.1, R1.2, R1.3"
     );
     expect(tp.requirementIds).toEqual(["R1.1", "R1.2", "R1.3"]);
   });
@@ -76,17 +76,17 @@ describe("parseTouchpointFromKV", () => {
   it("strips surrounding quotes from value", () => {
     const tp = parseTouchpointFromKV(
       "T1",
-      '"Config struct: prd001-orchestrator-core R1"'
+      '"Config struct: srd001-orchestrator-core R1"'
     );
     expect(tp.description).toBe(
-      "Config struct: prd001-orchestrator-core R1"
+      "Config struct: srd001-orchestrator-core R1"
     );
-    expect(tp.prdId).toBe("prd001-orchestrator-core");
+    expect(tp.srdId).toBe("srd001-orchestrator-core");
   });
 
-  it("handles value with no PRD reference", () => {
-    const tp = parseTouchpointFromKV("T3", "No PRD reference here");
-    expect(tp.prdId).toBeUndefined();
+  it("handles value with no SRD reference", () => {
+    const tp = parseTouchpointFromKV("T3", "No SRD reference here");
+    expect(tp.srdId).toBeUndefined();
     expect(tp.requirementIds).toEqual([]);
   });
 
@@ -108,8 +108,8 @@ describe("parseTouchpoints", () => {
 
   it("parses string array items", () => {
     const result = parseTouchpoints([
-      "T1: Config struct: prd001-orchestrator-core R1",
-      "T2: Init method: prd001-orchestrator-core R5",
+      "T1: Config struct: srd001-orchestrator-core R1",
+      "T2: Init method: srd001-orchestrator-core R5",
     ]);
     expect(result).toHaveLength(2);
     expect(result[0].key).toBe("T1");
@@ -118,19 +118,19 @@ describe("parseTouchpoints", () => {
 
   it("parses object array items (single-key maps)", () => {
     const result = parseTouchpoints([
-      { T1: "Config struct: prd001-orchestrator-core R1" },
-      { T2: "Init method: prd001-orchestrator-core R5" },
+      { T1: "Config struct: srd001-orchestrator-core R1" },
+      { T2: "Init method: srd001-orchestrator-core R5" },
     ]);
     expect(result).toHaveLength(2);
     expect(result[0].key).toBe("T1");
-    expect(result[0].prdId).toBe("prd001-orchestrator-core");
+    expect(result[0].srdId).toBe("srd001-orchestrator-core");
     expect(result[1].key).toBe("T2");
   });
 
   it("handles mixed string and object items", () => {
     const result = parseTouchpoints([
-      "T1: Config: prd001-orchestrator-core R1",
-      { T2: "Init: prd001-orchestrator-core R5" },
+      "T1: Config: srd001-orchestrator-core R1",
+      { T2: "Init: srd001-orchestrator-core R5" },
     ]);
     expect(result).toHaveLength(2);
     expect(result[0].key).toBe("T1");
@@ -232,7 +232,7 @@ describe("grepForPrdId", () => {
   it("parses grep output into SourceRef array", () => {
     vi.mock("child_process", () => ({
       execSync: vi.fn().mockReturnValue(
-        "pkg/orchestrator/config.go:10:// prd: prd001\npkg/orchestrator/vscode.go:5:// prd: prd001\n"
+        "pkg/orchestrator/config.go:10:// srd: srd001\npkg/orchestrator/vscode.go:5:// srd: srd001\n"
       ),
     }));
 
@@ -243,7 +243,7 @@ describe("grepForPrdId", () => {
   });
 
   it("returns empty array when root has no matching directories", () => {
-    const refs = grepForPrdId("/nonexistent/root", "prd001-test");
+    const refs = grepForPrdId("/nonexistent/root", "srd001-test");
     expect(refs).toEqual([]);
   });
 });
@@ -264,17 +264,17 @@ describe("SpecGraph", () => {
     expect(uc!.touchpoints.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("ensureBuilt populates PRDs from fixture directory", async () => {
+  it("ensureBuilt populates SRDs from fixture directory", async () => {
     const graph = new SpecGraph(FIXTURES);
     await graph.ensureBuilt();
 
-    const prds = graph.listPrds();
-    expect(prds.length).toBeGreaterThanOrEqual(1);
+    const srds = graph.listSrds();
+    expect(srds.length).toBeGreaterThanOrEqual(1);
 
-    const prd = graph.getPrd("prd001-basic");
-    expect(prd).toBeDefined();
-    expect(prd!.title).toBe("Basic PRD");
-    expect(Object.keys(prd!.requirements)).toEqual(["R1", "R2"]);
+    const srd = graph.getSrd("srd001-basic");
+    expect(srd).toBeDefined();
+    expect(srd!.title).toBe("Basic SRD");
+    expect(Object.keys(srd!.requirements)).toEqual(["R1", "R2"]);
   });
 
   it("ensureBuilt populates test suites from fixture directory", async () => {
@@ -310,30 +310,30 @@ describe("SpecGraph", () => {
     expect(graph.listUseCases()).toEqual([]);
   });
 
-  it("getUseCase and getPrd return undefined for unknown IDs", async () => {
+  it("getUseCase and getSrd return undefined for unknown IDs", async () => {
     const graph = new SpecGraph(FIXTURES);
     await graph.ensureBuilt();
     expect(graph.getUseCase("nonexistent")).toBeUndefined();
-    expect(graph.getPrd("nonexistent")).toBeUndefined();
+    expect(graph.getSrd("nonexistent")).toBeUndefined();
   });
 
   it("getSourceFiles returns empty for nonexistent dirs", async () => {
     const graph = new SpecGraph(FIXTURES);
     await graph.ensureBuilt();
     // Fixtures root has no pkg/ or magefiles/ dirs, so grep finds nothing
-    const refs = graph.getSourceFiles("prd001-basic");
+    const refs = graph.getSourceFiles("srd001-basic");
     expect(refs).toEqual([]);
   });
 
   it("getSourceFiles caches results", async () => {
     const graph = new SpecGraph(FIXTURES);
     await graph.ensureBuilt();
-    const refs1 = graph.getSourceFiles("prd001-basic");
-    const refs2 = graph.getSourceFiles("prd001-basic");
+    const refs1 = graph.getSourceFiles("srd001-basic");
+    const refs2 = graph.getSourceFiles("srd001-basic");
     expect(refs1).toBe(refs2); // Same reference, not just equal
   });
 
-  it("fixture touchpoints have correct PRD references", async () => {
+  it("fixture touchpoints have correct SRD references", async () => {
     const graph = new SpecGraph(FIXTURES);
     await graph.ensureBuilt();
 
@@ -342,15 +342,15 @@ describe("SpecGraph", () => {
 
     const t1 = uc!.touchpoints.find((t) => t.key === "T1");
     expect(t1).toBeDefined();
-    expect(t1!.prdId).toBe("prd001-orchestrator-core");
+    expect(t1!.srdId).toBe("srd001-orchestrator-core");
     expect(t1!.requirementIds).toEqual(["R1.1", "R1.2"]);
 
     const t2 = uc!.touchpoints.find((t) => t.key === "T2");
     expect(t2).toBeDefined();
-    expect(t2!.prdId).toBe("prd002-generation-lifecycle");
+    expect(t2!.srdId).toBe("srd002-generation-lifecycle");
 
     const t3 = uc!.touchpoints.find((t) => t.key === "T3");
     expect(t3).toBeDefined();
-    expect(t3!.prdId).toBeUndefined();
+    expect(t3!.srdId).toBeUndefined();
   });
 });
