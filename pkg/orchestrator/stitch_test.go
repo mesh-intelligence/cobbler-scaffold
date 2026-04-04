@@ -115,7 +115,7 @@ func TestSkipTask_NoOp(t *testing.T) {
 		Repo:       "fake/repo",
 		Generation: "test-gen",
 	}
-	o.skipTask(task, 3) // must not panic
+	o.Stitch.skipTask(task, 3) // must not panic
 }
 
 // TestStitchSleep_DefaultIsTimeSleep verifies the default stitchSleep is
@@ -214,7 +214,7 @@ func TestBuildStitchPrompt_NilContext(t *testing.T) {
 		Title:     "Add unit tests",
 		IssueType: "code",
 	}
-	out, err := o.buildStitchPrompt(task)
+	out, err := o.Stitch.buildStitchPrompt(task)
 	if err != nil {
 		t.Fatalf("buildStitchPrompt() unexpected error: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestBuildStitchPrompt_ConstitutionDocs(t *testing.T) {
 		IssueType:   "code",
 		WorktreeDir: tmp,
 	}
-	out, err := o.buildStitchPrompt(task)
+	out, err := o.Stitch.buildStitchPrompt(task)
 	if err != nil {
 		t.Fatalf("buildStitchPrompt() unexpected error: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestBuildStitchPrompt_InvalidTemplate(t *testing.T) {
 	cfg.Cobbler.StitchPrompt = "role: [unclosed bracket"
 	o := New(cfg)
 	task := stitchTask{ID: "test-03", Title: "Test", IssueType: "code"}
-	_, err := o.buildStitchPrompt(task)
+	_, err := o.Stitch.buildStitchPrompt(task)
 	if err == nil {
 		t.Error("buildStitchPrompt() expected error for invalid template, got nil")
 	}
@@ -275,7 +275,7 @@ func TestCleanupWorktree_NonExistentDir_NoOp(t *testing.T) {
 		WorktreeDir: "/nonexistent/worktree/path",
 		BranchName:  "stitch-test-cleanup",
 	}
-	ok := cleanupWorktree(task) // must not panic
+	ok := testOrch().Generator.cleanupWorktree(task) // must not panic
 	if ok {
 		t.Error("cleanupWorktree should return false for non-existent worktree")
 	}
@@ -307,7 +307,7 @@ func TestBuildStitchPrompt_RepositoryFiles(t *testing.T) {
 		IssueType:   "code",
 		WorktreeDir: tmp,
 	}
-	out, err := o.buildStitchPrompt(task)
+	out, err := o.Stitch.buildStitchPrompt(task)
 	if err != nil {
 		t.Fatalf("buildStitchPrompt() unexpected error: %v", err)
 	}
@@ -612,22 +612,22 @@ func TestCreateWorktree_CreatesWorktreeAndBranch(t *testing.T) {
 		WorktreeDir: filepath.Join(dir+"-worktrees", "789"),
 	}
 
-	if err := createWorktree(task); err != nil {
-		t.Fatalf("createWorktree() error = %v", err)
+	if err := testOrch().Generator.createWorktree(task); err != nil {
+		t.Fatalf("testOrch().Generator.createWorktree() error = %v", err)
 	}
 	t.Cleanup(func() {
-		defaultGitOps.WorktreeRemove(task.WorktreeDir, "")
-		defaultGitOps.DeleteBranch(task.BranchName, "")
+		testGitOps().WorktreeRemove(task.WorktreeDir, "")
+		testGitOps().DeleteBranch(task.BranchName, "")
 	})
 
 	// Verify the worktree directory exists.
 	if _, err := os.Stat(task.WorktreeDir); os.IsNotExist(err) {
-		t.Error("worktree directory should exist after createWorktree()")
+		t.Error("worktree directory should exist after testOrch().Generator.createWorktree()")
 	}
 
 	// Verify the branch was created.
-	if !defaultGitOps.BranchExists(task.BranchName, "") {
-		t.Errorf("branch %q should exist after createWorktree()", task.BranchName)
+	if !testGitOps().BranchExists(task.BranchName, "") {
+		t.Errorf("branch %q should exist after testOrch().Generator.createWorktree()", task.BranchName)
 	}
 }
 
@@ -646,7 +646,7 @@ func TestBuildStitchPrompt_RequiredReadingFilter(t *testing.T) {
 `,
 		WorktreeDir: tmp,
 	}
-	out, err := o.buildStitchPrompt(task)
+	out, err := o.Stitch.buildStitchPrompt(task)
 	if err != nil {
 		t.Fatalf("buildStitchPrompt() unexpected error: %v", err)
 	}
@@ -689,8 +689,8 @@ func TestMergeBranch_Success(t *testing.T) {
 	// Switch back to main before merge.
 	gitRun(t, "checkout", "main")
 
-	if err := mergeBranch("feature/test-merge", "main", dir); err != nil {
-		t.Fatalf("mergeBranch() error = %v", err)
+	if err := testOrch().Generator.mergeBranch("feature/test-merge", "main", dir); err != nil {
+		t.Fatalf("testOrch().Generator.mergeBranch() error = %v", err)
 	}
 
 	// Verify the feature file is present on main after merge.
@@ -702,7 +702,7 @@ func TestMergeBranch_Success(t *testing.T) {
 func TestMergeBranch_NonExistentBranch(t *testing.T) {
 	_ = initTestGitRepo(t)
 
-	err := mergeBranch("nonexistent-branch-xyz", "main", t.TempDir())
+	err := testOrch().Generator.mergeBranch("nonexistent-branch-xyz", "main", t.TempDir())
 	if err == nil {
 		t.Error("expected error merging non-existent branch")
 	}
@@ -734,7 +734,7 @@ func TestMergeBranch_MergeConflict(t *testing.T) {
 	gitRun(t, "add", "-A")
 	gitRun(t, "commit", "--no-verify", "-m", "modify shared on main")
 
-	err := mergeBranch("feature/conflict", "main", dir)
+	err := testOrch().Generator.mergeBranch("feature/conflict", "main", dir)
 	if err == nil {
 		t.Error("expected error for merge conflict")
 	}
@@ -748,7 +748,7 @@ func TestMergeBranch_MergeConflict(t *testing.T) {
 func TestRecoverStaleBranches_NoBranches(t *testing.T) {
 	_ = initTestGitRepo(t)
 
-	got := recoverStaleBranches("main", t.TempDir(), "fake/repo")
+	got := testOrch().Generator.recoverStaleBranches("main", t.TempDir(), "fake/repo")
 	if got {
 		t.Error("expected false when no stale branches exist")
 	}
@@ -761,18 +761,18 @@ func TestRecoverStaleBranches_WithStaleBranch(t *testing.T) {
 	branchName := "task/main-99999"
 	gitRun(t, "branch", branchName)
 
-	if !defaultGitOps.BranchExists(branchName, "") {
+	if !testGitOps().BranchExists(branchName, "") {
 		t.Fatal("setup: branch should exist")
 	}
 
 	// Use a fake repo so removeInProgressLabel fails harmlessly.
-	got := recoverStaleBranches("main", t.TempDir(), "fake/repo")
+	got := testOrch().Generator.recoverStaleBranches("main", t.TempDir(), "fake/repo")
 	if !got {
 		t.Error("expected true when stale branches were recovered")
 	}
 
 	// The stale branch should have been force-deleted.
-	if defaultGitOps.BranchExists(branchName, "") {
+	if testGitOps().BranchExists(branchName, "") {
 		t.Error("stale branch should have been deleted after recovery")
 	}
 }
@@ -789,13 +789,13 @@ func TestRecoverStaleBranches_WithWorktree(t *testing.T) {
 	os.MkdirAll(filepath.Dir(worktreeDir), 0o755)
 	gitRun(t, "worktree", "add", worktreeDir, branchName)
 
-	got := recoverStaleBranches("main", worktreeBase, "fake/repo")
+	got := testOrch().Generator.recoverStaleBranches("main", worktreeBase, "fake/repo")
 	if !got {
 		t.Error("expected true when stale branches with worktrees were recovered")
 	}
 
 	// Worktree and branch should be cleaned up.
-	if defaultGitOps.BranchExists(branchName, "") {
+	if testGitOps().BranchExists(branchName, "") {
 		t.Error("stale branch should have been deleted")
 	}
 	if _, err := os.Stat(worktreeDir); !os.IsNotExist(err) {
@@ -809,7 +809,7 @@ func TestResetOrphanedIssues_ListFails(t *testing.T) {
 	t.Parallel()
 	// With a fake repo, listOpenCobblerIssues fails and the function
 	// returns false without modifying anything.
-	got := resetOrphanedIssues("main", "fake/repo", "test-gen")
+	got := testOrch().Generator.resetOrphanedIssues("main", "fake/repo", "test-gen")
 	if got {
 		t.Error("expected false when listing issues fails")
 	}
@@ -821,7 +821,7 @@ func TestRecoverStaleTasks_NoStaleState(t *testing.T) {
 	_ = initTestGitRepo(t)
 
 	o := New(Config{})
-	err := o.recoverStaleTasks("main", t.TempDir(), "fake/repo", "test-gen")
+	err := o.Stitch.recoverStaleTasks("main", t.TempDir(), "fake/repo", "test-gen")
 	if err != nil {
 		t.Errorf("recoverStaleTasks() error = %v", err)
 	}
@@ -834,13 +834,13 @@ func TestRecoverStaleTasks_WithStaleBranch(t *testing.T) {
 	gitRun(t, "branch", branchName)
 
 	o := New(Config{})
-	err := o.recoverStaleTasks("main", t.TempDir(), "fake/repo", "test-gen")
+	err := o.Stitch.recoverStaleTasks("main", t.TempDir(), "fake/repo", "test-gen")
 	if err != nil {
 		t.Errorf("recoverStaleTasks() error = %v", err)
 	}
 
 	// Branch should have been cleaned up.
-	if defaultGitOps.BranchExists(branchName, "") {
+	if testGitOps().BranchExists(branchName, "") {
 		t.Error("stale branch should have been recovered")
 	}
 }
@@ -859,7 +859,7 @@ func TestResetTask_NonExistentWorktree(t *testing.T) {
 		Repo:        "fake/repo",
 	}
 
-	o.resetTask(task, "test reason") // must not panic
+	o.Stitch.resetTask(task, "test reason") // must not panic
 }
 
 func TestResetTask_WithRealWorktree(t *testing.T) {
@@ -880,13 +880,13 @@ func TestResetTask_WithRealWorktree(t *testing.T) {
 		Repo:        "fake/repo",
 	}
 
-	o.resetTask(task, "test cleanup")
+	o.Stitch.resetTask(task, "test cleanup")
 
 	// Worktree and branch should be removed.
 	if _, err := os.Stat(worktreeDir); !os.IsNotExist(err) {
 		t.Error("worktree directory should have been removed")
 	}
-	if defaultGitOps.BranchExists(branchName, "") {
+	if testGitOps().BranchExists(branchName, "") {
 		t.Error("branch should have been force-deleted")
 	}
 }
@@ -907,7 +907,7 @@ func TestCloseStitchTask_GHFailureNoOp(t *testing.T) {
 	}
 	rec := claude.InvocationRecord{}
 
-	o.closeStitchTask(task, rec, true) // must not panic
+	o.Stitch.closeStitchTask(task, rec, true) // must not panic
 }
 
 // --- createWorktree (existing branch) ---
@@ -924,12 +924,12 @@ func TestCreateWorktree_ExistingBranch(t *testing.T) {
 		WorktreeDir: filepath.Join(dir+"-worktrees", "existing"),
 	}
 
-	if err := createWorktree(task); err != nil {
-		t.Fatalf("createWorktree() with existing branch error = %v", err)
+	if err := testOrch().Generator.createWorktree(task); err != nil {
+		t.Fatalf("testOrch().Generator.createWorktree() with existing branch error = %v", err)
 	}
 	t.Cleanup(func() {
-		defaultGitOps.WorktreeRemove(task.WorktreeDir, "")
-		defaultGitOps.DeleteBranch(task.BranchName, "")
+		testGitOps().WorktreeRemove(task.WorktreeDir, "")
+		testGitOps().DeleteBranch(task.BranchName, "")
 	})
 
 	if _, err := os.Stat(task.WorktreeDir); os.IsNotExist(err) {
@@ -955,7 +955,7 @@ func TestCleanupWorktree_RealWorktree(t *testing.T) {
 		WorktreeDir: worktreeDir,
 	}
 
-	ok := cleanupWorktree(task)
+	ok := testOrch().Generator.cleanupWorktree(task)
 	if !ok {
 		t.Error("cleanupWorktree should return true for successful removal")
 	}
@@ -965,7 +965,7 @@ func TestCleanupWorktree_RealWorktree(t *testing.T) {
 		t.Error("worktree directory should have been removed")
 	}
 	// Branch should be deleted.
-	if defaultGitOps.BranchExists(branchName, "") {
+	if testGitOps().BranchExists(branchName, "") {
 		t.Errorf("branch %q should have been deleted", branchName)
 	}
 }
@@ -982,7 +982,7 @@ func TestCreateWorktree_Success(t *testing.T) {
 		WorktreeDir: worktreeDir,
 	}
 
-	err := createWorktree(task)
+	err := testOrch().Generator.createWorktree(task)
 	if err != nil {
 		t.Fatalf("createWorktree failed: %v", err)
 	}
@@ -993,12 +993,12 @@ func TestCreateWorktree_Success(t *testing.T) {
 	}
 
 	// Branch should exist.
-	if !defaultGitOps.BranchExists(task.BranchName, ".") {
+	if !testGitOps().BranchExists(task.BranchName, ".") {
 		t.Error("branch should exist after createWorktree")
 	}
 
 	// Cleanup.
-	cleanupWorktree(task)
+	testOrch().Generator.cleanupWorktree(task)
 }
 
 func TestCreateWorktree_InvalidParentDir(t *testing.T) {
@@ -1009,7 +1009,7 @@ func TestCreateWorktree_InvalidParentDir(t *testing.T) {
 		WorktreeDir: "/dev/null/impossible/path",
 	}
 
-	err := createWorktree(task)
+	err := testOrch().Generator.createWorktree(task)
 	if err == nil {
 		t.Error("expected error for impossible parent directory")
 	}
@@ -1025,13 +1025,13 @@ func TestGitBranchExists_ChecksLocalBranches(t *testing.T) {
 	_ = initTestGitRepo(t)
 
 	// Branch does not exist → gitBranchExists returns false.
-	if defaultGitOps.BranchExists("task/main-nonexistent", ".") {
+	if testGitOps().BranchExists("task/main-nonexistent", ".") {
 		t.Error("non-existent branch should not exist")
 	}
 
 	// Create a branch → exists.
 	gitRun(t, "branch", "task/main-99999")
-	if !defaultGitOps.BranchExists("task/main-99999", ".") {
+	if !testGitOps().BranchExists("task/main-99999", ".") {
 		t.Error("created branch should exist")
 	}
 }
@@ -1162,7 +1162,7 @@ func TestBuildStitchPrompt_ExcludeTests_DefaultTrue(t *testing.T) {
 		IssueType:   "code",
 		WorktreeDir: tmp,
 	}
-	out, err := o.buildStitchPrompt(task)
+	out, err := o.Stitch.buildStitchPrompt(task)
 	if err != nil {
 		t.Fatalf("buildStitchPrompt() error = %v", err)
 	}
@@ -1196,7 +1196,7 @@ func TestBuildStitchPrompt_ExcludeTests_DisabledFalse(t *testing.T) {
 		IssueType:   "code",
 		WorktreeDir: tmp,
 	}
-	out, err := o.buildStitchPrompt(task)
+	out, err := o.Stitch.buildStitchPrompt(task)
 	if err != nil {
 		t.Fatalf("buildStitchPrompt() error = %v", err)
 	}
@@ -1226,7 +1226,7 @@ func TestSweepCompletedTasks_EmptyRequirements(t *testing.T) {
 	// With no requirements.yaml (empty cobbler dir), sweep should return
 	// immediately without calling any GitHub API.
 	o := New(Config{Cobbler: CobblerConfig{Dir: t.TempDir()}})
-	o.sweepCompletedTasks("fake/repo", "test-gen") // must not panic
+	o.Stitch.sweepCompletedTasks("fake/repo", "test-gen") // must not panic
 }
 
 func TestSweepCompletedTasks_NoCobblerDir(t *testing.T) {
@@ -1234,7 +1234,7 @@ func TestSweepCompletedTasks_NoCobblerDir(t *testing.T) {
 	// With a nonexistent cobbler dir, LoadRequirementStates returns nil
 	// and sweep returns immediately.
 	o := New(Config{Cobbler: CobblerConfig{Dir: "/nonexistent/dir/xyz"}})
-	o.sweepCompletedTasks("fake/repo", "test-gen") // must not panic
+	o.Stitch.sweepCompletedTasks("fake/repo", "test-gen") // must not panic
 }
 
 // ---------------------------------------------------------------------------

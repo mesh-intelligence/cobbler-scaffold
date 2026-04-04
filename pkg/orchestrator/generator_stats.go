@@ -12,24 +12,23 @@ import (
 )
 
 // GeneratorStats prints a status report for the current generation run.
-func (o *Orchestrator) GeneratorStats() error {
-	currentBranch, _ := defaultGitOps.CurrentBranch(".")
+func (s *Stats) GeneratorStats() error {
+	currentBranch, _ := s.git.CurrentBranch(".")
 	return st.PrintGeneratorStats(st.GeneratorStatsDeps{
-		Log:                    logf,
-		ListGenerationBranches: o.listGenerationBranches,
-		GenerationBranch:       o.cfg.Generation.Branch,
+		Log:                    s.logf,
+		ListGenerationBranches: s.listGenerationBranches,
+		GenerationBranch:       s.cfg.Generation.Branch,
 		CurrentBranch:          currentBranch,
 		DetectGitHubRepo: func() (string, error) {
-			return ghTrackerWithCfg(o.cfg).DetectGitHubRepo(".")
+			return s.tracker.DetectGitHubRepo(".")
 		},
 		ListAllIssues: func(repo, generation string) ([]gh.CobblerIssue, error) {
-			return defaultGhTracker.ListAllCobblerIssues(repo, generation)
+			return s.tracker.ListAllCobblerIssues(repo, generation)
 		},
-		HistoryDir: o.historyDir(),
-		CobblerDir: o.cfg.Cobbler.Dir,
+		HistoryDir: s.historyDir(),
+		CobblerDir: s.cfg.Cobbler.Dir,
 		ReadBranchFile: func(branch, path string) ([]byte, error) {
-			return defaultGitOps.ShowFileContent(branch, path, ".")
+			return s.git.ShowFileContent(branch, path, ".")
 		},
 	})
 }
-

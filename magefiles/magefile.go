@@ -77,35 +77,35 @@ func logf(format string, args ...any) {
 // --- Top-level targets ---
 
 // Init initializes the project.
-func Init() error { return newOrch().Init() }
+func Init() error { return newOrch().Generator.Init() }
 
 // Reset performs a full reset: cobbler and generator.
-func Reset() error { return newOrch().FullReset() }
+func Reset() error { return newOrch().Generator.FullReset() }
 
 // Build compiles the project binary.
-func Build() error { return newOrch().Build() }
+func Build() error { return newOrch().Builder.Build() }
 
 // Lint runs golangci-lint on the project.
-func Lint() error { return newOrch().Lint() }
+func Lint() error { return newOrch().Builder.Lint() }
 
 // Install runs go install for the main package.
-func Install() error { return newOrch().Install() }
+func Install() error { return newOrch().Builder.Install() }
 
 // Clean removes build artifacts.
-func Clean() error { return newOrch().Clean() }
+func Clean() error { return newOrch().Builder.Clean() }
 
 // Credentials extracts Claude credentials from the macOS Keychain.
-func Credentials() error { return newOrch().ExtractCredentials() }
+func Credentials() error { return newOrch().Builder.ExtractCredentials() }
 
 // Analyze performs cross-artifact consistency checks (PRDs, use cases, test suites, roadmap).
-func Analyze() error { return newOrch().Analyze() }
+func Analyze() error { return newOrch().Analyzer.Analyze() }
 
 // Status reports code implementation status per use case and release,
 // comparing road-map.yaml spec status with test file presence.
-func Status() error { return newOrch().CodeStatus() }
+func Status() error { return newOrch().Analyzer.CodeStatus() }
 
 // Tag creates a documentation release tag (v0.YYYYMMDD.N) and builds the container image.
-func Tag() error { return newOrch().Tag() }
+func Tag() error { return newOrch().Releaser.Tag() }
 
 // --- Release targets ---
 
@@ -116,16 +116,16 @@ type Release mg.Namespace
 // Tag creates a documentation release tag (v0.YYYYMMDD.N) and builds the
 // container image. Alias of the top-level Tag target, exposed under the
 // Release namespace for discoverability.
-func (Release) Tag() error { return newOrch().Tag() }
+func (Release) Tag() error { return newOrch().Releaser.Tag() }
 
 // Update marks a release complete: sets all use-case statuses to "implemented"
 // in docs/road-map.yaml and removes the version from project.releases in
 // configuration.yaml. Errors if the release version is not found.
-func (Release) Update(version string) error { return newOrch().ReleaseUpdate(version) }
+func (Release) Update(version string) error { return newOrch().Releaser.ReleaseUpdate(version) }
 
 // Clear reverses Update: resets use-case statuses to "spec_complete" and
 // re-adds the version to project.releases. Errors if the version is not found.
-func (Release) Clear(version string) error { return newOrch().ReleaseClear(version) }
+func (Release) Clear(version string) error { return newOrch().Releaser.ReleaseClear(version) }
 
 // --- Scaffold targets ---
 
@@ -144,7 +144,7 @@ func (Scaffold) Push(target string) error {
 	if parts := strings.SplitN(target, "@", 2); len(parts) == 2 && parts[1] != "" {
 		module, version := parts[0], parts[1]
 		logf("scaffold:push: using go mod download for %s@%s", module, version)
-		repoDir, err := newOrch().PrepareTestRepo(module, version, orchRoot)
+		repoDir, err := newOrch().Scaffolder.PrepareTestRepo(module, version, orchRoot)
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ func (Scaffold) Push(target string) error {
 	if err := rejectSelfTarget(target, orchRoot); err != nil {
 		return err
 	}
-	return newOrch().Scaffold(target, orchRoot)
+	return newOrch().Scaffolder.Scaffold(target, orchRoot)
 }
 
 // Pop removes orchestrator-managed files from the target repository:
@@ -169,7 +169,7 @@ func (Scaffold) Pop(target string) error {
 	if err := rejectSelfTarget(target, orchRoot); err != nil {
 		return err
 	}
-	return newOrch().Uninstall(target)
+	return newOrch().Scaffolder.Uninstall(target)
 }
 
 // rejectSelfTarget returns an error if target resolves to orchRoot.
@@ -250,65 +250,65 @@ func (Test) Benchmark() error {
 // --- Cobbler targets ---
 
 // Measure assesses project state and proposes new tasks via Claude.
-func (Cobbler) Measure() error { return newOrch().Measure() }
+func (Cobbler) Measure() error { return newOrch().Measure.Measure() }
 
 // Stitch picks ready tasks and invokes Claude to execute them.
-func (Cobbler) Stitch() error { return newOrch().Stitch() }
+func (Cobbler) Stitch() error { return newOrch().Stitch.Stitch() }
 
 // Reset removes the cobbler scratch directory.
-func (Cobbler) Reset() error { return newOrch().CobblerReset() }
+func (Cobbler) Reset() error { return newOrch().ClaudeRunner.CobblerReset() }
 
 // --- Generator targets ---
 
 // Start begins a new generation trail.
-func (Generator) Start() error { return newOrch().GeneratorStart() }
+func (Generator) Start() error { return newOrch().Generator.GeneratorStart() }
 
 // Run executes measure + stitch cycles using the generation.cycles value in configuration.yaml.
 // Use RunN to override the cycle count for a single invocation.
-func (Generator) Run() error { return newOrch().GeneratorRun(0) }
+func (Generator) Run() error { return newOrch().Generator.GeneratorRun(0) }
 
 // RunN executes exactly n cycles of measure + stitch within the current generation.
 // Pass n > 0 to override generation.cycles in configuration.yaml for this run only.
-func (Generator) RunN(n int) error { return newOrch().GeneratorRun(n) }
+func (Generator) RunN(n int) error { return newOrch().Generator.GeneratorRun(n) }
 
 // Resume recovers from an interrupted run and continues.
-func (Generator) Resume() error { return newOrch().GeneratorResume() }
+func (Generator) Resume() error { return newOrch().Generator.GeneratorResume() }
 
 // Stop completes a generation trail and merges it into main.
-func (Generator) Stop() error { return newOrch().GeneratorStop() }
+func (Generator) Stop() error { return newOrch().Generator.GeneratorStop() }
 
 // List shows active branches and past generations.
-func (Generator) List() error { return newOrch().GeneratorList() }
+func (Generator) List() error { return newOrch().Generator.GeneratorList() }
 
 // Switch commits current work and checks out another generation branch.
-func (Generator) Switch() error { return newOrch().GeneratorSwitch() }
+func (Generator) Switch() error { return newOrch().Generator.GeneratorSwitch() }
 
 // Reset destroys generation branches, worktrees, and Go source directories.
-func (Generator) Reset() error { return newOrch().GeneratorReset() }
+func (Generator) Reset() error { return newOrch().Generator.GeneratorReset() }
 
 // --- Stats targets ---
 
 // Loc prints Go lines of code and documentation word counts.
-func (Stats) Loc() error { return newOrch().Stats() }
+func (Stats) Loc() error { return newOrch().Stats.PrintStats() }
 
 // Tokens enumerates prompt-attached files and counts tokens via the Anthropic API.
 func (Stats) Tokens() error { return newOrch().TokenStats() }
 
 // Outcomes prints a summary table of task outcome trailers from git history.
-func (Stats) Outcomes() error { return newOrch().Outcomes() }
+func (Stats) Outcomes() error { return newOrch().Stats.Outcomes() }
 
 // Generator prints a live status report for the current generation run.
-func (Stats) Generator() error { return newOrch().GeneratorStats() }
+func (Stats) Generator() error { return newOrch().Stats.GeneratorStats() }
 
 // Releases prints a table of roadmap releases with PRD and requirement counts.
-func (Stats) Releases() error { return newOrch().ReleaseStats() }
+func (Stats) Releases() error { return newOrch().Stats.ReleaseStats() }
 
 // Run prints aggregate statistics for a completed generation run.
 // Pass a generation name (e.g. "generation-main") or omit to list available runs.
-func (Stats) Run(name string) error { return newOrch().RunStats(name) }
+func (Stats) Run(name string) error { return newOrch().Stats.RunStats(name) }
 
 // Compare prints a side-by-side comparison of two generation runs.
-func (Stats) Compare(name1, name2 string) error { return newOrch().CompareRunStats(name1, name2) }
+func (Stats) Compare(name1, name2 string) error { return newOrch().Stats.CompareRunStats(name1, name2) }
 
 // --- Prompt targets ---
 
@@ -328,24 +328,24 @@ func (Prompt) Files() error { return newOrch().PrintContextFiles() }
 // environment variable to compare a single utility (e.g., UTILITY=cat).
 func (Compare) Run(argA, argB string) error {
 	utility := os.Getenv("UTILITY")
-	return newOrch().Compare(argA, argB, utility)
+	return newOrch().Comparer.Compare(argA, argB, utility)
 }
 
 // --- Vscode targets ---
 
 // Push compiles the extension and installs it into the default VS Code profile.
-func (Vscode) Push() error { return newOrch().VscodePush("") }
+func (Vscode) Push() error { return newOrch().VsCode.VscodePush("") }
 
 // PushProfile compiles the extension and installs it into a named VS Code profile
 // (e.g., mage vscode:pushProfile GO).
-func (Vscode) PushProfile(profile string) error { return newOrch().VscodePush(profile) }
+func (Vscode) PushProfile(profile string) error { return newOrch().VsCode.VscodePush(profile) }
 
 // Pop uninstalls the extension from the default VS Code profile.
-func (Vscode) Pop() error { return newOrch().VscodePop("") }
+func (Vscode) Pop() error { return newOrch().VsCode.VscodePop("") }
 
 // PopProfile uninstalls the extension from a named VS Code profile
 // (e.g., mage vscode:popProfile GO).
-func (Vscode) PopProfile(profile string) error { return newOrch().VscodePop(profile) }
+func (Vscode) PopProfile(profile string) error { return newOrch().VsCode.VscodePop(profile) }
 
 // --- Constitution targets ---
 

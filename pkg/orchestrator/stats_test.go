@@ -34,7 +34,7 @@ func TestCollectStats_CountsGoFiles(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	o := New(Config{})
-	rec, err := o.CollectStats()
+	rec, err := o.Stats.CollectStats()
 	if err != nil {
 		t.Fatalf("CollectStats: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestCollectStats_SkipsVendorAndBinaryDir(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	o := New(Config{}) // BinaryDir="bin", MagefilesDir="magefiles" via defaults
-	rec, err := o.CollectStats()
+	rec, err := o.Stats.CollectStats()
 	if err != nil {
 		t.Fatalf("CollectStats: %v", err)
 	}
@@ -208,15 +208,16 @@ func TestStats_PrintsYAML(t *testing.T) {
 	os.WriteFile("pkg/main.go", []byte("package main\n\nfunc main() {}\n"), 0o644)
 	os.WriteFile("pkg/main_test.go", []byte("package main\n\nfunc TestX() {}\n"), 0o644)
 
-	o := &Orchestrator{cfg: Config{}}
-	o.cfg.applyDefaults()
+	cfg := Config{}
+	cfg.applyDefaults()
+	o := testOrchWithCfg(cfg)
 
 	// Capture stdout.
 	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	err := o.Stats()
+	err := o.Stats.PrintStats()
 
 	w.Close()
 	os.Stdout = origStdout
@@ -251,10 +252,11 @@ func TestCollectStats_CountsSpecWords(t *testing.T) {
 	os.WriteFile("docs/specs/use-cases/rel01.0-uc001-init.yaml",
 		[]byte("id: uc001\ntitle: two words\n"), 0o644)
 
-	o := &Orchestrator{cfg: Config{}}
-	o.cfg.applyDefaults()
+	cfg := Config{}
+	cfg.applyDefaults()
+	o := testOrchWithCfg(cfg)
 
-	rec, err := o.CollectStats()
+	rec, err := o.Stats.CollectStats()
 	if err != nil {
 		t.Fatalf("CollectStats: %v", err)
 	}

@@ -124,7 +124,7 @@ func TestTag_WrongBranch(t *testing.T) {
 	// Override BaseBranch to something that won't match the current branch.
 	cfg.Cobbler.BaseBranch = "release"
 	o := New(cfg)
-	err := o.Tag()
+	err := o.Releaser.Tag()
 	if err == nil {
 		t.Fatal("Tag() expected error for wrong branch, got nil")
 	}
@@ -140,21 +140,21 @@ func TestTag_CreatesGitTag(t *testing.T) {
 	cfg := Config{}
 	cfg.applyDefaults()
 	// Set BaseBranch to whatever our test repo branch is.
-	current, err := defaultGitOps.CurrentBranch(".")
+	current, err := testGitOps().CurrentBranch(".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg.Cobbler.BaseBranch = current
 	cfg.Cobbler.DocTagPrefix = "v0."
-	o := &Orchestrator{cfg: cfg}
+	o := testOrchWithCfg(cfg)
 
-	err = o.Tag()
+	err = o.Releaser.Tag()
 	if err != nil {
 		t.Fatalf("Tag() unexpected error: %v", err)
 	}
 
 	// Verify the git tag was created.
-	tags := defaultGitOps.ListTags("v0.*", ".")
+	tags := testGitOps().ListTags("v0.*", ".")
 	if len(tags) == 0 {
 		t.Error("expected at least one v0.* tag after Tag()")
 	}
@@ -164,7 +164,7 @@ func TestTag_VersionFileWriteError(t *testing.T) {
 	// Not parallel: uses os.Chdir via setupTagRepo.
 	setupTagRepo(t, nil)
 
-	current, err := defaultGitOps.CurrentBranch(".")
+	current, err := testGitOps().CurrentBranch(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,8 +175,8 @@ func TestTag_VersionFileWriteError(t *testing.T) {
 	cfg.Cobbler.DocTagPrefix = "v0."
 	cfg.Project.VersionFile = "/dev/null/impossible/version.go" // will fail
 
-	o := &Orchestrator{cfg: cfg}
-	err = o.Tag()
+	o := testOrchWithCfg(cfg)
+	err = o.Releaser.Tag()
 
 	// Should fail with a version file error that mentions the tag was created.
 	if err == nil {

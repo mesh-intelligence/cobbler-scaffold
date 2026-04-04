@@ -14,11 +14,17 @@ import (
 // functions into the internal/release package at init time.
 // ---------------------------------------------------------------------------
 
-func init() {
-	rel.Log = logf
-	rel.GitReader = defaultGitOps
-	rel.GitTags = defaultGitOps
-	rel.GitCommitter = defaultGitOps
+// NOTE: rel.Log and rel.Git* are wired in the Orchestrator constructor
+// (New) instead of an init function.
+
+// Releaser provides release lifecycle operations (update, clear, tag).
+type Releaser struct {
+	cfg Config
+}
+
+// NewReleaser creates a Releaser with the given configuration.
+func NewReleaser(cfg Config) *Releaser {
+	return &Releaser{cfg: cfg}
 }
 
 // ReleaseUpdate marks a release as complete in the project files. It sets all
@@ -29,7 +35,7 @@ func init() {
 //
 // Returns an error if the release version is not found in road-map.yaml, or
 // if either file fails schema validation.
-func (o *Orchestrator) ReleaseUpdate(version string) error {
+func (r *Releaser) ReleaseUpdate(version string) error {
 	return rel.ReleaseUpdate(DefaultConfigFile, version)
 }
 
@@ -39,7 +45,7 @@ func (o *Orchestrator) ReleaseUpdate(version string) error {
 //
 // Returns an error if the release version is not found in road-map.yaml, or
 // if either file fails schema validation.
-func (o *Orchestrator) ReleaseClear(version string) error {
+func (r *Releaser) ReleaseClear(version string) error {
 	return rel.ReleaseClear(DefaultConfigFile, version)
 }
 

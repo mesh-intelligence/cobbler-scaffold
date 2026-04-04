@@ -346,7 +346,7 @@ func TestReleaseUpdate_RoundTrip(t *testing.T) {
 
 	o := New(Config{})
 
-	if err := o.ReleaseUpdate("00.0"); err != nil {
+	if err := o.Releaser.ReleaseUpdate("00.0"); err != nil {
 		t.Fatalf("ReleaseUpdate: %v", err)
 	}
 
@@ -369,7 +369,7 @@ func TestReleaseUpdate_RoundTrip(t *testing.T) {
 	}
 
 	// Clear restores spec_complete and re-adds the version.
-	if err := o.ReleaseClear("00.0"); err != nil {
+	if err := o.Releaser.ReleaseClear("00.0"); err != nil {
 		t.Fatalf("ReleaseClear: %v", err)
 	}
 
@@ -399,7 +399,7 @@ func TestReleaseUpdate_VersionNotFound(t *testing.T) {
 	defer cdTemp(t, dir)()
 
 	o := New(Config{})
-	if err := o.ReleaseUpdate("99.9"); err == nil {
+	if err := o.Releaser.ReleaseUpdate("99.9"); err == nil {
 		t.Error("expected error for missing version, got nil")
 	}
 }

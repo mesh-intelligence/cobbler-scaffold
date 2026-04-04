@@ -16,11 +16,11 @@ import (
 //   - v1.* = Claude-generated code (created by GeneratorStop)
 //
 // Exposed as a mage target (e.g., mage tag).
-func (o *Orchestrator) Tag() error {
+func (r *Releaser) Tag() error {
 	return rel.Tag(rel.TagParams{
-		BaseBranch:   o.cfg.Cobbler.BaseBranch,
-		DocTagPrefix: o.cfg.Cobbler.DocTagPrefix,
-		VersionFile:  o.cfg.Project.VersionFile,
+		BaseBranch:   r.cfg.Cobbler.BaseBranch,
+		DocTagPrefix: r.cfg.Cobbler.DocTagPrefix,
+		VersionFile:  r.cfg.Project.VersionFile,
 	})
 }
 

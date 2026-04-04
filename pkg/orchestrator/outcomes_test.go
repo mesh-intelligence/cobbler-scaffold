@@ -142,8 +142,8 @@ func TestFormatDuration(t *testing.T) {
 
 func TestOutcomes_NoRecords(t *testing.T) {
 	initTestGitRepo(t)
-	o := &Orchestrator{}
-	if err := o.Outcomes(); err != nil {
+	o := testOrch()
+	if err := o.Stats.Outcomes(); err != nil {
 		t.Fatalf("Outcomes() error = %v", err)
 	}
 }
@@ -173,8 +173,8 @@ func TestOutcomes_WithRecords(t *testing.T) {
 	}
 	os.Stdout = w
 
-	o := &Orchestrator{}
-	oErr := o.Outcomes()
+	o := testOrch()
+	oErr := o.Stats.Outcomes()
 
 	w.Close()
 	var buf bytes.Buffer
