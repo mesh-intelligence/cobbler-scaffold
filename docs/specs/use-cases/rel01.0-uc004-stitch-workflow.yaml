@@ -27,31 +27,31 @@ flow:
   - F13: "Repeat: go to F3 until no ready tasks remain or MaxIssues is reached"
 
 touchpoints:
-  - T1: "Config (workflow fields): prd001-orchestrator-core R1, prd003-cobbler-workflows R1, R3"
-  - T2: "Worktree management: task branch naming per prd003-cobbler-workflows R3.8"
-  - T3: "Claude invocation: prd003-cobbler-workflows R6"
-  - T4: "Recovery: prd003-cobbler-workflows R4"
-  - T5: "InvocationRecord: prd005-metrics-collection R1"
+  - T1: "Config (workflow fields): srd001-orchestrator-core R1, srd003-cobbler-workflows R1, R3"
+  - T2: "Worktree management: task branch naming per srd003-cobbler-workflows R3.8"
+  - T3: "Claude invocation: srd003-cobbler-workflows R6"
+  - T4: "Recovery: srd003-cobbler-workflows R4"
+  - T5: "InvocationRecord: srd005-metrics-collection R1"
 
 success_criteria:
   - id: S1
     criterion: The full task lifecycle (pick, claim, worktree create, Claude invoke, merge, cleanup, close) completes as an unbroken sequence for each ready task in a single stitch run
     traces:
-      - prd003-cobbler-workflows AC2
+      - srd003-cobbler-workflows AC2
   - id: S2
     criterion: On Claude failure or timeout, the task is reset to ready and the worktree is cleaned up so the task can be retried in a subsequent run
     traces:
-      - prd003-cobbler-workflows AC2
-      - prd003-cobbler-workflows AC5
+      - srd003-cobbler-workflows AC2
+      - srd003-cobbler-workflows AC5
   - id: S3
     criterion: Token usage, LOC deltas, and diff stats are recorded in history for every stitch invocation, linking metrics to the specific GitHub issue
     traces:
-      - prd005-metrics-collection AC1
-      - prd005-metrics-collection AC5
+      - srd005-metrics-collection AC1
+      - srd005-metrics-collection AC5
   - id: S4
     criterion: Stitch stops when no ready tasks remain or MaxStitchIssuesPerCycle is reached, whichever comes first
     traces:
-      - prd003-cobbler-workflows AC2
+      - srd003-cobbler-workflows AC2
 
 out_of_scope:
   - Claude behavior and code quality (we test the workflow, not Claude output)

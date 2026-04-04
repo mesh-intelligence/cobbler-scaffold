@@ -22,10 +22,10 @@ flow:
   - F5: "Verify: confirm the base branch is specs-only (no generated code) and the v1 tag preserves the complete code snapshot"
 
 touchpoints:
-  - T1: "GeneratorStart: prd002-generation-lifecycle R2 (including R2.8 base branch recording)"
-  - T2: "GeneratorRun/RunCycles: prd002-generation-lifecycle R3"
-  - T3: "GeneratorStop: prd002-generation-lifecycle R5 (including R5.3 base branch reading)"
-  - T4: "GeneratorList: prd002-generation-lifecycle R7"
+  - T1: "GeneratorStart: srd002-generation-lifecycle R2 (including R2.8 base branch recording)"
+  - T2: "GeneratorRun/RunCycles: srd002-generation-lifecycle R3"
+  - T3: "GeneratorStop: srd002-generation-lifecycle R5 (including R5.3 base branch reading)"
+  - T4: "GeneratorList: srd002-generation-lifecycle R7"
   - T5: "Git operations: tags, branches, merges via pkg/orchestrator/commands.go"
   - T6: "Base branch state: .cobbler/base-branch file on the generation branch"
 
@@ -33,24 +33,24 @@ success_criteria:
   - id: S1
     criterion: GeneratorStart creates a generation branch with clean state, start tag, and .cobbler/base-branch file from any clean branch
     traces:
-      - prd002-generation-lifecycle AC1
-      - prd002-generation-lifecycle AC2
+      - srd002-generation-lifecycle AC1
+      - srd002-generation-lifecycle AC2
   - id: S2
     criterion: GeneratorStop reads the base branch from .cobbler/base-branch, merges, tags, resets the base branch to specs-only, and deletes the generation branch; the v1 tag preserves the complete code snapshot
     traces:
-      - prd002-generation-lifecycle AC5
+      - srd002-generation-lifecycle AC5
   - id: S3
     criterion: The full start-run-stop lifecycle round-trips correctly when initiated from a feature branch (not main), returning to the originating branch
     traces:
-      - prd002-generation-lifecycle AC1
-      - prd002-generation-lifecycle AC2
-      - prd002-generation-lifecycle AC5
+      - srd002-generation-lifecycle AC1
+      - srd002-generation-lifecycle AC2
+      - srd002-generation-lifecycle AC5
   - id: S4
     criterion: When preserve_sources is true, GeneratorStart retains Go source files and GeneratorStop skips the base-branch source reset, preserving library-mode project structure through the lifecycle
     traces:
-      - prd002-generation-lifecycle AC11
-      - prd002-generation-lifecycle AC12
-      - prd002-generation-lifecycle AC13
+      - srd002-generation-lifecycle AC11
+      - srd002-generation-lifecycle AC12
+      - srd002-generation-lifecycle AC13
 
 out_of_scope:
   - Content of measure and stitch workflows (see rel01.0-uc003, rel01.0-uc004)

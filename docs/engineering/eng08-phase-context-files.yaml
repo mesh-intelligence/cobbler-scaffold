@@ -110,7 +110,7 @@ sections:
       include: |
         docs/VISION.yaml
         docs/ARCHITECTURE.yaml
-        docs/specs/product-requirements/prd*.yaml
+        docs/specs/software-requirements/srd*.yaml
         docs/specs/use-cases/rel*.yaml
 
       # Newline-delimited glob patterns for files to exclude.
@@ -268,12 +268,12 @@ sections:
       ### Stitch With Narrow Documentation
 
       A stitch_context.yaml that limits documentation to architecture
-      and the relevant PRD:
+      and the relevant SRD:
 
       ```yaml
       include: |
         docs/ARCHITECTURE.yaml
-        docs/specs/product-requirements/prd003-cobbler-workflows.yaml
+        docs/specs/software-requirements/srd003-cobbler-workflows.yaml
       exclude: |
         docs/engineering/*
       ```
@@ -308,6 +308,6 @@ sections:
       and test suites without changing the project-level configuration.
 
 references:
-  - prd003-cobbler-workflows
+  - srd003-cobbler-workflows
   - eng04-measure-scaling
   - eng05-stitch-benchmark-analysis

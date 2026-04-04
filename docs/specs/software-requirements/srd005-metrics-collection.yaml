@@ -1,4 +1,4 @@
-id: prd005-metrics-collection
+id: srd005-metrics-collection
 title: Metrics Collection and Reporting
 
 implemented_by:
@@ -46,7 +46,7 @@ requirements:
     items:
       - R3.1: CollectStats must count Go production LOC across the repository (per R2.2)
       - R3.2: CollectStats must count Go test LOC across the repository (per R2.2)
-      - R3.3: CollectStats must count documentation words by discovering standard documentation files via resolveStandardFiles() and classifying them into categories (prd, use_case, test_suite); files in other categories are not counted
+      - R3.3: CollectStats must count documentation words by discovering standard documentation files via resolveStandardFiles() and classifying them into categories (srd, use_case, test_suite); files in other categories are not counted
       - R3.4: Stats must marshal results as YAML and print to stdout
 
   R4:
@@ -66,17 +66,17 @@ requirements:
   R6:
     title: Token Stats
     items:
-      - R6.1: TokenStats must enumerate all files that buildProjectContext would load, grouped by category (prd, use_case, test_suite, source, extra, prompts)
+      - R6.1: TokenStats must enumerate all files that buildProjectContext would load, grouped by category (srd, use_case, test_suite, source, extra, prompts)
       - R6.2: TokenStats must report per-file path and byte size, per-category file counts and byte totals, and an overall total
       - R6.3: TokenStats must build a measure prompt and report its size in bytes and an estimated token count (bytes / 4)
       - R6.4: When ANTHROPIC_API_KEY is set, TokenStats must call the Anthropic Token Counting API for exact token counts and record the model used
       - R6.5: TokenStats must marshal the report as YAML and print to stdout
 
 non_goals:
-  - This PRD does not define dashboards or visualization of metrics
-  - This PRD does not define historical trend analysis
-  - This PRD does not define metrics export to external systems (Prometheus, Grafana)
-  - This PRD does not define cost estimation from token counts
+  - This SRD does not define dashboards or visualization of metrics
+  - This SRD does not define historical trend analysis
+  - This SRD does not define metrics export to external systems (Prometheus, Grafana)
+  - This SRD does not define cost estimation from token counts
 
 acceptance_criteria:
   - id: AC1

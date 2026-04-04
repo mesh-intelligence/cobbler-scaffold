@@ -19,21 +19,21 @@ flow:
   - F4: "Clean: remove the BinaryDir directory and all contents"
 
 touchpoints:
-  - T1: "BinaryDir, BinaryName, MainPackage Config fields: prd001-orchestrator-core R1.2, R1.3, R1.4"
+  - T1: "BinaryDir, BinaryName, MainPackage Config fields: srd001-orchestrator-core R1.2, R1.3, R1.4"
 
 success_criteria:
   - id: S1
     criterion: Build produces a binary at {BinaryDir}/{BinaryName} when MainPackage is set, and propagates go build errors on failure
     traces:
-      - prd001-orchestrator-core AC1
+      - srd001-orchestrator-core AC1
   - id: S2
     criterion: Build and Install skip silently and return nil when MainPackage is empty, avoiding errors for library-only projects
     traces:
-      - prd001-orchestrator-core AC1
+      - srd001-orchestrator-core AC1
   - id: S3
     criterion: Clean followed by Build produces a fresh binary (no stale artifacts from previous builds)
     traces:
-      - prd001-orchestrator-core AC1
+      - srd001-orchestrator-core AC1
 
 out_of_scope:
   - Cross-generation comparison builds (see rel03.0-uc001)

@@ -89,7 +89,7 @@ stitch:
             source: "files referenced in task.required_reading + task.files"
             returns: list[SourceFile]
           - name: specifications
-            source: "PRDs, architecture, use cases referenced in required_reading"
+            source: "SRDs, architecture, use cases referenced in required_reading"
             returns: list[SpecificationDocument]
 
     features:
@@ -98,7 +98,7 @@ stitch:
         extraction: "token-budgeted context: 30% task spec, 40% code, 20% guidelines, 10% examples"
       - name: interface_contracts
         source: codebase.specifications
-        extraction: "exported types, function signatures, and patterns from referenced PRDs"
+        extraction: "exported types, function signatures, and patterns from referenced SRDs"
       - name: test_expectations
         source: task.issue_description.acceptance_criteria
         extraction: "checkable outcomes mapped to test assertions"

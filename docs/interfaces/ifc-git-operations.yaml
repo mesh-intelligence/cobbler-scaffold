@@ -268,4 +268,4 @@ operations:
         type: error
 
 references:
-  - prd001-orchestrator-core
+  - srd001-orchestrator-core

@@ -1,4 +1,4 @@
-id: prd001-orchestrator-core
+id: srd001-orchestrator-core
 title: Orchestrator Core Interface
 
 implemented_by:
@@ -63,7 +63,7 @@ requirements:
       - R1.31: ProjectConfig must include ContextSources (string) as a newline-delimited list of extra file paths and glob patterns that supplement standard document discovery in the measure prompt project context
       - R1.32: ProjectConfig must include ContextInclude (string) as a newline-delimited list of glob patterns that, when set, replace the standard document discovery; only matching files are loaded
       - R1.33: ProjectConfig must include ContextExclude (string) as a newline-delimited list of glob patterns; files matching any pattern are excluded from the project context
-      - R1.34: ProjectConfig must include Releases ([]string) listing release versions in scope for code generation; when set, use cases, test suites, and PRDs are filtered to only those versions; an empty list disables filtering
+      - R1.34: ProjectConfig must include Releases ([]string) listing release versions in scope for code generation; when set, use cases, test suites, and SRDs are filtered to only those versions; an empty list disables filtering
       - R1.35: CobblerConfig must include MaxStitchIssues (int) for the total maximum number of stitch iterations per run; 0 means unlimited
       - R1.36: CobblerConfig must include PlanningConstitution, ExecutionConstitution, DesignConstitution, and GoStyleConstitution (all string) as file paths to custom constitution YAMLs; LoadConfig reads each referenced file and replaces the path with its content; when empty, the embedded default is used
       - R1.37: CobblerConfig must include GoldenExample (string) as a file path to a golden example issue YAML; LoadConfig reads the file and replaces the path with its content; when present, the measure prompt instructs Claude to match its style and granularity
@@ -142,26 +142,26 @@ requirements:
       - R7.2: CodeStatus() must count _test.go files in each use-case directory and report "implemented" when at least one is found, "not started" otherwise
       - R7.3: CodeStatus() must compare each use case's roadmap spec status with its code status and detect gaps where spec is "done" but no test files are found
       - R7.4: CodeStatus() must print a structured report to stdout grouped by release and exit non-zero when any gaps are found
-      - R7.5: The CodeStatusReport produced by CodeStatus() must be embedded in AnalysisDoc and written to {ScratchDir}/analysis.yaml before each measure/stitch cycle (see prd003)
+      - R7.5: The CodeStatusReport produced by CodeStatus() must be embedded in AnalysisDoc and written to {ScratchDir}/analysis.yaml before each measure/stitch cycle (see srd003)
 
   R8:
     title: Cross-Artifact Consistency Analysis
     items:
-      - R8.1: Analyze() must load all PRDs, use cases, test suites, and road-map.yaml and check cross-artifact consistency
-      - R8.2: Analyze() must report orphaned PRDs (PRDs not referenced by any use case touchpoint)
+      - R8.1: Analyze() must load all SRDs, use cases, test suites, and road-map.yaml and check cross-artifact consistency
+      - R8.2: Analyze() must report orphaned SRDs (SRDs not referenced by any use case touchpoint)
       - R8.3: Analyze() must report releases in road-map.yaml that have no corresponding test suite file
-      - R8.4: Analyze() must report broken touchpoints (touchpoints referencing PRD IDs that do not exist)
+      - R8.4: Analyze() must report broken touchpoints (touchpoints referencing SRD IDs that do not exist)
       - R8.5: Analyze() must report use cases listed in docs/specs/use-cases/ that are not present in road-map.yaml
-      - R8.6: Analyze() must validate YAML schema conformance for PRDs, use cases, and test suites, reporting schema errors
+      - R8.6: Analyze() must validate YAML schema conformance for SRDs, use cases, and test suites, reporting schema errors
       - R8.7: Analyze() must detect constitution drift (prompt template YAML files that fail schema validation)
-      - R8.8: Analyze() must detect broken citations (code comments referencing non-existent PRD requirement IDs)
-      - R8.9: Analyze() must detect PRDs spanning multiple releases (a PRD whose requirements reference use cases from more than one release)
+      - R8.8: Analyze() must detect broken citations (code comments referencing non-existent SRD requirement IDs)
+      - R8.9: Analyze() must detect SRDs spanning multiple releases (a SRD whose requirements reference use cases from more than one release)
       - R8.10: Analyze() must exit non-zero and print a summary when any violations are found; it must print "All consistency checks passed" and exit zero when clean
 
 non_goals:
-  - This PRD does not define the generation lifecycle (see prd002)
-  - This PRD does not define measure or stitch workflows (see prd003)
-  - This PRD does not define metrics collection (see prd005)
+  - This SRD does not define the generation lifecycle (see srd002)
+  - This SRD does not define measure or stitch workflows (see srd003)
+  - This SRD does not define metrics collection (see srd005)
 
 acceptance_criteria:
   - id: AC1

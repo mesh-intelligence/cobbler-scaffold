@@ -1,4 +1,4 @@
-id: prd003-cobbler-workflows
+id: srd003-cobbler-workflows
 title: Cobbler Measure and Stitch Workflows
 
 implemented_by:
@@ -30,7 +30,7 @@ requirements:
   R1:
     title: Workflow Configuration
     items:
-      - R1.1: Measure and stitch must read SilenceAgent, MaxStitchIssuesPerCycle, MaxMeasureIssues, UserPrompt, GenerationBranch, and TokenFile from Config (see prd001 R1.16-R1.23)
+      - R1.1: Measure and stitch must read SilenceAgent, MaxStitchIssuesPerCycle, MaxMeasureIssues, UserPrompt, GenerationBranch, and TokenFile from Config (see srd001 R1.16-R1.23)
       - R1.2: Measure and stitch must read ClaudeArgs from Config for Claude invocation arguments
       - R1.3: RunMeasure and RunStitch must take no parameters; all options come from Config
 
@@ -119,7 +119,7 @@ requirements:
       - R7.4: Reserved (GitHub Issues are created remotely; no local commit required)
       - R7.5: When Config.Cobbler.MaxRequirementsPerTask is greater than zero, measure must count the number of requirement items in each proposed issue's description and reject issues that exceed the limit; rejected issues must trigger a re-prompt (up to Config.Cobbler.MaxMeasureRetries attempts) instructing Claude to split them into smaller tasks
       - R7.6: When Config.Cobbler.MaxRequirementsPerTask is greater than zero and Config.Cobbler.MaxWeightPerTask is zero, applyDefaults must set MaxWeightPerTask equal to MaxRequirementsPerTask so that weight-based validation is always active when count-based batching is configured (GH-1951)
-      - R7.7: checkAutoAdvanceRelease must not advance a release when any requirement from PRDs referenced by the release's UC touchpoints is still ready in requirements.yaml, even if all UCs have a done status; this prevents orphaned ready requirements in uncited R-groups from becoming invisible to the measure agent (GH-1952)
+      - R7.7: checkAutoAdvanceRelease must not advance a release when any requirement from SRDs referenced by the release's UC touchpoints is still ready in requirements.yaml, even if all UCs have a done status; this prevents orphaned ready requirements in uncited R-groups from becoming invisible to the measure agent (GH-1952)
 
   R8:
     title: Pre-flight Checks
@@ -149,8 +149,8 @@ requirements:
     title: Pre-Cycle Analysis
     items:
       - R10.1: Before each measure/stitch cycle, the orchestrator must run RunPreCycleAnalysis() to produce a combined consistency and code-status snapshot
-      - R10.2: RunPreCycleAnalysis must invoke the cross-artifact consistency checker (see prd001 R8) and collect its results into an AnalysisDoc
-      - R10.3: RunPreCycleAnalysis must invoke CodeStatus (see prd001 R7) and include the report in the same AnalysisDoc
+      - R10.2: RunPreCycleAnalysis must invoke the cross-artifact consistency checker (see srd001 R8) and collect its results into an AnalysisDoc
+      - R10.3: RunPreCycleAnalysis must invoke CodeStatus (see srd001 R7) and include the report in the same AnalysisDoc
       - R10.4: RunPreCycleAnalysis must write the AnalysisDoc as YAML to {CobblerConfig.Dir}/analysis.yaml
       - R10.5: loadAnalysisDoc must load {CobblerConfig.Dir}/analysis.yaml and return nil when the file does not exist
       - R10.6: buildProjectContext must include the AnalysisDoc content when analysis.yaml is present so Claude sees current project health in both measure and stitch prompts
@@ -179,9 +179,9 @@ requirements:
       - R12.7: "When MeasureSourceMode is empty or full, buildProjectContext must produce output identical to the current implementation; no existing tests may fail."
 
 non_goals:
-  - This PRD does not define the generation lifecycle (see prd002)
-  - This PRD does not define the prompt content or Claude behavior expectations
-  - This PRD does not define concurrent task execution (tasks run sequentially)
+  - This SRD does not define the generation lifecycle (see srd002)
+  - This SRD does not define the prompt content or Claude behavior expectations
+  - This SRD does not define concurrent task execution (tasks run sequentially)
 
 acceptance_criteria:
   - id: AC1

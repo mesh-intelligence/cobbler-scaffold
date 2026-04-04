@@ -87,7 +87,7 @@ sections:
       When cobbler.mode is empty, the orchestrator defaults to cli. The
       orchestrator invokes claude directly from PATH.
 
-      The execution mode is governed by prd001-orchestrator-core.yaml (R1 —
+      The execution mode is governed by srd001-orchestrator-core.yaml (R1 —
       Config struct and CobblerConfig).
 
       Extract Claude credentials from the macOS Keychain:
@@ -156,7 +156,7 @@ sections:
       | install | Run go install for the main package |
       | clean | Remove build artifacts |
       | credentials | Extract Claude credentials from macOS Keychain |
-      | analyze | Check cross-artifact consistency (orphaned PRDs, missing test suites) |
+      | analyze | Check cross-artifact consistency (orphaned SRDs, missing test suites) |
       | cobbler:measure | Assess project state and propose tasks via Claude |
       | cobbler:stitch | Pick ready tasks and execute them in isolated worktrees |
       | cobbler:reset | Remove cobbler scratch directory |
@@ -173,4 +173,4 @@ references:
   - docs/VISION.yaml
   - docs/engineering/eng01-generation-workflow.yaml
   - docs/engineering/eng02-prompt-templates.yaml
-  - docs/specs/product-requirements/prd001-orchestrator-core.yaml
+  - docs/specs/software-requirements/srd001-orchestrator-core.yaml

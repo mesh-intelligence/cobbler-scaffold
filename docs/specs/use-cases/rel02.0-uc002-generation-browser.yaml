@@ -29,30 +29,30 @@ flow:
   - F9: "Auto-refresh: a FileSystemWatcher on .git/refs/ detects tag or branch changes and triggers a tree refresh without user action"
 
 touchpoints:
-  - T1: "TreeDataProvider for status view: prd006-vscode-extension R2.1"
-  - T2: "Git tag discovery via {GenPrefix}*-start pattern: prd006-vscode-extension R2.2"
-  - T3: "Lifecycle state from tag suffixes (-start, -finished, -merged, -abandoned): prd006-vscode-extension R2.3"
-  - T4: "Version tag display: prd006-vscode-extension R2.4"
-  - T5: "Current generation indicator: prd006-vscode-extension R2.5"
-  - T6: "Expandable lifecycle and version tag children: prd006-vscode-extension R2.6"
-  - T7: "Switch context menu action: prd006-vscode-extension R2.7"
-  - T8: "Compare context menu action: prd006-vscode-extension R2.8 (delegates to rel02.0-uc003)"
-  - T9: "FileSystemWatcher on .git/refs/: prd006-vscode-extension R2.9, R7.2"
+  - T1: "TreeDataProvider for status view: srd006-vscode-extension R2.1"
+  - T2: "Git tag discovery via {GenPrefix}*-start pattern: srd006-vscode-extension R2.2"
+  - T3: "Lifecycle state from tag suffixes (-start, -finished, -merged, -abandoned): srd006-vscode-extension R2.3"
+  - T4: "Version tag display: srd006-vscode-extension R2.4"
+  - T5: "Current generation indicator: srd006-vscode-extension R2.5"
+  - T6: "Expandable lifecycle and version tag children: srd006-vscode-extension R2.6"
+  - T7: "Switch context menu action: srd006-vscode-extension R2.7"
+  - T8: "Compare context menu action: srd006-vscode-extension R2.8 (delegates to rel02.0-uc003)"
+  - T9: "FileSystemWatcher on .git/refs/: srd006-vscode-extension R2.9, R7.2"
 
 success_criteria:
   - id: S1
     criterion: Tree discovers all generations from git tags, derives lifecycle state from tag suffixes, and displays version tags when present, combining git tag parsing with VS Code tree rendering
     traces:
-      - prd006-vscode-extension AC2
+      - srd006-vscode-extension AC2
   - id: S2
     criterion: The generation matching the active git branch is visually distinct, and the indicator updates when branches change
     traces:
-      - prd006-vscode-extension AC2
-      - prd006-vscode-extension AC9
+      - srd006-vscode-extension AC2
+      - srd006-vscode-extension AC9
   - id: S3
     criterion: The tree refreshes automatically when git refs change (new tags, branch switches, merges) via FileSystemWatcher on .git/refs/
     traces:
-      - prd006-vscode-extension AC9
+      - srd006-vscode-extension AC9
 
 out_of_scope:
   - Lifecycle command execution from Command Palette (see rel02.0-uc001)
@@ -61,9 +61,9 @@ out_of_scope:
   - Specification browser (see rel02.0-uc006)
 
 dependencies:
-  - D1: prd006-vscode-extension R2 (generation browser tree view requirements)
-  - D2: prd002-generation-lifecycle R1 (generation naming and tag conventions)
-  - D3: Extension infrastructure (prd006 R7) must be in place for the tree view to register
+  - D1: srd006-vscode-extension R2 (generation browser tree view requirements)
+  - D2: srd002-generation-lifecycle R1 (generation naming and tag conventions)
+  - D3: Extension infrastructure (srd006 R7) must be in place for the tree view to register
 
 risks:
   - K1: "Git tag parsing is fragile if external tools create non-standard tags | Filter strictly by {GenPrefix} pattern and ignore unrecognized suffixes"

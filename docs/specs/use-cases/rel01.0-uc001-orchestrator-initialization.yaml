@@ -18,27 +18,27 @@ flow:
   - F4: "Verify: confirm cobbler directory exists and git status shows tracked files"
 
 touchpoints:
-  - T1: "Config struct: all fields defined in prd001-orchestrator-core R1"
-  - T2: "New constructor: applies defaults per prd001-orchestrator-core R2"
-  - T3: "Init method: initializes cobbler scratch directory per prd001-orchestrator-core R5"
+  - T1: "Config struct: all fields defined in srd001-orchestrator-core R1"
+  - T2: "New constructor: applies defaults per srd001-orchestrator-core R2"
+  - T3: "Init method: initializes cobbler scratch directory per srd001-orchestrator-core R5"
 
 success_criteria:
   - id: S1
     criterion: New(config) returns a non-nil *Orchestrator with all zero-value fields populated to their documented defaults across all five sub-structs
     traces:
-      - prd001-orchestrator-core AC1
-      - prd001-orchestrator-core AC2
+      - srd001-orchestrator-core AC1
+      - srd001-orchestrator-core AC2
   - id: S2
     criterion: After New() and Init(), the orchestrator accepts generation commands without additional setup (constructor defaults, scratch directory, and logging are all operational)
     traces:
-      - prd001-orchestrator-core AC2
-      - prd001-orchestrator-core AC5
-      - prd001-orchestrator-core AC6
+      - srd001-orchestrator-core AC2
+      - srd001-orchestrator-core AC5
+      - srd001-orchestrator-core AC6
   - id: S3
     criterion: NewFromFile() loads YAML, resolves seed file and prompt file paths to content, applies defaults, and returns an operational orchestrator in a single call
     traces:
-      - prd001-orchestrator-core AC3
-      - prd001-orchestrator-core AC4
+      - srd001-orchestrator-core AC3
+      - srd001-orchestrator-core AC4
 
 out_of_scope:
   - Generation lifecycle operations (see rel01.0-uc002)

@@ -23,7 +23,7 @@ sections:
       calls. A typical measure invocation took 40-51 turns, with the majority
       spent on file reads.
 
-      The optimization injects all project context (vision, architecture, PRDs,
+      The optimization injects all project context (vision, architecture, SRDs,
       specs, source code, existing issues) directly into the prompt as structured
       YAML via `buildProjectContext`. This reduced turns from ~51 to 2-4, with
       Claude spending its turns on analysis and output rather than file reading.
@@ -261,6 +261,6 @@ sections:
 
 references:
   - eng02-prompt-templates
-  - prd003-cobbler-workflows
-  - prd005-metrics-collection
+  - srd003-cobbler-workflows
+  - srd005-metrics-collection
   - tests/rel01.0/uc003_measure_test.go (TestRel01_UC003_TimingByLimit)

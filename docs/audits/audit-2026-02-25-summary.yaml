@@ -13,7 +13,7 @@ baseline:
   go_loc_prod: 8659
   go_loc_test: 5784
   spec_words:
-    prd: 6277
+    srd: 6277
     test_suite: 3776
     use_case: 6045
 
@@ -21,7 +21,7 @@ final:
   go_loc_prod: 8678
   go_loc_test: 6265
   spec_words:
-    prd: 6277
+    srd: 6277
     test_suite: 3776
     use_case: 6045
 
@@ -36,8 +36,8 @@ sub_audits:
     file: docs/audits/audit-2026-02-25-requirements.yaml
     findings:
       - "24 closed GitHub issues verified as implemented"
-      - "37 mage targets traced to PRD requirements or build infrastructure"
-      - "2 low-severity traceability gaps (uc006/uc007 lack formal PRD, tag target undocumented)"
+      - "37 mage targets traced to SRD requirements or build infrastructure"
+      - "2 low-severity traceability gaps (uc006/uc007 lack formal SRD, tag target undocumented)"
       - "No undocumented behavior found"
 
   - id: cobbler-qwo.3

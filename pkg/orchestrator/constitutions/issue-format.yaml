@@ -119,7 +119,7 @@ field_specs:
     required: false
     description: |
       For documentation issues only. The rule file that governs the output
-      format (e.g., prd-format, use-case-format).
+      format (e.g., srd-format, use-case-format).
 
   required_sections:
     type: list of strings
@@ -132,7 +132,7 @@ examples:
     deliverable_type: code
 
     required_reading:
-      - docs/specs/product-requirements/prd003-crumbs-interface.yaml
+      - docs/specs/software-requirements/srd003-crumbs-interface.yaml
       - pkg/types/cupboard.go
 
     files:
@@ -145,7 +145,7 @@ examples:
 
     requirements:
       - id: R1
-        text: Implement CrumbTable interface per prd003-crumbs-interface
+        text: Implement CrumbTable interface per srd003-crumbs-interface
       - id: R2
         text: Add, Get, Archive, Purge, Fetch operations
       - id: R3
@@ -153,9 +153,9 @@ examples:
 
     design_decisions:
       - id: D1
-        text: Use table accessor pattern from prd001-cupboard-core
+        text: Use table accessor pattern from srd001-cupboard-core
       - id: D2
-        text: Filter as map[string]any per PRD
+        text: Filter as map[string]any per SRD
 
     acceptance_criteria:
       - id: AC1
@@ -163,18 +163,18 @@ examples:
       - id: AC2
         text: Tests pass for each operation
       - id: AC3
-        text: Errors match PRD error types
+        text: Errors match SRD error types
 
   documentation_issue: |
     deliverable_type: documentation
-    format_rule: prd-format
+    format_rule: srd-format
 
     required_reading:
       - docs/ARCHITECTURE.yaml (components section)
-      - docs/specs/product-requirements/prd001-cupboard-core.yaml
+      - docs/specs/software-requirements/srd001-cupboard-core.yaml
 
     files:
-      - path: docs/specs/product-requirements/prd-feature-name.yaml
+      - path: docs/specs/software-requirements/srd-feature-name.yaml
         action: create
 
     required_sections:
@@ -186,7 +186,7 @@ examples:
 
     requirements:
       - id: R1
-        text: Write PRD covering all identified requirements
+        text: Write SRD covering all identified requirements
       - id: R2
         text: Include acceptance criteria for each requirement
 
@@ -194,7 +194,7 @@ examples:
       - id: AC1
         text: All required sections present
       - id: AC2
-        text: File saved as prd-feature-name.yaml
+        text: File saved as srd-feature-name.yaml
       - id: AC3
         text: Requirements numbered and specific
 

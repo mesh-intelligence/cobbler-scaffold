@@ -13,7 +13,7 @@ introduction: |
 
   In Fowler's pipeline, the semantic model is written in code (classes,
   structs, interfaces) and a deterministic compiler transforms it. In the
-  cobbler pipeline, the semantic model is written in YAML (PRDs, use cases,
+  cobbler pipeline, the semantic model is written in YAML (SRDs, use cases,
   test suites, behavioral contracts) and Claude transforms it into Go code,
   which the Go compiler then makes executable. The YAML specs encode
   behavioral intent the same way Fowler's code-level semantic model does —
@@ -64,7 +64,7 @@ sections:
       | Every function has a return type | Every AC has at least one test case |
       | Type mismatches caught at compile time | Broken citations and trace references caught before generation |
       | Linker ensures all symbols resolve | Full traceability chain from R-item through AC to passing test |
-      | Unused variable warnings | Orphaned PRDs, ACs, or test suites with no references |
+      | Unused variable warnings | Orphaned SRDs, ACs, or test suites with no references |
 
       The more checks `mage analyze` performs, the fewer gaps the LLM
       must fill by inference. A richer type system reduces runtime
@@ -121,7 +121,7 @@ sections:
       boundary (swap shortest-path algorithms, swap storage engines)
       without forcing the algorithm itself into a model pattern. The
       model defines WHAT to compute; the algorithm defines HOW. This
-      separation matches the PRD/implementation split: the PRD
+      separation matches the SRD/implementation split: the SRD
       specifies what, the generated code implements how.
 
       Pure algorithms and simple I/O transformations gain nothing from
@@ -159,6 +159,6 @@ sections:
 
 references:
   - "Fowler, Martin. Domain-Specific Languages. Addison-Wesley, 2010."
-  - "#1250: Close traceability gaps between PRD ACs, UC success criteria, and test cases"
-  - "#1296: Investigate whether UCs should collapse into PRD ACs with semantic models"
+  - "#1250: Close traceability gaps between SRD ACs, UC success criteria, and test cases"
+  - "#1296: Investigate whether UCs should collapse into SRD ACs with semantic models"
   - "#1302: Evaluate Fowler-style semantic models in generated code"

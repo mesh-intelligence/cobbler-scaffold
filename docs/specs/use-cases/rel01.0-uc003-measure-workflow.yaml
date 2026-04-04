@@ -23,31 +23,31 @@ flow:
   - F9: "Record metrics: store token usage in history"
 
 touchpoints:
-  - T1: "Config (workflow fields): prd001-orchestrator-core R1, prd003-cobbler-workflows R1, R2"
-  - T2: "Prompt templates: prd003-cobbler-workflows R5"
-  - T3: "Claude invocation: prd003-cobbler-workflows R6"
-  - T4: "Issue import: prd003-cobbler-workflows R7"
-  - T5: "InvocationRecord: prd005-metrics-collection R1"
+  - T1: "Config (workflow fields): srd001-orchestrator-core R1, srd003-cobbler-workflows R1, R2"
+  - T2: "Prompt templates: srd003-cobbler-workflows R5"
+  - T3: "Claude invocation: srd003-cobbler-workflows R6"
+  - T4: "Issue import: srd003-cobbler-workflows R7"
+  - T5: "InvocationRecord: srd005-metrics-collection R1"
 
 success_criteria:
   - id: S1
     criterion: Existing GitHub issues are fetched, serialized into the prompt context, and passed to Claude so the measure agent sees current project state before proposing new tasks
     traces:
-      - prd003-cobbler-workflows AC1
-      - prd003-cobbler-workflows AC4
+      - srd003-cobbler-workflows AC1
+      - srd003-cobbler-workflows AC4
   - id: S2
     criterion: Proposed issues are created on GitHub with dependency ordering preserved (prerequisites created before dependents so GitHub issue references resolve)
     traces:
-      - prd003-cobbler-workflows AC1
-      - prd003-cobbler-workflows AC6
+      - srd003-cobbler-workflows AC1
+      - srd003-cobbler-workflows AC6
   - id: S3
     criterion: When EnforceMeasureValidation is true and a proposed task exceeds MaxRequirementsPerTask, the task is rejected and Claude is re-prompted up to MaxMeasureRetries times
     traces:
-      - prd003-cobbler-workflows AC6
+      - srd003-cobbler-workflows AC6
   - id: S4
     criterion: Token usage and invocation duration are recorded in the history directory for every measure invocation, including failed or retried ones
     traces:
-      - prd005-metrics-collection AC1
+      - srd005-metrics-collection AC1
 
 out_of_scope:
   - Claude behavior and prompt quality (we test the workflow, not Claude output)

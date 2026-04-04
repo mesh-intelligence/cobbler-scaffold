@@ -23,21 +23,21 @@ flow:
   - F5: "Report metrics via testing.B (ns/op, custom metrics)"
 
 touchpoints:
-  - T1: "Measure workflow: prd003-cobbler-workflows R1, R2, R6"
-  - T2: "Stitch workflow: prd003-cobbler-workflows R3, R4, R6"
-  - T3: "Config limits: prd001-orchestrator-core R1"
+  - T1: "Measure workflow: srd003-cobbler-workflows R1, R2, R6"
+  - T2: "Stitch workflow: srd003-cobbler-workflows R3, R4, R6"
+  - T3: "Config limits: srd001-orchestrator-core R1"
 
 success_criteria:
   - id: S1
     criterion: Wall-clock time and issue counts are reported per sub-benchmark via testing.B, enabling regression detection across limit values
     traces:
-      - prd003-cobbler-workflows AC1
-      - prd003-cobbler-workflows AC2
-      - prd005-metrics-collection AC1
+      - srd003-cobbler-workflows AC1
+      - srd003-cobbler-workflows AC2
+      - srd005-metrics-collection AC1
   - id: S2
     criterion: Benchmarks are gated behind the benchmark build tag and run only via mage test:benchmark, preventing interference with functional tests
     traces:
-      - prd003-cobbler-workflows AC1
+      - srd003-cobbler-workflows AC1
 
 out_of_scope:
   - Functional correctness of measure or stitch (covered by UC003, UC004)

@@ -77,7 +77,7 @@ findings_documented:
   hardcoded_assumptions:
     - file: generator.go
       line: 242
-      description: "readBaseBranch() falls back to hardcoded 'main'. Correct for backward compatibility per prd002 R5.3, but could use a config default."
+      description: "readBaseBranch() falls back to hardcoded 'main'. Correct for backward compatibility per srd002 R5.3, but could use a config default."
       severity: medium
       recommendation: "Add Generation.DefaultBranch config field"
 

@@ -23,26 +23,26 @@ flow:
   - F9: "Continue: run the requested number of measure+stitch cycles (requires drain from F8 to avoid duplicate proposals)"
 
 touchpoints:
-  - T1: "GeneratorResume: prd002-generation-lifecycle R4"
-  - T2: "recoverStaleTasks: prd003-cobbler-workflows R4"
-  - T3: "resetOrphanedIssues: prd003-cobbler-workflows R4.4, R4.5"
-  - T4: "Branch resolution: prd002-generation-lifecycle R9"
+  - T1: "GeneratorResume: srd002-generation-lifecycle R4"
+  - T2: "recoverStaleTasks: srd003-cobbler-workflows R4"
+  - T3: "resetOrphanedIssues: srd003-cobbler-workflows R4.4, R4.5"
+  - T4: "Branch resolution: srd002-generation-lifecycle R9"
 
 success_criteria:
   - id: S1
     criterion: Resume resolves the correct generation branch using explicit Config, auto-detect from a single generation branch, or current-branch fallback
     traces:
-      - prd002-generation-lifecycle AC4
-      - prd002-generation-lifecycle AC10
+      - srd002-generation-lifecycle AC4
+      - srd002-generation-lifecycle AC10
   - id: S2
     criterion: Existing ready issues are drained via stitch before new measure+stitch cycles begin, preventing duplicate task proposals
     traces:
-      - prd002-generation-lifecycle AC4
+      - srd002-generation-lifecycle AC4
   - id: S3
     criterion: After recovery, the generation continues from the last committed state without data loss (no orphaned worktrees, no stuck in_progress issues, no stale scratch files)
     traces:
-      - prd002-generation-lifecycle AC4
-      - prd003-cobbler-workflows AC3
+      - srd002-generation-lifecycle AC4
+      - srd003-cobbler-workflows AC3
 
 out_of_scope:
   - Initial generation start (see rel01.0-uc002)

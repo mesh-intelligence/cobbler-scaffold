@@ -25,13 +25,13 @@ flow:
   - F8: "Resolve branch refs: extension resolves each generation to its branch ref and repeats F4 through F6"
 
 touchpoints:
-  - T1: "Compare Tags command registration: prd006-vscode-extension R3.1"
-  - T2: "Quick-pick tag selection: prd006-vscode-extension R3.2"
-  - T3: "File-level diff summary: prd006-vscode-extension R3.3"
-  - T4: "Click-to-diff editor: prd006-vscode-extension R3.4"
-  - T5: "Generation branch comparison: prd006-vscode-extension R3.5"
-  - T6: "TreeDataProvider for changed files: prd006-vscode-extension R3.6"
-  - T7: "Generation Browser context menu: prd006-vscode-extension R2.8"
+  - T1: "Compare Tags command registration: srd006-vscode-extension R3.1"
+  - T2: "Quick-pick tag selection: srd006-vscode-extension R3.2"
+  - T3: "File-level diff summary: srd006-vscode-extension R3.3"
+  - T4: "Click-to-diff editor: srd006-vscode-extension R3.4"
+  - T5: "Generation branch comparison: srd006-vscode-extension R3.5"
+  - T6: "TreeDataProvider for changed files: srd006-vscode-extension R3.6"
+  - T7: "Generation Browser context menu: srd006-vscode-extension R2.8"
   - T8: "Tag naming convention: generation tags follow {GenPrefix}*-{suffix} pattern; suffixes are -start, -finished, -merged, -abandoned"
   - T9: "Version tag format: v[REL].[DATE].[REVISION] where REL is the release version and DATE is the build date"
 
@@ -39,15 +39,15 @@ success_criteria:
   - id: S1
     criterion: Clicking a file in the summary tree opens a VS Code diff editor showing changes between the two refs (cross-component integration between git diff, TreeDataProvider, and VS Code diff API)
     traces:
-      - prd006-vscode-extension AC3
+      - srd006-vscode-extension AC3
   - id: S2
     criterion: Comparison works when one or both refs have been merged or abandoned, using tag refs rather than branches so deleted generation branches do not break the workflow
     traces:
-      - prd006-vscode-extension AC3
+      - srd006-vscode-extension AC3
   - id: S3
     criterion: Empty diff (identical refs) displays an informational message instead of an empty tree
     traces:
-      - prd006-vscode-extension AC3
+      - srd006-vscode-extension AC3
 
 out_of_scope:
   - Line-level inline annotations or blame views
@@ -56,10 +56,10 @@ out_of_scope:
   - Exporting or saving comparison results
 
 dependencies:
-  - D1: prd006-vscode-extension R3 (Branch and Tag Comparison requirements)
-  - D2: prd002-generation-lifecycle R1 (tag naming conventions for generation identification)
-  - D3: prd006-vscode-extension R2.8 (Generation Browser context menu action for selecting generations)
-  - D4: Extension infrastructure (prd006 R7) must be in place for commands and tree views to register
+  - D1: srd006-vscode-extension R3 (Branch and Tag Comparison requirements)
+  - D2: srd002-generation-lifecycle R1 (tag naming conventions for generation identification)
+  - D3: srd006-vscode-extension R2.8 (Generation Browser context menu action for selecting generations)
+  - D4: Extension infrastructure (srd006 R7) must be in place for commands and tree views to register
 
 risks:
   - K1: "Large diffs between distant tags may produce slow or overwhelming file lists | Paginate or cap the file list and show a count summary"

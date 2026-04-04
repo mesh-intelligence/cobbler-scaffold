@@ -46,7 +46,7 @@ sections:
       | PlanningConstitution | string | Embedded planning.yaml constitution |
 
       The measure template receives a ProjectContext string containing all
-      project documentation (vision, architecture, PRDs, specs, engineering
+      project documentation (vision, architecture, SRDs, specs, engineering
       guidelines), source code, and existing issues as structured YAML. This
       eliminates the need for Claude to read files via tool calls. The Limit
       is always 1 because measure uses an iterative strategy (see
@@ -93,7 +93,7 @@ sections:
       We follow these conventions when writing or modifying prompt templates:
 
       - Instruct Claude to read project documentation (VISION, ARCHITECTURE,
-        PRDs) before acting to ensure generated code aligns with specifications
+        SRDs) before acting to ensure generated code aligns with specifications
       - Include structured output instructions (JSON for measure, commit format
         for stitch)
       - Avoid prescribing specific implementation details in the prompt; the
@@ -173,6 +173,6 @@ sections:
       lists, code blocks).
 
 references:
-  - prd003-cobbler-workflows
+  - srd003-cobbler-workflows
   - pkg/orchestrator/constitutions/planning.yaml
   - pkg/orchestrator/constitutions/execution.yaml

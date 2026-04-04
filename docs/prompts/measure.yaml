@@ -4,7 +4,7 @@ role: |
 task: |
   Follow these steps in order. Complete each step before moving to the next. Do NOT explore the filesystem, read files, or run commands unless a step explicitly asks you to. All project information is already provided in the project_context field above.
 
-  1. **Analyze project context** — Review the project_context field above. It contains ALL project documentation: vision, architecture, specifications, roadmap, PRDs, use cases, test suites, engineering guidelines, constitutions, and existing issues. Do NOT read any files — everything you need is inline.
+  1. **Analyze project context** — Review the project_context field above. It contains ALL project documentation: vision, architecture, specifications, roadmap, SRDs, use cases, test suites, engineering guidelines, constitutions, and existing issues. Do NOT read any files — everything you need is inline.
 
   2. **Summarize project state** — Write a brief summary of:
      - What problem this project solves
@@ -29,7 +29,7 @@ constraints: |
   - Do NOT duplicate existing issues. Review the issues in the project_context above before proposing.
   - Do NOT exceed {limit} tasks. If more work is needed, create additional tasks in a future session.
   - Do NOT create tasks larger than {lines_max} lines of production code. Target {lines_min}-{lines_max} lines per task, touching 5-7 files. Split aggressively: a task that creates a struct and implements its methods is two tasks.
-  - PRD requirements use a two-level structure: R-groups (R1, R2, R3) contain sub-requirements (R1.1, R1.2, R2.1). When referencing requirements, always use sub-requirement IDs (e.g., "prd003 R2.1, R2.2, R2.3"), not group IDs. A reference to "prd003 R2" means ALL sub-requirements under R2, which may be 10+ items. Each task must contain at most {max_requirements} PRD sub-requirements total. Count every sub-requirement individually: "prd003 R2.1, R2.2, R2.3" is 3 sub-requirements, while "prd003 R2" expands to however many items R2 contains. Split tasks that would exceed the limit.
+  - SRD requirements use a two-level structure: R-groups (R1, R2, R3) contain sub-requirements (R1.1, R1.2, R2.1). When referencing requirements, always use sub-requirement IDs (e.g., "srd003 R2.1, R2.2, R2.3"), not group IDs. A reference to "srd003 R2" means ALL sub-requirements under R2, which may be 10+ items. Each task must contain at most {max_requirements} SRD sub-requirements total. Count every sub-requirement individually: "srd003 R2.1, R2.2, R2.3" is 3 sub-requirements, while "srd003 R2" expands to however many items R2 contains. Split tasks that would exceed the limit.
   - Each task MUST be independently executable by an agent that has no context beyond the task description and the execution constitution.
   - Do NOT assume the stitch agent has access to your analysis, the existing issues list, or any context from this conversation.
   - Do NOT propose tasks that require human judgment or manual testing. Each task must have checkable acceptance criteria.
@@ -49,7 +49,7 @@ output_format: |
 
         required_reading:
           - path/to/file.go (reason this file must be read)
-          - docs/specs/product-requirements/prd001-feature.yaml
+          - docs/specs/software-requirements/srd001-feature.yaml
 
         files:
           - path: pkg/types/example.go
@@ -60,12 +60,12 @@ output_format: |
             note: ExampleType implementation
 
         requirements:
-          - "R1: Implement ExampleType struct per prd001-feature R2.1, R2.2"
-          - "R2: Add Get operation per prd001-feature R2.3"
-          - "R3: Add Set operation per prd001-feature R2.4"
+          - "R1: Implement ExampleType struct per srd001-feature R2.1, R2.2"
+          - "R2: Add Get operation per srd001-feature R2.3"
+          - "R3: Add Set operation per srd001-feature R2.4"
 
         design_decisions:
-          - Use table accessor pattern from prd001-cupboard-core
+          - Use table accessor pattern from srd001-cupboard-core
           - "Keep implementation in internal/, not pkg/"
 
         acceptance_criteria:

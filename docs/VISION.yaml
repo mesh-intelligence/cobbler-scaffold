@@ -29,7 +29,7 @@ what_this_does: |
   fairy tale where elves make shoes overnight.
 
   The measure phase analyzes the project state. We read existing documentation (VISION,
-  ARCHITECTURE, PRDs, use cases), query the issue tracker for current work items, and invoke
+  ARCHITECTURE, SRDs, use cases), query the issue tracker for current work items, and invoke
   Claude to propose new tasks. Claude writes a YAML file with task titles, descriptions, and
   dependency indices. We import these tasks into the issue tracker, wiring up dependencies.
 
@@ -54,7 +54,7 @@ why_we_build_this: |
   connecting them into a repeatable workflow.
 
   We already use this orchestrator to build Crumbs, our work-item storage system. The orchestrator
-  proposes tasks based on Crumbs' PRDs and use cases, executes them, and tracks progress. This
+  proposes tasks based on Crumbs' SRDs and use cases, executes them, and tracks progress. This
   self-reinforcing loop validates the orchestrator's design with real usage.
 
 related_projects:
@@ -71,8 +71,8 @@ success_criteria:
     human intervention. Recovery from interrupted runs (generator:resume) restores state and
     continues without data loss.
   code_quality: |
-    Generated code conforms to project PRDs and architecture. Commits reference the tasks and
-    PRDs they implement. Metrics (LOC, tokens, diff stats) are recorded on every task for
+    Generated code conforms to project SRDs and architecture. Commits reference the tasks and
+    SRDs they implement. Metrics (LOC, tokens, diff stats) are recorded on every task for
     auditability.
   developer_experience: |
     Consuming projects integrate the orchestrator by placing a configuration.yaml at the
@@ -113,5 +113,5 @@ not:
   - We are not building an agent framework. We do not define agent capabilities, tool use policies, or multi-agent communication. Claude is a black box that receives a prompt and produces code.
   - We are not building a CI/CD pipeline. We run locally on developer machines. Deployment, testing infrastructure, and release automation are out of scope.
   - We are not building a project management tool. We use an issue tracker for tasks but do not provide dashboards, sprint planning, or team coordination.
-  - We are not building a code review system. The orchestrator merges code automatically. Review happens before generation (through PRDs and architecture docs) and after (through human inspection).
+  - We are not building a code review system. The orchestrator merges code automatically. Review happens before generation (through SRDs and architecture docs) and after (through human inspection).
   - We are not building a general-purpose build system. We extend Mage with AI orchestration targets. The consuming project defines its own build targets for compilation, testing, and packaging.

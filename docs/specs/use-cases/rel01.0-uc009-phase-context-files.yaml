@@ -26,31 +26,31 @@ flow:
   - F8: "Continue phase: measure or stitch proceeds with the assembled ProjectContext"
 
 touchpoints:
-  - T1: "Config (ProjectConfig context fields): prd001-orchestrator-core R1, prd003-cobbler-workflows R9"
-  - T2: "PhaseContext struct and loading: prd003-cobbler-workflows R9.1-R9.4"
-  - T3: "buildProjectContext integration: prd003-cobbler-workflows R9.5-R9.7"
-  - T4: "Measure integration: prd003-cobbler-workflows R9.8"
-  - T5: "Stitch integration: prd003-cobbler-workflows R9.9"
-  - T6: "Logging: prd003-cobbler-workflows R9.10"
+  - T1: "Config (ProjectConfig context fields): srd001-orchestrator-core R1, srd003-cobbler-workflows R9"
+  - T2: "PhaseContext struct and loading: srd003-cobbler-workflows R9.1-R9.4"
+  - T3: "buildProjectContext integration: srd003-cobbler-workflows R9.5-R9.7"
+  - T4: "Measure integration: srd003-cobbler-workflows R9.8"
+  - T5: "Stitch integration: srd003-cobbler-workflows R9.9"
+  - T6: "Logging: srd003-cobbler-workflows R9.10"
 
 success_criteria:
   - id: S1
     criterion: When context files do not exist, both measure and stitch use ProjectConfig fields unchanged (backward compatible with pre-context-file projects)
     traces:
-      - prd003-cobbler-workflows AC9
+      - srd003-cobbler-workflows AC9
   - id: S2
     criterion: When a context file is malformed YAML, the invocation aborts with a descriptive error rather than silently falling back to defaults
     traces:
-      - prd003-cobbler-workflows AC8
+      - srd003-cobbler-workflows AC8
   - id: S3
     criterion: Modifying a context file between two consecutive measure invocations changes the assembled ProjectContext on the second invocation (invocation-time loading, not cached)
     traces:
-      - prd003-cobbler-workflows AC8
+      - srd003-cobbler-workflows AC8
   - id: S4
     criterion: PhaseContext SourceMode and SummarizeCommand fields override the config-level MeasureSourceMode when present, enabling per-invocation summarization control
     traces:
-      - prd003-cobbler-workflows AC8
-      - prd003-cobbler-workflows AC12
+      - srd003-cobbler-workflows AC8
+      - srd003-cobbler-workflows AC12
 
 out_of_scope:
   - Auto-updating context files after stitch creates new files
