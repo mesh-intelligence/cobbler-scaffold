@@ -241,6 +241,25 @@ document_types:
       architecture. Not PRDs (no numbered requirements). Not architecture (no
       component descriptions).
 
+  interface_specification:
+    location: "docs/interfaces/ifc-[kebab-case-name].yaml"
+    format_rule: interface-specification-format
+    required_fields:
+      - id (matches filename without extension)
+      - name (must match ARCHITECTURE.yaml interface entry)
+      - summary (one to three sentences)
+    optional_fields:
+      - "data_structures (list: name, description, schema as JSON Schema object)"
+      - "operations (list: name, description, parameters, returns)"
+      - announcements (list of events the interface emits)
+      - references (list of PRD or use case IDs)
+    purpose: |
+      Standalone, language-agnostic interface contract. Uses JSON Schema for
+      data structures and typed parameter/return lists for operations.
+      Replaces Go-specific signatures inlined in ARCHITECTURE.yaml with
+      machine-parseable definitions. See eng10-interface-specifications for
+      the full schema and examples.
+
   specification:
     location: docs/SPECIFICATIONS.yaml
     format_rule: specification-format
@@ -304,6 +323,7 @@ naming_conventions:
   use_case: "rel[NN].[N]-uc[NNN]-[short-name].yaml (e.g., rel01.0-uc001-cupboard-lifecycle.yaml)"
   test_suite: "test-[use-case-id].yaml (e.g., test-rel01.0-uc001-cupboard-lifecycle.yaml)"
   engineering_guideline: "eng[NN]-[short-name].yaml (e.g., eng01-git-integration.yaml)"
+  interface_specification: "ifc-[kebab-case-name].yaml (e.g., ifc-generation-lifecycle.yaml)"
   architecture: "ARCHITECTURE.yaml"
   vision: "VISION.yaml"
   specification: "SPECIFICATIONS.yaml"
@@ -375,6 +395,15 @@ completeness_checklists:
     - Expected outputs are specific and checkable
     - File saved as test-[use-case-id].yaml
 
+  interface_specification:
+    - id matches filename without extension (ifc-[kebab-case-name])
+    - name matches the corresponding ARCHITECTURE.yaml interface entry
+    - summary describes the interface contract in one to three sentences
+    - data_structures use JSON Schema (type, properties, required)
+    - operations have name, description, typed parameters, and typed returns
+    - references list PRD or use case IDs the interface traces to
+    - File saved as ifc-[kebab-case-name].yaml in docs/interfaces/
+
 sections:
   - tag: articles
     title: Core Principles
@@ -392,9 +421,10 @@ sections:
   - tag: document_types
     title: Document Types
     content: |
-      Seven document types are defined: vision, architecture, PRD, use case,
-      test suite, engineering guideline, and specification. Each has a canonical
-      location, format rule, required fields, and optional fields.
+      Eight document types are defined: vision, architecture, PRD, use case,
+      test suite, engineering guideline, interface specification, and
+      specification. Each has a canonical location, format rule, required
+      fields, and optional fields.
   - tag: naming_conventions
     title: Naming Conventions
     content: |

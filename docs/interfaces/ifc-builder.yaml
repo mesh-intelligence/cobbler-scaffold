@@ -1,0 +1,55 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-builder
+name: Builder
+summary: |
+  We provide build, lint, install, clean, and credential extraction operations
+  through the Builder struct. Builder depends only on Config and has no
+  cross-domain dependencies. Consuming projects invoke these operations as
+  Mage targets for Go toolchain management.
+
+operations:
+  - name: Build
+    description: Build the consuming project binary using go build.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: BuildAll
+    description: Build all cmd/ sub-packages when MainPackage is empty.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: Lint
+    description: Run golangci-lint on the project source.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: Install
+    description: Install the project binary using go install.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: Clean
+    description: Remove build artifacts from the project directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: ExtractCredentials
+    description: Extract Claude API credentials from the macOS Keychain.
+    parameters: []
+    returns:
+      - name: credentials
+        type: object
+        description: Extracted credential data.
+      - name: error
+        type: error
+
+references:
+  - prd001-orchestrator-core
+  - prd003-cobbler-workflows

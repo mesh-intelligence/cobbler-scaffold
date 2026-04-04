@@ -1,0 +1,147 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: eng10-interface-specifications
+title: Interface Specification Format
+
+introduction: |
+  Interfaces in ARCHITECTURE.yaml serve as summaries: a name, a paragraph
+  of prose, and optional lists of data structures and operations written in
+  Go-specific notation. This works for orientation but breaks down when
+  tooling needs to validate contracts, generate stubs, or check that a PRD's
+  implemented_by claim actually matches the interface it references.
+
+  We introduce a standalone interface specification file format that lives in
+  docs/interfaces/. Each file is a self-contained YAML document using JSON
+  Schema to describe data structures and a typed operations list for methods.
+  ARCHITECTURE.yaml retains the summary entries and gains a spec_file field
+  pointing to the full specification. The interface constitution (I1-I6)
+  governs both the summary and the specification file.
+
+sections:
+  - title: File Location and Naming
+    content: |
+      Interface specification files live in docs/interfaces/ and follow the
+      naming pattern ifc-[kebab-case-name].yaml, where the name matches the
+      interface name in ARCHITECTURE.yaml converted to kebab case. For
+      example, the "Generation Lifecycle" interface becomes
+      ifc-generation-lifecycle.yaml.
+
+      ARCHITECTURE.yaml interface entries gain an optional spec_file field
+      that points to the specification file path relative to the repository
+      root. When spec_file is present, the ARCHITECTURE.yaml entry is a
+      summary; the specification file is the authoritative contract.
+
+  - title: File Structure
+    content: |
+      Every interface specification file has four top-level fields:
+
+      Table: Interface specification fields
+
+      | Field | Required | Description |
+      |-------|----------|-------------|
+      | id | yes | Matches filename without extension (e.g., ifc-generation-lifecycle) |
+      | name | yes | Interface name, must match the ARCHITECTURE.yaml entry |
+      | summary | yes | One to three sentences describing the interface contract |
+      | data_structures | no | List of typed data structure definitions using JSON Schema |
+      | operations | no | List of method definitions with typed parameters and returns |
+      | announcements | no | List of events or signals the interface emits |
+      | references | no | List of PRD or use case IDs this interface traces to |
+
+  - title: Data Structure Definitions
+    content: |
+      Each entry in data_structures is a YAML mapping with three fields:
+      name (the type name), description (one sentence), and schema (a JSON
+      Schema object defining the structure's fields).
+
+      JSON Schema types replace Go types. Use string, integer, number,
+      boolean, array, and object. The format keyword extends basic types
+      (e.g., format: date-time for timestamps, format: duration for time
+      durations). Use $ref to reference other data structures within the
+      same file.
+
+      Example:
+
+      ```yaml
+      data_structures:
+        - name: DiffStat
+          description: Parsed output from a git diff --shortstat command.
+          schema:
+            type: object
+            properties:
+              files_changed:
+                type: integer
+                description: Number of files changed.
+              insertions:
+                type: integer
+                description: Lines added.
+              deletions:
+                type: integer
+                description: Lines removed.
+            required: [files_changed, insertions, deletions]
+      ```
+
+      Struct hierarchies use nested objects. References between structures
+      in the same file use $ref with a JSON pointer:
+
+      ```yaml
+      schema:
+        type: object
+        properties:
+          diff:
+            $ref: "#/data_structures/DiffStat"
+      ```
+
+  - title: Operation Definitions
+    content: |
+      Each entry in operations is a YAML mapping with four fields: name (the
+      method name), description (one sentence), parameters (list of typed
+      parameters), and returns (list of typed return values). Parameters and
+      returns each have name, type, and an optional description.
+
+      Types in parameters and returns use JSON Schema type names (string,
+      integer, boolean, object, array) or reference data structures defined
+      in the same file by name. Use "void" when a method returns nothing
+      besides an error. Use "error" as the conventional error return type.
+
+      Example:
+
+      ```yaml
+      operations:
+        - name: GeneratorStart
+          description: Tag base branch, create generation branch, and reset sources.
+          parameters: []
+          returns:
+            - name: error
+              type: error
+        - name: GeneratorRun
+          description: Run measure and stitch cycles until all issues are closed.
+          parameters:
+            - name: cycles
+              type: integer
+              description: Maximum number of cycles to execute.
+          returns:
+            - name: error
+              type: error
+      ```
+
+  - title: Versioning and Evolution
+    content: |
+      Interface specifications are versioned through git like all other
+      documentation. When an interface changes, update both the specification
+      file and the ARCHITECTURE.yaml summary. The spec_file field in
+      ARCHITECTURE.yaml serves as the link between the summary and the full
+      contract.
+
+      Breaking changes (removing operations, changing parameter types) should
+      be documented in the specification file's summary or in a design
+      decision in ARCHITECTURE.yaml.
+
+  - title: Relationship to mage analyze
+    content: |
+      The analyze target validates that every interface name in a PRD's
+      implemented_by and used_by lists resolves to an entry in
+      ARCHITECTURE.yaml's interfaces section (I6). When spec_file is
+      present, analyze can optionally validate that the specification file
+      exists at the declared path. Full schema validation of specification
+      file contents is a future extension.

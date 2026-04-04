@@ -1,0 +1,124 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-generation-lifecycle
+name: Generation Lifecycle
+summary: |
+  We manage the generation lifecycle through the Generator struct. A generation
+  starts from a tagged main state, creates a branch, runs measure-stitch cycles,
+  and merges the result back to main. The Generator composes Measure, Stitch,
+  Analyzer, Releaser, and ClaudeRunner to coordinate these phases.
+
+data_structures:
+  - name: Generator
+    description: |
+      Standalone struct managing the generation lifecycle. Composes domain
+      structs and state callbacks for branch and phase management.
+    schema:
+      type: object
+      properties:
+        config:
+          type: object
+          description: Orchestrator configuration.
+        log_function:
+          type: object
+          description: Logging function for generation events.
+        git:
+          type: object
+          description: Git operations interface.
+        tracker:
+          type: object
+          description: Issue tracking interface.
+        claude_runner:
+          type: object
+          description: Claude execution infrastructure.
+        analyzer:
+          type: object
+          description: Cross-artifact consistency checker.
+        measure:
+          type: object
+          description: Measure workflow struct.
+        stitch:
+          type: object
+          description: Stitch workflow struct.
+        releaser:
+          type: object
+          description: Release lifecycle manager.
+        set_generation:
+          type: object
+          description: Callback to set the active generation on the orchestrator.
+        clear_generation:
+          type: object
+          description: Callback to clear the active generation.
+
+operations:
+  - name: GeneratorStart
+    description: Tag base branch, create generation branch, and reset sources unless preserve_sources is true.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorRun
+    description: Run measure and stitch cycles until all issues are closed or the cycle limit is reached.
+    parameters:
+      - name: cycles
+        type: integer
+        description: Maximum number of measure-stitch cycles to execute.
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorResume
+    description: Recover stale tasks from an interrupted run and continue execution.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorStop
+    description: Merge generation branch into base branch, tag the result, and clean up.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorReset
+    description: Destroy all generations and return to a clean main state.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorList
+    description: List active and past generations with their lifecycle state.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorSwitch
+    description: Switch the working directory to a different generation branch.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: RunCycles
+    description: Run measure and stitch cycles until no open issues remain.
+    parameters:
+      - name: label
+        type: string
+        description: Label identifying this cycle run for logging.
+    returns:
+      - name: error
+        type: error
+  - name: Init
+    description: Initialize the project for orchestrator use.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: FullReset
+    description: Reset both cobbler state and generator state.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - prd002-generation-lifecycle
+  - prd001-orchestrator-core
