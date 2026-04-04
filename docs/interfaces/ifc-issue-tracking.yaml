@@ -1,0 +1,186 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-issue-tracking
+name: Issue Tracking
+summary: |
+  We abstract all issue-tracking operations behind a WorkTracker interface.
+  GitHubTracker implements WorkTracker using the gh CLI and GitHub REST API.
+  The interface manages issue CRUD, DAG-based dependency promotion, generation
+  labelling with 50-char truncation, sub-issue hierarchy, and garbage collection
+  of stale generation issues.
+
+data_structures:
+  - name: WorkTracker
+    description: Primary interface defining 27 methods for issue lifecycle, labels, DAG promotion, and defects.
+    fields: []
+
+  - name: GitHubTracker
+    description: Implements WorkTracker using the gh CLI and GitHub REST API.
+    fields: []
+
+  - name: CobblerIssue
+    description: Issue record representing a cobbler-managed GitHub issue.
+    fields:
+      - name: Number
+        type: integer
+        description: GitHub issue number.
+        required: true
+      - name: Title
+        type: string
+        description: Issue title.
+        required: true
+      - name: State
+        type: string
+        description: Issue state (open, closed).
+        required: true
+      - name: Index
+        type: integer
+        description: Position index within the generation.
+        required: true
+      - name: DependsOn
+        type: array
+        description: List of issue indices this issue depends on.
+      - name: Generation
+        type: string
+        description: Generation label this issue belongs to.
+      - name: Description
+        type: string
+        description: Issue body text.
+      - name: Labels
+        type: array
+        description: GitHub labels applied to the issue.
+
+  - name: ProposedIssue
+    description: Measure output representing a proposed issue before creation.
+    fields:
+      - name: Index
+        type: integer
+        description: Position index in the proposed plan.
+        required: true
+      - name: Title
+        type: string
+        description: Proposed issue title.
+        required: true
+      - name: Description
+        type: string
+        description: Proposed issue body.
+        required: true
+      - name: Dependency
+        type: integer
+        description: Index of the issue this one depends on.
+
+  - name: ContextIssue
+    description: Issue summary used for context assembly.
+    fields:
+      - name: ID
+        type: integer
+        description: GitHub issue number.
+        required: true
+      - name: Title
+        type: string
+        description: Issue title.
+        required: true
+      - name: Status
+        type: string
+        description: Current issue status.
+        required: true
+      - name: Type
+        type: string
+        description: Issue type classification.
+        required: true
+
+  - name: CobblerFrontMatter
+    description: YAML front-matter parsed from the issue body.
+    fields:
+      - name: Generation
+        type: string
+        description: Generation label.
+        required: true
+      - name: Index
+        type: integer
+        description: Position index within the generation.
+        required: true
+      - name: DependsOn
+        type: array
+        description: List of issue indices this issue depends on.
+
+operations:
+  - name: DetectGitHubRepo
+    description: Detect the GitHub repository from the current git remote.
+    parameters: []
+    returns:
+      - name: repo
+        type: string
+      - name: error
+        type: error
+  - name: EnsureCobblerLabels
+    description: Create cobbler-managed labels in the repository if they do not exist.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: CreateCobblerIssue
+    description: Create a new cobbler-managed GitHub issue with front-matter and labels.
+    parameters: []
+    returns:
+      - name: number
+        type: integer
+      - name: error
+        type: error
+  - name: ListOpenCobblerIssues
+    description: List all open issues with the cobbler label.
+    parameters: []
+    returns:
+      - name: issues
+        type: array
+        description: List of CobblerIssue entries.
+      - name: error
+        type: error
+  - name: PromoteReadyIssues
+    description: Promote issues whose DAG dependencies are satisfied to the ready state.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: PickReadyIssue
+    description: Select the next ready issue for stitch execution.
+    parameters: []
+    returns:
+      - name: issue
+        type: CobblerIssue
+      - name: error
+        type: error
+  - name: CloseCobblerIssue
+    description: Close a cobbler-managed issue after successful stitch.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GcStaleGenerationIssues
+    description: Garbage-collect open issues from previous generations that are no longer relevant.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: LinkSubIssue
+    description: Link a sub-issue to its parent in the GitHub issue hierarchy.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: FileTargetRepoDefects
+    description: File defect issues in the target repository for failures detected during stitch.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GenLabel
+    description: Generate a generation label with 50-character truncation.
+    parameters: []
+    returns:
+      - name: label
+        type: string
+
+references:
+  - srd003-cobbler-workflows

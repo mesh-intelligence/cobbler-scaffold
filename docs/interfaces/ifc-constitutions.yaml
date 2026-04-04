@@ -1,0 +1,34 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-constitutions
+name: Constitutions
+summary: |
+  Seven YAML constitutions govern different workflow phases. Design, planning, and execution are
+  the three primary constitutions. Go-style, issue-format, testing, and interface provide
+  supplementary rules. Design and interface are scaffolded to consuming projects; all others are
+  embedded in the binary.
+
+operations:
+  - name: ConstitutionToMarkdown
+    description: We convert constitution sections into a markdown string for prompt inclusion.
+    parameters:
+      - name: sections
+        type: array
+        description: List of constitution sections to render.
+    returns:
+      - name: markdown
+        type: string
+
+  - name: ConstitutionPreviewFile
+    description: We write a preview of the constitution at the given path for inspection.
+    parameters:
+      - name: path
+        type: string
+        description: Path to the constitution file to preview.
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core

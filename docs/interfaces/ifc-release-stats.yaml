@@ -1,0 +1,19 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-release-stats
+name: Release Stats
+summary: |
+  We load road-map.yaml, SRD files, and use case touchpoints to produce a
+  per-release table showing SRD completion status and requirement counts.
+
+operations:
+  - name: ReleaseStats
+    description: Load roadmap and SRD data to produce a per-release completion table.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd005-metrics-collection

@@ -1,0 +1,54 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-cobbler-stitch
+name: "Cobbler - Stitch"
+summary: |
+  Standalone Stitch struct. Picks ready GitHub Issues, creates worktrees, invokes
+  Claude, commits changes, merges branches, records metrics, and closes tasks.
+  Saves history artifacts per task and handles recovery of stale tasks from
+  interrupted runs.
+
+operations:
+  - name: Stitch
+    description: Execute the full stitch workflow for all ready issues.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: RunStitch
+    description: Run the stitch phase within a generation cycle.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: RunStitchN
+    description: Run the stitch phase for up to a specified number of tasks.
+    parameters:
+      - name: limit
+        type: integer
+        description: Maximum number of tasks to stitch.
+    returns:
+      - name: error
+        type: error
+  - name: doOneTask
+    description: Execute the stitch workflow for a single ready issue.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: resetTask
+    description: Reset a task that failed or was interrupted back to the ready state.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: skipTask
+    description: Mark a task as skipped and move to the next ready issue.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows

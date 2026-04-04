@@ -1,0 +1,60 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-commands
+name: Commands
+summary: |
+  Wrapper functions for external tools. Functions wrapping git and Go CLI commands.
+  Centralizes binary names as constants and provides structured access to command
+  output.
+
+operations:
+  - name: gitBranch
+    description: Return the current git branch name.
+    parameters: []
+    returns:
+      - name: branch
+        type: string
+      - name: error
+        type: error
+  - name: gitWorktree
+    description: Manage git worktree operations (add, remove, prune).
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: gitTag
+    description: Create or manage git tags.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: gitMerge
+    description: Merge a branch into the current branch.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: gitDiff
+    description: Run a git diff and return structured diff output.
+    parameters: []
+    returns:
+      - name: diff
+        type: object
+      - name: error
+        type: error
+  - name: goBuild
+    description: Run go build on the target package.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: goVet
+    description: Run go vet on the target package.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core

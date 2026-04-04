@@ -71,6 +71,7 @@ overview:
 
 interfaces:
   - name: Orchestrator and Config
+    spec_file: docs/interfaces/ifc-orchestrator-and-config.yaml
     summary: |
       The Orchestrator is the composition root. Consuming projects place a configuration.yaml
       at the repository root and call NewFromFile(), or construct a Config in Go and pass it
@@ -78,147 +79,78 @@ interfaces:
       all dependencies via constructor injection. Mage targets access domain structs through
       public fields (e.g., o.Generator.GeneratorStart()). Config holds all orchestrator
       settings; the YAML file is the sole source of truth for all options.
-    data_structures:
-      - "Orchestrator: composition root holding Config and 10 domain struct fields (Generator, Measure, Stitch, Builder, Scaffolder, Comparer, VsCode, Stats, Releaser, Analyzer) plus ClaudeRunner"
-      - "Config: all orchestrator settings with YAML tags (see srd001-orchestrator-core for full field spec)"
-      - "InvocationRecord: metrics per Claude invocation (Caller, StartedAt, DurationS, Tokens, LOCBefore, LOCAfter, Diff, NumTurns)"
-      - "HistoryStats: YAML-serializable per-invocation stats saved to history directory (Caller, TaskID, TaskTitle, StartedAt, Duration, Tokens, CostUSD, LOCBefore, LOCAfter, Diff, NumTurns, DurationAPIMs, RateLimitWaitS, SessionID)"
-    operations:
-      - "New(cfg Config) *Orchestrator: construct composition root, wire all domain structs"
-      - "NewFromFile(path string) (*Orchestrator, error): construct from configuration.yaml"
-      - "Config(), Tracker(), Git(): accessor methods for config, tracker, git interfaces"
-      - "DumpMeasurePrompt(): write measure prompt to stdout for debugging"
-      - "DumpStitchPrompt(): write stitch prompt to stdout for debugging"
-      - "TokenStats(): enumerate context files and report token counts (srd005)"
-      - "PrintContextFiles(): list files included in Claude prompts with sizes"
-      - "ConstitutionPreviewFile(): render constitution YAML to markdown"
-      - "GeneratorInit(): package-level function to initialize generator state from configuration.yaml"
-      - "WriteDefaultConfig(): package-level function to write a default configuration.yaml file"
 
   - name: Generation Lifecycle
+    spec_file: docs/interfaces/ifc-generation-lifecycle.yaml
     summary: |
       The Generator struct manages the generation lifecycle. It composes Measure, Stitch,
       Analyzer, Releaser, and ClaudeRunner to coordinate branch creation, measure-stitch
       cycles, merge, and cleanup. Dependencies are injected via NewGenerator(o *Orchestrator).
-    data_structures:
-      - "Generator: standalone struct with cfg, logf, git, tracker, claudeRunner, analyzer, measure, stitch, releaser, setGeneration, clearGeneration"
-    operations:
-      - "GeneratorStart(): tag base branch, create generation branch, reset sources unless preserve_sources is true (srd002)"
-      - "GeneratorRun(cycles int): run measure+stitch cycles until all issues are closed (srd002)"
-      - "GeneratorResume(): recover and continue interrupted run (srd002)"
-      - "GeneratorStop(): merge generation into base branch, tag, clean up (srd002)"
-      - "GeneratorReset(): destroy all generations, return to clean main (srd002)"
-      - "GeneratorList(): show active and past generations (srd002)"
-      - "GeneratorSwitch(): switch between generation branches (srd002)"
-      - "RunCycles(label string): run measure+stitch cycles until no open issues remain (srd002)"
-      - "Init(): initialize project (srd001)"
-      - "FullReset(): reset cobbler and generator (srd001)"
 
   - name: Measure Workflow
+    spec_file: docs/interfaces/ifc-measure-workflow.yaml
     summary: |
       The Measure struct builds the measure prompt from existing issues and project state,
       invokes Claude, parses YAML output, and creates GitHub Issues with dependency labels.
       Dependencies are injected via NewMeasure(o *Orchestrator), including function references
       for orchestrator state (setPhase, setGeneration) and generator helpers (resolveBranch,
       ensureOnBranch, enterWorktree).
-    data_structures:
-      - "Measure: standalone struct with cfg, logf, git, tracker, claudeRunner, analyzer, plus state callbacks and generator helper functions"
-    operations:
-      - "Measure(): enter generation worktree and run measure (srd003)"
-      - "MeasurePrompt(): print assembled measure prompt to stdout"
-      - "RunMeasure(): run measure phase with full lifecycle (srd003)"
-      - "buildMeasurePrompt(): assemble measure prompt from project context"
-      - "importIssues(): import Claude-proposed tasks as GitHub Issues"
 
   - name: Stitch Workflow
+    spec_file: docs/interfaces/ifc-stitch-workflow.yaml
     summary: |
       The Stitch struct picks ready GitHub Issues, creates worktrees, invokes Claude, commits
       changes, merges branches, and closes tasks. Dependencies are injected via
       NewStitch(o *Orchestrator), including function references for generator helpers
       (pickTask, createWorktree, mergeBranch, cleanupWorktree).
-    data_structures:
-      - "Stitch: standalone struct with cfg, logf, git, tracker, claudeRunner, plus state callbacks and generator helper functions"
-    operations:
-      - "Stitch(): enter generation worktree and run stitch (srd003)"
-      - "RunStitch(): run stitch phase, executing all ready tasks (srd003)"
-      - "RunStitchN(limit int): run stitch phase up to limit tasks (srd003)"
-      - "doOneTask(): execute a single task in a worktree"
-      - "resetTask(): reset a failed task to ready"
-      - "skipTask(): mark a task as skipped after retry limit"
 
   - name: Builder
+    spec_file: docs/interfaces/ifc-builder.yaml
     summary: |
       The Builder struct provides build, lint, install, clean, and credential operations.
       It depends only on Config. Created via NewBuilder(cfg Config).
-    operations:
-      - "Build(): go build the consuming project binary"
-      - "BuildAll(): go build all cmd/ sub-packages when MainPackage is empty (srd003)"
-      - "Lint(): run golangci-lint on the project"
-      - "Install(): go install the project binary"
-      - "Clean(): remove build artifacts"
-      - "ExtractCredentials(): extract Claude credentials from macOS Keychain"
 
   - name: Scaffolder
+    spec_file: docs/interfaces/ifc-scaffolder.yaml
     summary: |
       The Scaffolder struct scaffolds the orchestrator into consuming projects and manages
       test repositories. It depends on git (GitOps) and logf. Created via
       NewScaffolder(git, logf).
-    operations:
-      - "Scaffold(): scaffold orchestrator into consuming project"
-      - "Uninstall(): remove scaffold artifacts from target project"
-      - "PrepareTestRepo(): download and scaffold a test repository for E2E tests"
 
   - name: Stats and Metrics
+    spec_file: docs/interfaces/ifc-stats-and-metrics.yaml
     summary: |
       The Stats struct collects LOC counts, documentation word counts, generator status,
       release statistics, run statistics, and outcome trailer parsing. It depends on
       cfg, logf, git, and tracker. Created via NewStats(cfg, logf, git, tracker).
-    operations:
-      - "PrintStats(): print LOC and documentation metrics as YAML (srd005)"
-      - "CollectStats(): collect LOC and doc metrics programmatically (srd005)"
-      - "GeneratorStats(): print status report for the current generation run (stats:generator)"
-      - "ReleaseStats(): print per-release table with SRD counts (stats:releases)"
-      - "RunStats(name string): print aggregate statistics for a completed generation run (stats:run)"
-      - "CompareRunStats(name1, name2 string): compare two generation runs side by side (stats:compare)"
-      - "Outcomes(): parse and display outcome trailers from git history (stats:outcomes)"
 
   - name: Releaser
+    spec_file: docs/interfaces/ifc-releaser.yaml
     summary: |
       The Releaser struct manages release lifecycle state in road-map.yaml and
       configuration.yaml, and creates versioned documentation tags. It depends only on
       Config. Created via NewReleaser(cfg Config).
-    operations:
-      - "ReleaseUpdate(version string): mark a release complete — set UC statuses to implemented (release:update)"
-      - "ReleaseClear(version string): reverse ReleaseUpdate — reset UC statuses to spec_complete (release:clear)"
-      - "Tag(): create versioned doc-release tag, update version file"
 
   - name: Analyzer
+    spec_file: docs/interfaces/ifc-analyzer.yaml
     summary: |
       The Analyzer struct performs cross-artifact consistency checks, code status detection,
       and pre-cycle analysis. It depends on cfg and logf. Created via NewAnalyzer(cfg, logf).
-    operations:
-      - "Analyze(): cross-artifact consistency checking"
-      - "CodeStatus(): report spec-vs-code gaps per use case and release (srd001)"
-      - "RunPreCycleAnalysis(): write analysis.yaml before each measure/stitch cycle"
-      - "validateDocSchemas(): validate YAML schemas against typed structs"
 
   - name: Comparer
+    spec_file: docs/interfaces/ifc-comparer.yaml
     summary: |
       The Comparer struct runs cross-generation differential comparison between binary
       sources. It depends on logf and git. Created via NewComparer(logf, git).
-    operations:
-      - "Compare(): differential comparison between two git references (srd004)"
-      - "ResolverFromArg(): resolve a BinaryResolver from argument string"
 
   - name: VsCode Manager
+    spec_file: docs/interfaces/ifc-vscode-manager.yaml
     summary: |
       The VsCode struct manages VS Code extension packaging and installation. It depends
       only on logf. Created via NewVsCode(logf).
-    operations:
-      - "VscodePush(): build, package, and install VS Code extension"
-      - "VscodePop(): uninstall VS Code extension"
 
   - name: Claude Runner
+    spec_file: docs/interfaces/ifc-claude-runner.yaml
     summary: |
       The ClaudeRunner struct encapsulates all Claude execution infrastructure shared by
       Measure and Stitch: running Claude (CLI or SDK mode), capturing LOC, saving history
@@ -226,119 +158,59 @@ interfaces:
       via NewClaudeRunner(cfg, git, tracker, sdkQueryFn, logf, extractCredentials, collectStats).
       Cross-domain dependencies (extractCredentials from Builder, collectStats from Stats) are
       passed as function references to avoid circular struct dependencies.
-    data_structures:
-      - "ClaudeRunner: standalone struct with cfg, git, tracker, sdkQueryFn, logf, extractCredentials, collectStats"
-    operations:
-      - "runClaude(): execute Claude and return token usage"
-      - "runMeasureClaude(): execute Claude with measure-specific idle timeout"
-      - "runClaudeSDK(): execute Claude via Go Agent SDK"
-      - "checkClaude(): verify Claude can be invoked"
-      - "captureLOC(): snapshot current Go LOC counts"
-      - "saveHistoryReport/Stats/Prompt/Log(): save history artifacts"
-      - "HistoryClean(): remove history subdirectory"
-      - "CobblerReset(): remove cobbler scratch directory"
-      - "hasOpenIssues(): check for open orchestrator issues"
 
   - name: Git Operations
+    spec_file: docs/interfaces/ifc-git-operations.yaml
     summary: |
       Abstracts all git operations behind a GitOps interface with six role-based
       sub-interfaces. The ShellGitOps implementation executes git commands via
       exec.Command. Components declare dependencies on the narrowest sub-interface
       they need, enabling testability and future non-shell backends.
-    data_structures:
-      - "GitOps: primary interface, 33 methods covering all git operations"
-      - "RepoReader: read-only access (CurrentBranch, BranchExists, ListBranches, ListTags, LsFiles, RevParseHEAD)"
-      - "WorktreeManager: worktree lifecycle (WorktreeAdd, WorktreeRemove, WorktreePrune)"
-      - "BranchManager: branch operations (Checkout, CheckoutNew, CreateBranch, DeleteBranch, ForceDeleteBranch, MergeCmd)"
-      - "CommitWriter: staging and commits (StageAll, StageDir, UnstageAll, HasChanges, Stash, Commit, CommitAllowEmpty, CommitAmendTrailers, ResetSoft)"
-      - "TagManager: tag operations (Tag, TagAt, DeleteTag, RenameTag, ListTags)"
-      - "DiffInspector: diff operations (DiffShortstat, DiffNameStatus, LsTreeFiles, ShowFileContent)"
-      - "DiffStat: parsed output from git diff --shortstat (FilesChanged, Insertions, Deletions)"
-      - "FileChange: per-file diff information (Path, Status, Insertions, Deletions)"
-      - "ShellGitOps: implements GitOps using exec.Command"
 
   - name: Issue Tracking
+    spec_file: docs/interfaces/ifc-issue-tracking.yaml
     summary: |
       Abstracts all issue-tracking operations behind a WorkTracker interface.
       GitHubTracker implements WorkTracker using the gh CLI and GitHub REST API.
       The interface manages issue CRUD, DAG-based dependency promotion, generation
       labelling with 50-char truncation, sub-issue hierarchy, and garbage collection
       of stale generation issues.
-    data_structures:
-      - "WorkTracker: primary interface, 27 methods for issue lifecycle, labels, DAG promotion, defects"
-      - "GitHubTracker: implements WorkTracker using gh CLI and REST API"
-      - "CobblerIssue: issue record (Number, Title, State, Index, DependsOn, Generation, Description, Labels)"
-      - "ProposedIssue: measure output (Index, Title, Description, Dependency)"
-      - "ContextIssue: issue summary for context assembly (ID, Title, Status, Type)"
-      - "CobblerFrontMatter: YAML front-matter parsed from issue body (Generation, Index, DependsOn)"
-    operations:
-      - "DetectGitHubRepo: discover repo from git remote"
-      - "EnsureCobblerLabels: create standard cobbler labels"
-      - "CreateCobblerIssue: create issue with generation label and dependency front-matter"
-      - "ListOpenCobblerIssues: list open issues filtered by generation label"
-      - "PromoteReadyIssues: promote unblocked issues to cobbler-ready based on dependency DAG"
-      - "PickReadyIssue: pick lowest-numbered ready issue, mark in-progress (excludes cobbler-skipped)"
-      - "CloseCobblerIssue: close issue and re-promote dependents"
-      - "GcStaleGenerationIssues: garbage-collect stale generation issues in a single bulk API call"
-      - "LinkSubIssue: link child issue to parent via GitHub sub-issues API"
-      - "FileTargetRepoDefects: file defects in target repos"
-      - "GenLabel: truncate/hash generation labels to 50-char GitHub limit"
 
   - name: Claude Execution
+    spec_file: docs/interfaces/ifc-claude-execution.yaml
     summary: |
       Abstracts Claude invocation behind a Runner interface. Two implementations
       exist: CLIRunner invokes the claude binary directly on the host, SDKRunner
       uses the Go Agent SDK. The effectiveMode() function selects the implementation
       based on cobbler.mode in configuration.yaml. Both return a ClaudeResult with
       token usage, cost, and session metadata.
-    data_structures:
-      - "Runner: interface with Run(ctx, prompt, workDir, silence, extraArgs) returning ClaudeResult"
-      - "CLIRunner: implements Runner via claude CLI binary"
-      - "SDKRunner: implements Runner via Go Agent SDK with sdkEnvMu-serialised env mutation"
-      - "ClaudeResult: token usage (InputTokens, OutputTokens, CacheCreationTokens, CacheReadTokens, CostUSD, RawOutput, NumTurns, DurationAPIMs, RateLimitWaitS, SessionID)"
 
   - name: Binary Resolution
+    spec_file: docs/interfaces/ifc-binary-resolution.yaml
     summary: |
       Abstracts binary resolution for cross-generation differential comparison
       behind a BinaryResolver interface. Three implementations resolve binaries
       from different sources: git tags, GNU coreutils on PATH, and pre-built
       directories. The comparison runner resolves both sides, runs test cases
       from YAML spec test suites, and reports differences.
-    data_structures:
-      - "BinaryResolver: interface with Resolve(utility) and ListUtilities()"
-      - "GitTagResolver: builds binaries from git tags into a temp directory"
-      - "GNUResolver: resolves Homebrew GNU coreutils via g-prefix convention"
-      - "PathResolver: resolves binaries from PATH"
-      - "CompareTestCase: test case loaded from YAML test suite (Input, Expected)"
-      - "TestResult: per-test pass/fail with diff details"
 
   - name: Prompt Templates
+    spec_file: docs/interfaces/ifc-prompt-templates.yaml
     summary: |
       Prompts are Go text/template strings embedded from pkg/orchestrator/prompts/measure.tmpl
       and pkg/orchestrator/prompts/stitch.tmpl. Consuming projects can override them via
       Config.MeasurePrompt and Config.StitchPrompt. Prompts are injected with phase-specific
       constitutions (planning for measure, execution for stitch) and a ProjectContext YAML blob
       containing all docs, specs, source code, and existing issues.
-    data_structures:
-      - "MeasurePromptDoc: Role (string), ProjectContext (*ProjectContext), PlanningConstitution (*yaml.Node), IssueFormatConstitution (*yaml.Node), Task (string), Constraints (string), OutputFormat (string), GoldenExample (string), AdditionalContext (string), ValidationErrors ([]string), PackageContracts ([]OODPackageContractRef)"
-      - "StitchPromptDoc: Role (string), RepositoryFiles ([]string), ProjectContext (*ProjectContext), Context (string), ExecutionConstitution (*yaml.Node), GoStyleConstitution (*yaml.Node), Task (string), Constraints (string), Description (string), SemanticModel (*yaml.Node), SharedProtocols ([]ArchSharedProtocol), PackageContracts ([]OODPackageContractRef)"
 
   - name: Context Assembly
+    spec_file: docs/interfaces/ifc-context-assembly.yaml
     summary: |
       Builds a comprehensive YAML blob (ProjectContext) from the consuming project's
       documentation, specifications, source code, and existing issues. Over 30 struct
       types model the document schema. Phase-specific context files override global
       context settings at invocation time. The assembled context is injected into
       both measure and stitch prompts.
-    data_structures:
-      - "ProjectContext: top-level container (Vision, Architecture, Specifications, Roadmap, Specs, Engineering, Analysis, SourceCode, Issues, CompletedWork, RequirementStates, Extra)"
-      - "PhaseContext: per-phase overrides (Include, Exclude, Sources, Release, ExcludeSource, SourcePatterns, ExcludeTests, SourceMode, SummarizeCommand)"
-      - "VisionDoc, ArchitectureDoc, SpecificationsDoc, RoadmapDoc: top-level document types"
-      - "SRDDoc: product requirement with RequirementGroups, AcceptanceCriteria, ImplementedBy, UsedBy"
-      - "SRDRequirementItem: individual requirement (ID, Text, Weight)"
-      - "UseCaseDoc: use case with SuccessCriteria, InteractionSteps, Touchpoints"
-      - "TestSuiteDoc: test suite with TestCases"
-      - "SourceFile: Go source file (File, Lines)"
 
 components:
   - name: Orchestrator

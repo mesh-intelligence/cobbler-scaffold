@@ -1,0 +1,55 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-analyze-component
+name: Analyze
+summary: |
+  Standalone Analyzer struct performing cross-artifact consistency checking. Validates SRDs, use
+  cases, and test suites are properly linked and complete. Reports orphaned SRDs, missing test
+  suites, broken touchpoints, schema drift, semantic model violations, and structured traceability
+  chains.
+
+operations:
+  - name: Analyze
+    description: We run the full cross-artifact consistency analysis and print results.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: CodeStatus
+    description: We detect and report the current implementation status of each specification artifact.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: RunPreCycleAnalysis
+    description: We run consistency checks before a measure/stitch cycle and write the results to the scratch directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: validateDocSchemas
+    description: We validate all documentation files against their expected YAML schemas.
+    parameters: []
+    returns:
+      - name: violations
+        type: array
+      - name: error
+        type: error
+
+  - name: CollectAnalyzeResult
+    description: We collect the full analysis result as structured objects for programmatic consumption.
+    parameters: []
+    returns:
+      - name: analysis
+        type: object
+      - name: codeStatus
+        type: object
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core

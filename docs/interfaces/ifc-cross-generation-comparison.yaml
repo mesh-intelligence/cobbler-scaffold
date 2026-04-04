@@ -1,0 +1,72 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-cross-generation-comparison
+name: Cross-Generation Comparison
+summary: |
+  We build binaries from two git references and run test cases loaded from YAML
+  spec test suites to detect behavioral differences between implementations.
+
+data_structures:
+  - name: CompareTestCase
+    description: Test case loaded from a YAML test suite for cross-generation comparison.
+    fields:
+      - name: input
+        type: string
+        description: Input data for the test case.
+      - name: expected
+        type: string
+        description: Expected output for the test case.
+      - name: command
+        type: string
+        description: Command to execute for the test case.
+
+  - name: TestResult
+    description: Per-test result from a cross-generation comparison run.
+    fields:
+      - name: name
+        type: string
+        description: Name of the test case.
+      - name: passed
+        type: boolean
+        description: Whether the test case passed.
+      - name: diff
+        type: string
+        description: Diff output when the test case failed.
+
+operations:
+  - name: Compare
+    description: Build binaries from two git references and compare their test outputs.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: ResolverFromArg
+    description: Create a binary resolver from a git reference argument.
+    parameters:
+      - name: arg
+        type: string
+        description: Git reference or path argument to resolve.
+    returns:
+      - name: resolver
+        type: object
+      - name: error
+        type: error
+  - name: RunTestCases
+    description: Run loaded test cases against two resolved binaries and collect results.
+    parameters:
+      - name: resolver1
+        type: object
+        description: First binary resolver.
+      - name: resolver2
+        type: object
+        description: Second binary resolver.
+    returns:
+      - name: results
+        type: array
+        description: List of TestResult entries.
+      - name: error
+        type: error
+
+references:
+  - srd004-differential-comparison

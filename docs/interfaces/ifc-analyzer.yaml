@@ -1,0 +1,38 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-analyzer
+name: Analyzer
+summary: |
+  The Analyzer struct performs cross-artifact consistency checks, code status
+  detection, and pre-cycle analysis. It depends on cfg and logf.
+
+operations:
+  - name: Analyze
+    description: Run all cross-artifact consistency checks and report violations.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: CodeStatus
+    description: Detect the current status of code artifacts relative to specifications.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: RunPreCycleAnalysis
+    description: Execute analysis checks required before a measure-stitch cycle begins.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: validateDocSchemas
+    description: Validate all documentation files against their expected YAML schemas.
+    parameters: []
+    returns:
+      - name: violations
+        type: array
+        description: List of schema validation violation messages.
+
+references:
+  - srd001-orchestrator-core

@@ -1,0 +1,226 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-gitops
+name: GitOps
+summary: |
+  We define a GitOps interface that abstracts all git operations. The ShellGitOps
+  implementation executes git commands via exec.Command. The interface enables
+  testing with mock implementations.
+
+data_structures:
+  - name: GitOps
+    description: Primary interface with 50+ git operations covering branches, tags, worktrees, diffs, and commits.
+    fields: []
+
+  - name: RepoReader
+    description: Read-only sub-interface for repository state queries.
+    fields:
+      - name: CurrentBranch
+        type: string
+        description: Return the current branch name.
+      - name: BranchExists
+        type: boolean
+        description: Check whether a branch exists.
+      - name: ListBranches
+        type: array
+        description: List all local branches.
+      - name: ListTags
+        type: array
+        description: List all tags.
+      - name: LsFiles
+        type: array
+        description: List tracked files.
+      - name: RevParseHEAD
+        type: string
+        description: Return the SHA of HEAD.
+
+  - name: WorktreeManager
+    description: Worktree lifecycle sub-interface for adding, removing, and pruning worktrees.
+    fields:
+      - name: WorktreeAdd
+        type: object
+        description: Add a new worktree at a path for a branch.
+      - name: WorktreeRemove
+        type: object
+        description: Remove an existing worktree.
+      - name: WorktreePrune
+        type: object
+        description: Prune stale worktree references.
+
+  - name: BranchManager
+    description: Branch operations sub-interface for checkout, creation, deletion, and merge.
+    fields:
+      - name: Checkout
+        type: object
+        description: Check out an existing branch.
+      - name: CheckoutNew
+        type: object
+        description: Create and check out a new branch.
+      - name: CreateBranch
+        type: object
+        description: Create a new branch without checking it out.
+      - name: DeleteBranch
+        type: object
+        description: Delete a branch.
+      - name: MergeCmd
+        type: object
+        description: Merge a branch into the current branch.
+
+  - name: CommitWriter
+    description: Staging and commits sub-interface for adding, checking, and committing changes.
+    fields:
+      - name: StageAll
+        type: object
+        description: Stage all changes for commit.
+      - name: HasChanges
+        type: boolean
+        description: Check whether the working tree has uncommitted changes.
+      - name: Commit
+        type: object
+        description: Create a commit with a message.
+      - name: CommitAllowEmpty
+        type: object
+        description: Create a commit even when there are no changes.
+
+  - name: TagManager
+    description: Tag operations sub-interface for creating, deleting, renaming, and listing tags.
+    fields:
+      - name: Tag
+        type: object
+        description: Create a tag at HEAD.
+      - name: TagAt
+        type: object
+        description: Create a tag at a specific ref.
+      - name: DeleteTag
+        type: object
+        description: Delete a tag.
+      - name: RenameTag
+        type: object
+        description: Rename a tag.
+      - name: ListTags
+        type: array
+        description: List all tags.
+
+  - name: DiffInspector
+    description: Diff operations sub-interface for statistics, file status, and content inspection.
+    fields:
+      - name: DiffShortstat
+        type: object
+        description: Return parsed diff statistics between two refs.
+      - name: DiffNameStatus
+        type: object
+        description: Return per-file change status between two refs.
+      - name: LsTreeFiles
+        type: array
+        description: List files in a tree object.
+      - name: ShowFileContent
+        type: string
+        description: Return file content at a specific ref.
+
+  - name: DiffStat
+    description: Parsed diff statistics for a range of commits.
+    fields:
+      - name: files_changed
+        type: integer
+        description: Number of files changed.
+        required: true
+      - name: insertions
+        type: integer
+        description: Number of lines inserted.
+        required: true
+      - name: deletions
+        type: integer
+        description: Number of lines deleted.
+        required: true
+
+  - name: FileChange
+    description: Per-file diff information including path, status, and line counts.
+    fields:
+      - name: path
+        type: string
+        description: File path relative to the repository root.
+        required: true
+      - name: status
+        type: string
+        description: Change status (added, modified, deleted, renamed).
+        required: true
+      - name: insertions
+        type: integer
+        description: Number of lines inserted in this file.
+        required: true
+      - name: deletions
+        type: integer
+        description: Number of lines deleted in this file.
+        required: true
+
+  - name: ShellGitOps
+    description: Implements GitOps using exec.Command to execute git commands in a shell.
+    fields: []
+
+operations:
+  - name: Checkout
+    description: Check out an existing branch.
+    parameters:
+      - name: branch
+        type: string
+        description: Branch name to check out.
+    returns:
+      - name: error
+        type: error
+  - name: CreateBranch
+    description: Create a new branch at the current HEAD.
+    parameters:
+      - name: branch
+        type: string
+        description: Name of the branch to create.
+    returns:
+      - name: error
+        type: error
+  - name: Tag
+    description: Create a tag at HEAD.
+    parameters:
+      - name: name
+        type: string
+        description: Tag name.
+    returns:
+      - name: error
+        type: error
+  - name: Commit
+    description: Create a commit with the given message.
+    parameters:
+      - name: message
+        type: string
+        description: Commit message.
+    returns:
+      - name: error
+        type: error
+  - name: DiffShortstat
+    description: Return parsed diff statistics between two refs.
+    parameters:
+      - name: from
+        type: string
+        description: Starting ref for the diff.
+      - name: to
+        type: string
+        description: Ending ref for the diff.
+    returns:
+      - name: stat
+        type: DiffStat
+      - name: error
+        type: error
+  - name: WorktreeAdd
+    description: Add a new worktree at the given path for the specified branch.
+    parameters:
+      - name: path
+        type: string
+        description: Filesystem path for the worktree.
+      - name: branch
+        type: string
+        description: Branch to check out in the worktree.
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core

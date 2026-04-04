@@ -1,0 +1,34 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-scaffold-component
+name: Scaffold
+summary: |
+  Standalone Scaffolder struct. Scaffolds the orchestrator into consuming projects by detecting
+  project structure, generating configuration.yaml, writing magefiles template, copying
+  constitutions, and wiring go.mod. Also provides Uninstall() and PrepareTestRepo().
+
+operations:
+  - name: Scaffold
+    description: We scaffold the orchestrator configuration, constitutions, and supporting files into the consuming project.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: Uninstall
+    description: We remove all scaffolded orchestrator files from the consuming project.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: PrepareTestRepo
+    description: We set up a test repository with the minimal structure needed to exercise the orchestrator.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - eng03-project-initialization

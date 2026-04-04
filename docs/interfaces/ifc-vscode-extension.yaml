@@ -1,0 +1,39 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-vscode-extension
+name: VS Code Extension
+summary: |
+  A TypeScript extension providing editor-integrated visibility into
+  orchestrator state. Ten source modules implement six use cases: lifecycle
+  commands, generation browser, branch comparison, issue tracker, metrics
+  dashboard, and specification browser.
+
+operations:
+  - name: activate
+    description: Initialize the VS Code extension and register all commands and views.
+    parameters: []
+    returns:
+      - name: void
+        type: void
+  - name: deactivate
+    description: Clean up resources when the VS Code extension is deactivated.
+    parameters: []
+    returns:
+      - name: void
+        type: void
+  - name: VscodePush
+    description: Push the VS Code extension scaffold to the consuming repository.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: VscodePop
+    description: Pop the VS Code extension scaffold into the consuming repository working tree.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd006-vscode-extension

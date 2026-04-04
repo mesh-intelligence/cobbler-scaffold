@@ -1,0 +1,19 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-outcomes
+name: Outcomes
+summary: |
+  We parse outcome trailers from git commit messages written by stitch tasks.
+  Trailers record token usage, LOC deltas, cost, and duration per task.
+
+operations:
+  - name: Outcomes
+    description: Parse outcome trailers from git commit messages and report aggregated metrics.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd005-metrics-collection

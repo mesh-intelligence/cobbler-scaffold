@@ -1,0 +1,84 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-orchestrator-component
+name: Orchestrator
+summary: |
+  Composition root holding Config, providing New() and NewFromFile() constructors,
+  managing logging with optional generation tagging. Constructs and wires 10 domain
+  structs and a shared ClaudeRunner via constructor injection.
+
+operations:
+  - name: New
+    description: Construct an Orchestrator from an in-memory Config object.
+    parameters:
+      - name: cfg
+        type: object
+        description: Configuration object for the orchestrator.
+    returns:
+      - name: orchestrator
+        type: object
+      - name: error
+        type: error
+  - name: NewFromFile
+    description: Construct an Orchestrator by loading Config from a file path.
+    parameters:
+      - name: path
+        type: string
+        description: Filesystem path to the configuration file.
+    returns:
+      - name: orchestrator
+        type: object
+      - name: error
+        type: error
+  - name: Config
+    description: Return the current configuration object.
+    parameters: []
+    returns:
+      - name: config
+        type: object
+  - name: Tracker
+    description: Return the issue tracker instance.
+    parameters: []
+    returns:
+      - name: tracker
+        type: object
+  - name: Git
+    description: Return the GitOps instance.
+    parameters: []
+    returns:
+      - name: git
+        type: object
+  - name: DumpMeasurePrompt
+    description: Print the assembled measure prompt to stdout for debugging.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: DumpStitchPrompt
+    description: Print the assembled stitch prompt to stdout for debugging.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: TokenStats
+    description: Display token usage statistics for recent Claude invocations.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: PrintContextFiles
+    description: Print the list of context files assembled for prompt construction.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: ConstitutionPreviewFile
+    description: Write a preview of the stitched constitution to a temporary file.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core

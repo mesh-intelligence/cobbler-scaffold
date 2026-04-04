@@ -1,0 +1,74 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-binary-resolution
+name: Binary Resolution
+summary: |
+  We abstract binary resolution for cross-generation differential comparison
+  behind a BinaryResolver interface. Three implementations resolve binaries from
+  different sources: git tags, GNU coreutils on PATH, and pre-built directories.
+
+data_structures:
+  - name: BinaryResolver
+    description: Interface with Resolve and ListUtilities methods for locating comparison binaries.
+    fields: []
+
+  - name: GitTagResolver
+    description: Builds binaries from git tags into a temporary directory.
+    fields: []
+
+  - name: GNUResolver
+    description: Resolves Homebrew GNU coreutils via the g-prefix convention.
+    fields: []
+
+  - name: PathResolver
+    description: Resolves binaries from PATH.
+    fields: []
+
+  - name: CompareTestCase
+    description: Test case loaded from a YAML test suite for differential comparison.
+    fields:
+      - name: Input
+        type: string
+        description: Input data for the test case.
+        required: true
+      - name: Expected
+        type: string
+        description: Expected output from the reference binary.
+        required: true
+
+  - name: TestResult
+    description: Per-test pass or fail result with diff details.
+    fields:
+      - name: passed
+        type: boolean
+        description: Whether the test passed.
+        required: true
+      - name: diff
+        type: string
+        description: Diff output when the test fails.
+
+operations:
+  - name: Resolve
+    description: Resolve the filesystem path to a binary for the given utility name.
+    parameters:
+      - name: utility
+        type: string
+        description: Name of the utility to resolve.
+    returns:
+      - name: path
+        type: string
+      - name: error
+        type: error
+  - name: ListUtilities
+    description: List all utilities available through this resolver.
+    parameters: []
+    returns:
+      - name: utilities
+        type: array
+        description: List of available utility names.
+      - name: error
+        type: error
+
+references:
+  - srd004-differential-comparison

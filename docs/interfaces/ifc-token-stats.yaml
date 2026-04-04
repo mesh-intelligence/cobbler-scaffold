@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-token-stats
+name: Token Stats
+summary: |
+  We enumerate all files that BuildProjectContext would load, grouped by
+  category, and report their byte sizes. Optionally calls the Anthropic Token
+  Counting API for exact token counts.
+
+operations:
+  - name: TokenStats
+    description: Compute and display token and byte statistics for all context files.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: PrintContextFiles
+    description: Print the list of context files grouped by category with their sizes.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd005-metrics-collection

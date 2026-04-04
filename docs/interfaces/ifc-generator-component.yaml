@@ -1,0 +1,80 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-generator-component
+name: Generator
+summary: |
+  Standalone Generator struct managing the generation lifecycle. Composes Measure,
+  Stitch, Analyzer, Releaser, and ClaudeRunner. Creates generation branches, runs
+  cycles, merges results to the base branch, handles resume from interrupted runs.
+
+operations:
+  - name: GeneratorStart
+    description: Start a new generation by creating a generation branch and initializing state.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorRun
+    description: Run a specified number of measure-stitch cycles within the current generation.
+    parameters:
+      - name: cycles
+        type: integer
+        description: Number of cycles to execute.
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorResume
+    description: Resume an interrupted generation from its last checkpoint.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorStop
+    description: Stop the current generation gracefully and merge results to the base branch.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorReset
+    description: Reset generation state, discarding uncommitted generation progress.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorList
+    description: List all existing generations with their status.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: GeneratorSwitch
+    description: Switch to a different existing generation branch.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: RunCycles
+    description: Execute measure-stitch cycles with a descriptive label for logging.
+    parameters:
+      - name: label
+        type: string
+        description: Descriptive label for the cycle run.
+    returns:
+      - name: error
+        type: error
+  - name: Init
+    description: Initialize the generator, validating configuration and prerequisites.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: FullReset
+    description: Perform a complete reset of all generation state including branches and tags.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd002-generation-lifecycle
