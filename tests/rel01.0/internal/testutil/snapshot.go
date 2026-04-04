@@ -49,7 +49,7 @@ func PrepareSnapshot(orchRoot string) (string, func(), error) {
 	}
 	fmt.Fprintf(os.Stderr, "e2e: using %s@%s\n", ScaffoldModule, version)
 
-	repoDir, err := orch.PrepareTestRepo(ScaffoldModule, version, orchRoot)
+	repoDir, err := orch.Scaffolder.PrepareTestRepo(ScaffoldModule, version, orchRoot)
 	if err != nil {
 		return "", nil, fmt.Errorf("PrepareTestRepo: %w", err)
 	}
