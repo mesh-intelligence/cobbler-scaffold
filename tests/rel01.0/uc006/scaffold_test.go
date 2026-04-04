@@ -116,12 +116,12 @@ func TestRel01_UC006_PushIdempotent(t *testing.T) {
 	}
 
 	// First scaffold.
-	if err := orch.Scaffold(dir, orchRoot); err != nil {
+	if err := orch.Scaffolder.Scaffold(dir, orchRoot); err != nil {
 		t.Fatalf("first Scaffold: %v", err)
 	}
 
 	// Second scaffold (idempotent overwrite).
-	if err := orch.Scaffold(dir, orchRoot); err != nil {
+	if err := orch.Scaffolder.Scaffold(dir, orchRoot); err != nil {
 		t.Fatalf("second Scaffold: %v", err)
 	}
 
@@ -164,7 +164,7 @@ func TestRel01_UC006_ConfigPreservedOnReScaffold(t *testing.T) {
 	}
 
 	// First scaffold: creates configuration.yaml from detected project structure.
-	if err := orch.Scaffold(dir, orchRoot); err != nil {
+	if err := orch.Scaffolder.Scaffold(dir, orchRoot); err != nil {
 		t.Fatalf("first Scaffold: %v", err)
 	}
 
@@ -176,7 +176,7 @@ func TestRel01_UC006_ConfigPreservedOnReScaffold(t *testing.T) {
 	}
 
 	// Second scaffold: must not overwrite the existing configuration.yaml.
-	if err := orch.Scaffold(dir, orchRoot); err != nil {
+	if err := orch.Scaffolder.Scaffold(dir, orchRoot); err != nil {
 		t.Fatalf("second Scaffold: %v", err)
 	}
 
@@ -214,7 +214,7 @@ func TestRel01_UC006_PopOnNonScaffolded(t *testing.T) {
 
 	// Uninstall on a repo that was never scaffolded should succeed as a
 	// no-op: all the files it tries to remove are already absent.
-	if err := orch.Uninstall(dir); err != nil {
+	if err := orch.Scaffolder.Uninstall(dir); err != nil {
 		t.Fatalf("Uninstall on non-scaffolded repo should be a no-op, got error: %v", err)
 	}
 
@@ -255,7 +255,7 @@ func TestRel01_UC006_PushPopRoundTrip(t *testing.T) {
 	}
 
 	// --- Push: scaffold the orchestrator into the empty repo ---
-	if err := orch.Scaffold(dir, orchRoot); err != nil {
+	if err := orch.Scaffolder.Scaffold(dir, orchRoot); err != nil {
 		t.Fatalf("Scaffold: %v", err)
 	}
 
@@ -287,7 +287,7 @@ func TestRel01_UC006_PushPopRoundTrip(t *testing.T) {
 	}
 
 	// --- Pop: remove the scaffold ---
-	if err := orch.Uninstall(dir); err != nil {
+	if err := orch.Scaffolder.Uninstall(dir); err != nil {
 		t.Fatalf("Uninstall: %v", err)
 	}
 

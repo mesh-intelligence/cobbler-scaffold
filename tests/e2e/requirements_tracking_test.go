@@ -58,7 +58,7 @@ func TestRequirementTracking_GeneratorStartProducesRequirements(t *testing.T) {
 	defer os.Chdir(origDir)
 
 	o := orchestrator.New(cfg)
-	if err := o.GeneratorStart(); err != nil {
+	if err := o.Generator.GeneratorStart(); err != nil {
 		t.Fatalf("GeneratorStart: %v", err)
 	}
 
