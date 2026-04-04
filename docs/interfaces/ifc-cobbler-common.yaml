@@ -1,0 +1,127 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-cobbler-common
+name: Cobbler Common
+summary: |
+  Standalone ClaudeRunner struct encapsulating Claude execution infrastructure
+  shared by Measure and Stitch. Dispatches Claude invocation to CLI or SDK mode,
+  captures token usage, snapshots LOC, saves history artifacts, and logs real-time
+  progress.
+
+data_structures:
+  - name: ClaudeRunner
+    description: Shared Claude execution infrastructure composed into Measure and Stitch.
+    fields:
+      - name: config
+        type: object
+        description: Configuration object for Claude invocation settings.
+        required: true
+      - name: git
+        type: object
+        description: GitOps instance for repository operations.
+        required: true
+      - name: tracker
+        type: object
+        description: WorkTracker instance for issue management.
+        required: true
+      - name: sdk_query_fn
+        type: object
+        description: Function reference for SDK-mode Claude queries.
+      - name: log_function
+        type: object
+        description: Logging function with optional generation tagging.
+      - name: extract_credentials
+        type: object
+        description: Function reference for extracting API credentials.
+      - name: collect_stats
+        type: object
+        description: Function reference for collecting invocation statistics.
+
+operations:
+  - name: runClaude
+    description: Dispatch Claude invocation to CLI or SDK mode based on configuration.
+    parameters: []
+    returns:
+      - name: result
+        type: object
+      - name: error
+        type: error
+  - name: runMeasureClaude
+    description: Invoke Claude with the measure prompt and parse the response.
+    parameters: []
+    returns:
+      - name: result
+        type: object
+      - name: error
+        type: error
+  - name: runClaudeSDK
+    description: Invoke Claude via the SDK with structured request and response handling.
+    parameters: []
+    returns:
+      - name: result
+        type: object
+      - name: error
+        type: error
+  - name: checkClaude
+    description: Verify that the Claude CLI or SDK is available and properly configured.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: captureLOC
+    description: Snapshot lines-of-code metrics for the current repository state.
+    parameters: []
+    returns:
+      - name: stats
+        type: object
+      - name: error
+        type: error
+  - name: saveHistoryReport
+    description: Save the generation report artifact to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: saveHistoryStats
+    description: Save invocation statistics artifact to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: saveHistoryPrompt
+    description: Save the assembled prompt artifact to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: saveHistoryLog
+    description: Save the Claude invocation log artifact to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: HistoryClean
+    description: Remove all history artifacts from the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: CobblerReset
+    description: Reset cobbler state including history, labels, and generation artifacts.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: hasOpenIssues
+    description: Check whether any cobbler-managed issues are still open.
+    parameters: []
+    returns:
+      - name: has_open
+        type: boolean
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows
+  - srd005-metrics-collection

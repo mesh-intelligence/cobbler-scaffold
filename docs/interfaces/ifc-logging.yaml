@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-logging
+name: Logging
+summary: |
+  Phase-aware structured logging to stderr. The logf() function includes timestamp, generation
+  name (when set), and phase name with elapsed time. Domain structs receive logf and state
+  callbacks via constructor injection.
+
+operations:
+  - name: logf
+    description: We write a formatted log message to stderr with timestamp, generation, and phase context.
+    parameters:
+      - name: format
+        type: string
+        description: Printf-style format string.
+      - name: args
+        type: array
+        description: Arguments for the format string.
+    returns: []
+
+  - name: setPhase
+    description: We set the current phase name for subsequent log messages and start the phase timer.
+    parameters:
+      - name: name
+        type: string
+        description: Name of the phase to set.
+    returns: []
+
+  - name: clearPhase
+    description: We clear the current phase name and stop the phase timer.
+    parameters: []
+    returns: []
+
+  - name: setGeneration
+    description: We set the current generation name for subsequent log messages.
+    parameters:
+      - name: name
+        type: string
+        description: Name of the generation to set.
+    returns: []
+
+  - name: clearGeneration
+    description: We clear the current generation name from subsequent log messages.
+    parameters: []
+    returns: []
+
+references:
+  - srd001-orchestrator-core

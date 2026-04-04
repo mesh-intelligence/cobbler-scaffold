@@ -1,0 +1,34 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-scaffolder
+name: Scaffolder
+summary: |
+  The Scaffolder struct scaffolds the orchestrator into consuming projects and manages test
+  repositories. It depends on git (GitOps) and logf.
+
+operations:
+  - name: Scaffold
+    description: We scaffold the orchestrator configuration, constitutions, and supporting files into the consuming project.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: Uninstall
+    description: We remove all scaffolded orchestrator files from the consuming project.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: PrepareTestRepo
+    description: We set up a test repository with the minimal structure needed to exercise the orchestrator.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core
+  - eng03-project-initialization

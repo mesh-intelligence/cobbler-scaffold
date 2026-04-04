@@ -1,0 +1,86 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-measure-workflow
+name: Measure Workflow
+summary: |
+  The Measure struct builds the measure prompt from existing issues and project state, invokes
+  Claude, parses YAML output, and creates GitHub Issues with dependency labels.
+
+data_structures:
+  - name: Measure
+    description: Standalone struct that drives the measure workflow from prompt assembly through issue creation.
+    fields:
+      - name: cfg
+        type: object
+        description: Resolved orchestrator configuration.
+        required: true
+      - name: logf
+        type: object
+        description: Structured logger function.
+        required: true
+      - name: git
+        type: object
+        description: GitOps instance for repository operations.
+        required: true
+      - name: tracker
+        type: object
+        description: WorkTracker for task state management.
+        required: true
+      - name: claudeRunner
+        type: object
+        description: Shared ClaudeRunner for invoking Claude.
+        required: true
+      - name: analyzer
+        type: object
+        description: Analyzer instance for project analysis.
+        required: true
+      - name: stateCallbacks
+        type: object
+        description: Callbacks invoked on workflow state transitions.
+        required: false
+      - name: generatorHelpers
+        type: object
+        description: Helper functions provided by the generator subsystem.
+        required: false
+
+operations:
+  - name: Measure
+    description: We run the full measure workflow, building the prompt, invoking Claude, parsing output, and creating GitHub Issues.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: MeasurePrompt
+    description: We build and print the measure prompt without invoking Claude.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: RunMeasure
+    description: We execute the measure invocation and process its results into GitHub Issues.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: buildMeasurePrompt
+    description: We assemble the full measure prompt from existing issues, project state, and constitution files.
+    parameters: []
+    returns:
+      - name: prompt
+        type: string
+      - name: error
+        type: error
+
+  - name: importIssues
+    description: We import externally defined issues into the tracker as GitHub Issues with dependency labels.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows

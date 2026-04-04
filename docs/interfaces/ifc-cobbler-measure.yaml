@@ -1,0 +1,47 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-cobbler-measure
+name: "Cobbler - Measure"
+summary: |
+  Standalone Measure struct. Builds the measure prompt from existing issues and
+  project state, invokes Claude, parses the YAML output, and creates GitHub Issues
+  with dependency labels via the gh CLI. Records invocation metrics and saves
+  history artifacts per iteration.
+
+operations:
+  - name: Measure
+    description: Execute the full measure workflow including prompt assembly, Claude invocation, and issue creation.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: MeasurePrompt
+    description: Assemble and return the measure prompt without invoking Claude.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: RunMeasure
+    description: Run the measure phase within a generation cycle.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: buildMeasurePrompt
+    description: Build the measure prompt string from existing issues and project state.
+    parameters: []
+    returns:
+      - name: prompt
+        type: string
+      - name: error
+        type: error
+  - name: importIssues
+    description: Parse Claude YAML output and create GitHub Issues with dependency labels.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows

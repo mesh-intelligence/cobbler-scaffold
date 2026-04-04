@@ -1,0 +1,90 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-stitch-workflow
+name: Stitch Workflow
+summary: |
+  The Stitch struct picks ready GitHub Issues, creates worktrees, invokes Claude, commits changes,
+  merges branches, and closes tasks.
+
+data_structures:
+  - name: Stitch
+    description: Standalone struct that drives the stitch workflow from task selection through merge and close.
+    fields:
+      - name: cfg
+        type: object
+        description: Resolved orchestrator configuration.
+        required: true
+      - name: logf
+        type: object
+        description: Structured logger function.
+        required: true
+      - name: git
+        type: object
+        description: GitOps instance for repository operations.
+        required: true
+      - name: tracker
+        type: object
+        description: WorkTracker for task state management.
+        required: true
+      - name: claudeRunner
+        type: object
+        description: Shared ClaudeRunner for invoking Claude.
+        required: true
+      - name: stateCallbacks
+        type: object
+        description: Callbacks invoked on workflow state transitions.
+        required: false
+      - name: generatorHelpers
+        type: object
+        description: Helper functions provided by the generator subsystem.
+        required: false
+
+operations:
+  - name: Stitch
+    description: We run the full stitch workflow, picking one ready task, creating a worktree, invoking Claude, and merging the result.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: RunStitch
+    description: We execute a single stitch cycle without the outer scheduling loop.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: RunStitchN
+    description: We execute up to the specified number of stitch cycles in sequence.
+    parameters:
+      - name: limit
+        type: integer
+        description: Maximum number of tasks to process in this run.
+    returns:
+      - name: error
+        type: error
+
+  - name: doOneTask
+    description: We process a single task from worktree creation through commit and merge.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: resetTask
+    description: We reset the current task state so it can be retried in a future stitch cycle.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: skipTask
+    description: We mark the current task as skipped so it will not be picked again.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows

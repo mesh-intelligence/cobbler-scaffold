@@ -1,0 +1,38 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-releaser
+name: Releaser
+summary: |
+  The Releaser struct manages release lifecycle state in road-map.yaml and
+  configuration.yaml, and creates versioned documentation tags. It depends
+  only on Config.
+
+operations:
+  - name: ReleaseUpdate
+    description: Update road-map.yaml and configuration.yaml to reflect a new release version.
+    parameters:
+      - name: version
+        type: string
+        description: The release version identifier.
+    returns:
+      - name: error
+        type: error
+  - name: ReleaseClear
+    description: Remove release state for the given version from road-map.yaml and configuration.yaml.
+    parameters:
+      - name: version
+        type: string
+        description: The release version identifier to clear.
+    returns:
+      - name: error
+        type: error
+  - name: Tag
+    description: Create a versioned documentation tag from the current release state.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core

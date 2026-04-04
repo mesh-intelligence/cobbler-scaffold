@@ -1,0 +1,130 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-context-assembly
+name: Context Assembly
+summary: |
+  We build a comprehensive YAML blob (ProjectContext) from the consuming project's
+  documentation, specifications, source code, and existing issues. Over 30 struct
+  types model the document schema. Phase-specific context files override global
+  context settings at invocation time.
+
+data_structures:
+  - name: ProjectContext
+    description: Top-level container aggregating all project documentation, code, and issue state.
+    fields:
+      - name: Vision
+        type: object
+        description: Parsed vision document.
+      - name: Architecture
+        type: object
+        description: Parsed architecture document.
+      - name: Specifications
+        type: object
+        description: Parsed specifications document.
+      - name: Roadmap
+        type: object
+        description: Parsed roadmap document.
+      - name: Specs
+        type: object
+        description: Collection of SRDs and use cases.
+      - name: Engineering
+        type: array
+        description: List of parsed engineering guidelines.
+      - name: InterfaceSpecs
+        type: array
+        description: List of parsed interface specifications.
+      - name: Analysis
+        type: object
+        description: Cross-artifact analysis results.
+      - name: SourceCode
+        type: array
+        description: List of source code file entries.
+      - name: Issues
+        type: array
+        description: List of open issues for context.
+      - name: CompletedWork
+        type: array
+        description: List of completed issues for historical context.
+      - name: RequirementStates
+        type: object
+        description: Mapping of requirement IDs to their implementation states.
+      - name: Extra
+        type: array
+        description: Additional context entries from phase-specific overrides.
+
+  - name: PhaseContext
+    description: Per-phase overrides controlling what context is assembled for a given invocation.
+    fields:
+      - name: Include
+        type: string
+        description: Glob pattern for documents to include.
+      - name: Exclude
+        type: string
+        description: Glob pattern for documents to exclude.
+      - name: Sources
+        type: string
+        description: Source inclusion directive.
+      - name: Release
+        type: string
+        description: Release identifier to scope context to.
+      - name: ExcludeSource
+        type: boolean
+        description: Whether to exclude source code from context.
+      - name: SourcePatterns
+        type: string
+        description: Glob patterns for source file selection.
+      - name: ExcludeTests
+        type: boolean
+        description: Whether to exclude test files from context.
+      - name: SourceMode
+        type: string
+        description: Source inclusion mode (full, summary, none).
+      - name: SummarizeCommand
+        type: string
+        description: Command to run for source summarization.
+
+operations:
+  - name: BuildProjectContext
+    description: Assemble the full project context from documentation, code, and issue state.
+    parameters:
+      - name: existingIssuesJSON
+        type: string
+        description: JSON-encoded list of existing issues.
+      - name: project
+        type: object
+        description: Project configuration.
+      - name: phaseCtx
+        type: PhaseContext
+        description: Phase-specific context overrides.
+      - name: cobblerDir
+        type: string
+        description: Path to the cobbler configuration directory.
+    returns:
+      - name: context
+        type: ProjectContext
+      - name: error
+        type: error
+  - name: LoadPhaseContext
+    description: Load phase-specific context overrides from a YAML file.
+    parameters:
+      - name: path
+        type: string
+        description: Path to the phase context YAML file.
+    returns:
+      - name: phaseCtx
+        type: PhaseContext
+      - name: error
+        type: error
+  - name: LoadSRDSemanticModel
+    description: Load the SRD semantic model for interface-aware code generation.
+    parameters: []
+    returns:
+      - name: model
+        type: object
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows
+  - eng08-phase-context-files

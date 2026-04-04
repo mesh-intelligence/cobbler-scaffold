@@ -1,0 +1,28 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-comparer
+name: Comparer
+summary: |
+  The Comparer struct runs cross-generation differential comparison between
+  binary sources. It depends on logf and git.
+
+operations:
+  - name: Compare
+    description: Run differential comparison between binary sources across generations.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: ResolverFromArg
+    description: Resolve a comparison target from a command-line argument.
+    parameters: []
+    returns:
+      - name: resolver
+        type: object
+        description: The resolved comparison target.
+      - name: error
+        type: error
+
+references:
+  - srd004-differential-comparison

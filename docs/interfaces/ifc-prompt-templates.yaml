@@ -1,0 +1,101 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-prompt-templates
+name: Prompt Templates
+summary: |
+  Prompts are Go text/template strings embedded from measure.tmpl and stitch.tmpl.
+  Consuming projects can override them via Config. Prompts are injected with
+  phase-specific constitutions and a ProjectContext YAML blob.
+
+data_structures:
+  - name: MeasurePromptDoc
+    description: Measure prompt envelope containing role, context, constitutions, and task directives.
+    fields:
+      - name: Role
+        type: string
+        description: Role instruction for the Claude session.
+        required: true
+      - name: ProjectContext
+        type: object
+        description: Assembled project context YAML blob.
+        required: true
+      - name: PlanningConstitution
+        type: object
+        description: Planning-phase constitution governing issue decomposition.
+        required: true
+      - name: IssueFormatConstitution
+        type: object
+        description: Constitution governing issue formatting rules.
+        required: true
+      - name: Task
+        type: string
+        description: Task directive for the measure phase.
+        required: true
+      - name: Constraints
+        type: string
+        description: Constraints on the measure output.
+      - name: OutputFormat
+        type: string
+        description: Expected output format specification.
+      - name: GoldenExample
+        type: string
+        description: Example output for few-shot guidance.
+      - name: AdditionalContext
+        type: string
+        description: Extra context appended to the prompt.
+      - name: ValidationErrors
+        type: array
+        description: Validation errors from a previous measure attempt for retry.
+      - name: PackageContracts
+        type: array
+        description: Package contract definitions injected into the prompt.
+
+  - name: StitchPromptDoc
+    description: Stitch prompt envelope containing role, repository state, and execution directives.
+    fields:
+      - name: Role
+        type: string
+        description: Role instruction for the Claude session.
+        required: true
+      - name: RepositoryFiles
+        type: array
+        description: List of repository file paths included in context.
+        required: true
+      - name: ProjectContext
+        type: object
+        description: Assembled project context YAML blob.
+        required: true
+      - name: Context
+        type: string
+        description: Additional context for the stitch phase.
+      - name: ExecutionConstitution
+        type: object
+        description: Execution-phase constitution governing code generation.
+        required: true
+      - name: GoStyleConstitution
+        type: object
+        description: Go style constitution governing code formatting and idioms.
+      - name: Task
+        type: string
+        description: Task directive for the stitch phase.
+        required: true
+      - name: Constraints
+        type: string
+        description: Constraints on the stitch output.
+      - name: Description
+        type: string
+        description: Issue description being stitched.
+        required: true
+      - name: SemanticModel
+        type: object
+        description: SRD semantic model for interface-aware code generation.
+      - name: SharedProtocols
+        type: array
+        description: Shared protocol definitions injected into the prompt.
+      - name: PackageContracts
+        type: array
+        description: Package contract definitions injected into the prompt.
+
+references:
+  - srd003-cobbler-workflows

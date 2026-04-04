@@ -1,0 +1,44 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-config-component
+name: Config
+summary: |
+  Config struct with YAML tags, LoadConfig() for reading configuration.yaml, SeedData template
+  data, and applyDefaults() for zero-value fields. CobblerConfig includes MinMeasureIssues,
+  MaxRequirementsPerTask, and MaxWeightPerTask.
+
+operations:
+  - name: LoadConfig
+    description: We read and parse the configuration.yaml file at the given path into a Config struct.
+    parameters:
+      - name: path
+        type: string
+        description: Path to the configuration.yaml file.
+    returns:
+      - name: config
+        type: object
+      - name: error
+        type: error
+
+  - name: Silence
+    description: We return whether the configuration has silenced all output.
+    parameters: []
+    returns:
+      - name: silenced
+        type: boolean
+
+  - name: EffectiveTokenFile
+    description: We return the resolved path to the token file, applying defaults if not explicitly configured.
+    parameters: []
+    returns:
+      - name: path
+        type: string
+
+  - name: applyDefaults
+    description: We fill zero-value fields in the config with their default values.
+    parameters: []
+    returns: []
+
+references:
+  - srd001-orchestrator-core

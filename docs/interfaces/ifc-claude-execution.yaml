@@ -1,0 +1,84 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-claude-execution
+name: Claude Execution
+summary: |
+  We abstract Claude invocation behind a Runner interface. CLIRunner invokes the
+  claude binary directly on the host, SDKRunner uses the Go Agent SDK. The
+  effectiveMode() function selects the implementation based on cobbler.mode in
+  configuration.yaml.
+
+data_structures:
+  - name: Runner
+    description: Interface with a Run method accepting context, prompt, workDir, silence, and extraArgs.
+    fields: []
+
+  - name: CLIRunner
+    description: Implements Runner by invoking the claude CLI binary on the host.
+    fields: []
+
+  - name: SDKRunner
+    description: Implements Runner via the Go Agent SDK with serialised environment mutation.
+    fields: []
+
+  - name: ClaudeResult
+    description: Token usage and execution metadata returned from a Claude invocation.
+    fields:
+      - name: InputTokens
+        type: integer
+        description: Number of input tokens consumed.
+        required: true
+      - name: OutputTokens
+        type: integer
+        description: Number of output tokens produced.
+        required: true
+      - name: CacheCreationTokens
+        type: integer
+        description: Tokens used for cache creation.
+      - name: CacheReadTokens
+        type: integer
+        description: Tokens read from cache.
+      - name: CostUSD
+        type: number
+        description: Total cost in US dollars.
+      - name: RawOutput
+        type: string
+        description: Raw text output from Claude.
+      - name: NumTurns
+        type: integer
+        description: Number of conversational turns in the session.
+      - name: DurationAPIMs
+        type: integer
+        description: API call duration in milliseconds.
+      - name: RateLimitWaitS
+        type: number
+        description: Time spent waiting on rate limits in seconds.
+      - name: SessionID
+        type: string
+        description: Unique session identifier for the invocation.
+
+operations:
+  - name: Run
+    description: Execute a Claude prompt in the given working directory and return token usage.
+    parameters:
+      - name: prompt
+        type: string
+        description: The prompt text to send to Claude.
+      - name: workDir
+        type: string
+        description: Working directory for the Claude invocation.
+      - name: silence
+        type: boolean
+        description: Whether to suppress output during execution.
+      - name: extraArgs
+        type: array
+        description: Additional command-line arguments passed to the runner.
+    returns:
+      - name: result
+        type: ClaudeResult
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows

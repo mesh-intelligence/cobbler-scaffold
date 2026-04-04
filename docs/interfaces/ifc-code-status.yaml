@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-code-status
+name: Code Status
+summary: |
+  We implement the CodeStatus() method (exposed as mage status). We scan the
+  tests/ directory for per-use-case test subdirectories, compare presence of
+  test files against roadmap spec status, and report gaps.
+
+operations:
+  - name: CodeStatus
+    description: Scan test directories against roadmap specs and report status gaps.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: WriteCodeStatusReport
+    description: Write the code status report to the configured output destination.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core

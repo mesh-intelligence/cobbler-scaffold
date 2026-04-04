@@ -1,0 +1,30 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-pre-cycle-analysis
+name: Pre-Cycle Analysis
+summary: |
+  We run cross-artifact consistency checks and code status detection before each measure/stitch
+  cycle. The combined result is written as analysis.yaml into the cobbler scratch directory so
+  Claude sees the current project health in both prompts.
+
+operations:
+  - name: RunPreCycleAnalysis
+    description: We run consistency checks and code status detection, then write the combined result to the scratch directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: LoadAnalysisDoc
+    description: We load a previously written analysis.yaml from the cobbler scratch directory.
+    parameters:
+      - name: cobblerDir
+        type: string
+        description: Path to the cobbler scratch directory.
+    returns:
+      - name: analysis
+        type: object
+
+references:
+  - srd003-cobbler-workflows

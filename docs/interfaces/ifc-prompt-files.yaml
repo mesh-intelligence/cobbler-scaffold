@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-prompt-files
+name: Prompt Files
+summary: |
+  We enumerate all files that BuildProjectContext loads, annotated with source,
+  category, line count, and estimated token count. Mirrors the include/exclude
+  logic of context assembly.
+
+operations:
+  - name: PrintPromptFiles
+    description: Enumerate and print all context files with source, category, line count, and token estimate.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows
+  - srd005-metrics-collection

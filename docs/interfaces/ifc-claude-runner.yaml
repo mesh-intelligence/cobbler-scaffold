@@ -1,0 +1,129 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-claude-runner
+name: Claude Runner
+summary: |
+  The ClaudeRunner struct encapsulates all Claude execution infrastructure
+  shared by Measure and Stitch: running Claude (CLI or SDK mode), capturing
+  LOC, saving history artifacts, checking credentials, and detecting open
+  issues.
+
+data_structures:
+  - name: ClaudeRunner
+    description: Standalone struct with Claude execution infrastructure shared across workflows.
+    fields:
+      - name: cfg
+        type: object
+        description: Orchestrator configuration.
+      - name: git
+        type: object
+        description: Git operations interface.
+      - name: tracker
+        type: object
+        description: Issue tracking interface.
+      - name: sdkQueryFn
+        type: object
+        description: Function for executing Claude SDK queries.
+      - name: logf
+        type: object
+        description: Logging function for execution events.
+      - name: extractCredentials
+        type: object
+        description: Function to extract Claude API credentials.
+      - name: collectStats
+        type: object
+        description: Function to collect execution statistics.
+
+operations:
+  - name: runClaude
+    description: Run Claude using the configured mode and return the execution result.
+    parameters: []
+    returns:
+      - name: result
+        type: object
+        description: Claude execution result.
+      - name: error
+        type: error
+  - name: runMeasureClaude
+    description: Run Claude in measure mode with LOC capture and history artifacts.
+    parameters: []
+    returns:
+      - name: result
+        type: object
+        description: Measure execution result.
+      - name: error
+        type: error
+  - name: runClaudeSDK
+    description: Run Claude through the SDK interface instead of the CLI.
+    parameters: []
+    returns:
+      - name: result
+        type: object
+        description: SDK execution result.
+      - name: error
+        type: error
+  - name: checkClaude
+    description: Verify that Claude credentials and configuration are valid.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: captureLOC
+    description: Capture lines-of-code metrics for the current working state.
+    parameters: []
+    returns:
+      - name: metrics
+        type: object
+        description: Captured LOC metrics.
+      - name: error
+        type: error
+  - name: saveHistoryReport
+    description: Save the execution report to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: saveHistoryStats
+    description: Save execution statistics to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: saveHistoryPrompt
+    description: Save the prompt used for Claude execution to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: saveHistoryLog
+    description: Save the execution log to the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: HistoryClean
+    description: Remove all history artifacts from the history directory.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: CobblerReset
+    description: Reset cobbler state to a clean initial configuration.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: hasOpenIssues
+    description: Check whether there are open issues remaining in the tracker.
+    parameters: []
+    returns:
+      - name: has_open
+        type: boolean
+        description: True if open issues exist.
+      - name: error
+        type: error
+
+references:
+  - srd003-cobbler-workflows
+  - srd005-metrics-collection

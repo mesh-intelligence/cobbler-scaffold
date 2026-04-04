@@ -1,0 +1,126 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-prompt-builder
+name: Prompt Builder
+summary: |
+  We define the typed document structures for measure and stitch prompts
+  (MeasurePromptDoc and StitchPromptDoc) and the shared promptTemplate parser.
+  We provide parseYAMLNode and substitutePlaceholders utilities used when
+  assembling prompts.
+
+data_structures:
+  - name: MeasurePromptDoc
+    description: Measure prompt envelope containing all sections for a measure-phase prompt.
+    fields:
+      - name: role
+        type: string
+        description: System role directive for the LLM.
+      - name: project_context
+        type: object
+        description: Assembled project context blob.
+      - name: planning_constitution
+        type: object
+        description: Planning constitution governing measure behavior.
+      - name: issue_format_constitution
+        type: object
+        description: Constitution defining the expected issue output format.
+      - name: task
+        type: string
+        description: Task description for the measure phase.
+      - name: constraints
+        type: string
+        description: Constraints applied to the measure output.
+      - name: output_format
+        type: string
+        description: Expected output format specification.
+      - name: golden_example
+        type: string
+        description: Example output demonstrating the desired format.
+      - name: additional_context
+        type: string
+        description: Extra context appended to the prompt.
+      - name: validation_errors
+        type: array
+        description: List of validation errors from prior attempts.
+      - name: package_contracts
+        type: array
+        description: List of package contract definitions included in the prompt.
+
+  - name: StitchPromptDoc
+    description: Stitch prompt envelope containing all sections for a stitch-phase prompt.
+    fields:
+      - name: role
+        type: string
+        description: System role directive for the LLM.
+      - name: repository_files
+        type: array
+        description: List of repository file entries provided as context.
+      - name: project_context
+        type: object
+        description: Assembled project context blob.
+      - name: context
+        type: string
+        description: Additional context string for the stitch phase.
+      - name: execution_constitution
+        type: object
+        description: Execution constitution governing stitch behavior.
+      - name: go_style_constitution
+        type: object
+        description: Go style constitution for code generation.
+      - name: task
+        type: string
+        description: Task description for the stitch phase.
+      - name: constraints
+        type: string
+        description: Constraints applied to the stitch output.
+      - name: description
+        type: string
+        description: Human-readable description of the stitch task.
+      - name: semantic_model
+        type: object
+        description: SRD semantic model for interface-aware generation.
+      - name: shared_protocols
+        type: array
+        description: List of shared protocol definitions included in the prompt.
+      - name: package_contracts
+        type: array
+        description: List of package contract definitions included in the prompt.
+
+operations:
+  - name: parseYAMLNode
+    description: Parse a YAML string into a generic object tree.
+    parameters:
+      - name: data
+        type: string
+        description: Raw YAML content to parse.
+    returns:
+      - name: node
+        type: object
+      - name: error
+        type: error
+  - name: substitutePlaceholders
+    description: Replace placeholder tokens in a template string with values from a variable map.
+    parameters:
+      - name: text
+        type: string
+        description: Template string containing placeholders.
+      - name: vars
+        type: object
+        description: Map of placeholder names to replacement values.
+    returns:
+      - name: result
+        type: string
+  - name: validatePromptTemplate
+    description: Validate a prompt template file and return any structural errors.
+    parameters:
+      - name: path
+        type: string
+        description: Path to the prompt template file.
+    returns:
+      - name: errors
+        type: array
+        description: List of validation error messages.
+
+references:
+  - srd003-cobbler-workflows

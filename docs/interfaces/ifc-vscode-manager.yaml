@@ -1,0 +1,25 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-vscode-manager
+name: VsCode Manager
+summary: |
+  The VsCode struct manages VS Code extension packaging and installation.
+  It depends only on logf.
+
+operations:
+  - name: VscodePush
+    description: Package and install the VS Code extension into the local environment.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+  - name: VscodePop
+    description: Remove the installed VS Code extension from the local environment.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd006-vscode-extension

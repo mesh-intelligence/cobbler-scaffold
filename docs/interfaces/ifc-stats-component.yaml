@@ -1,0 +1,66 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-stats-component
+name: Stats
+summary: |
+  Standalone Stats struct collecting Go LOC counts (production and test) and documentation word
+  counts. Uses configured GoSourceDirs and SpecGlobs. Run statistics aggregate per-generation-run
+  metrics from history artifacts.
+
+operations:
+  - name: PrintStats
+    description: We print a summary of all collected statistics to stdout.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: CollectStats
+    description: We gather LOC counts, documentation word counts, and generator status into a single stats object.
+    parameters: []
+    returns:
+      - name: stats
+        type: object
+      - name: error
+        type: error
+
+  - name: GeneratorStats
+    description: We print statistics about generator output and coverage.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: ReleaseStats
+    description: We print statistics for the current release including task completion and LOC deltas.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: RunStats
+    description: We print detailed statistics for a specific named run.
+    parameters:
+      - name: name
+        type: string
+        description: Name of the run to report on.
+    returns:
+      - name: error
+        type: error
+
+  - name: CompareRunStats
+    description: We print a side-by-side comparison of two named runs.
+    parameters:
+      - name: name1
+        type: string
+        description: Name of the first run to compare.
+      - name: name2
+        type: string
+        description: Name of the second run to compare.
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd005-metrics-collection

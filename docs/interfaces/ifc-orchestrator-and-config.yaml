@@ -1,0 +1,295 @@
+# Copyright (c) 2026 Petar Djukic. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+id: ifc-orchestrator-and-config
+name: Orchestrator and Config
+summary: |
+  The Orchestrator is the composition root. Consuming projects place a configuration.yaml at the
+  repository root and call NewFromFile(), or construct a Config in Go and pass it to New(). The
+  constructor builds 10 domain structs and a shared ClaudeRunner, wiring all dependencies via
+  constructor injection.
+
+data_structures:
+  - name: Orchestrator
+    description: Composition root holding Config and 10 domain struct fields plus ClaudeRunner.
+    fields:
+      - name: config
+        type: object
+        description: Resolved orchestrator configuration.
+        required: true
+      - name: generator
+        type: object
+        description: Generator domain struct.
+        required: true
+      - name: measure
+        type: object
+        description: Measure domain struct.
+        required: true
+      - name: stitch
+        type: object
+        description: Stitch domain struct.
+        required: true
+      - name: builder
+        type: object
+        description: Builder domain struct.
+        required: true
+      - name: scaffolder
+        type: object
+        description: Scaffolder domain struct.
+        required: true
+      - name: comparer
+        type: object
+        description: Comparer domain struct.
+        required: true
+      - name: vscode
+        type: object
+        description: VsCode domain struct.
+        required: true
+      - name: stats
+        type: object
+        description: Stats domain struct.
+        required: true
+      - name: releaser
+        type: object
+        description: Releaser domain struct.
+        required: true
+      - name: analyzer
+        type: object
+        description: Analyzer domain struct.
+        required: true
+      - name: claudeRunner
+        type: object
+        description: Shared ClaudeRunner used by measure and stitch workflows.
+        required: true
+
+  - name: Config
+    description: All orchestrator settings with YAML tags.
+    fields:
+      - name: projectName
+        type: string
+        description: Name of the consuming project.
+        required: true
+      - name: repoOwner
+        type: string
+        description: GitHub repository owner.
+        required: true
+      - name: repoName
+        type: string
+        description: GitHub repository name.
+        required: true
+      - name: mainBranch
+        type: string
+        description: Name of the main branch.
+        required: true
+      - name: buildCommand
+        type: string
+        description: Command to build the project.
+        required: false
+      - name: testCommand
+        type: string
+        description: Command to run tests.
+        required: false
+      - name: claudeModel
+        type: string
+        description: Claude model identifier for invocations.
+        required: false
+      - name: historyDir
+        type: string
+        description: Directory for storing run history and stats.
+        required: false
+      - name: constitutionDir
+        type: string
+        description: Directory containing constitution YAML files.
+        required: false
+
+  - name: InvocationRecord
+    description: Metrics collected per Claude invocation.
+    fields:
+      - name: caller
+        type: string
+        description: Name of the calling workflow (measure or stitch).
+        required: true
+      - name: startedAt
+        type: string
+        description: ISO 8601 timestamp when the invocation started.
+        required: true
+      - name: durationS
+        type: number
+        description: Wall-clock duration in seconds.
+        required: true
+      - name: tokens
+        type: integer
+        description: Total tokens consumed by the invocation.
+        required: true
+      - name: locBefore
+        type: integer
+        description: Lines of code before the invocation.
+        required: true
+      - name: locAfter
+        type: integer
+        description: Lines of code after the invocation.
+        required: true
+      - name: diff
+        type: integer
+        description: Net change in lines of code.
+        required: true
+      - name: numTurns
+        type: integer
+        description: Number of conversational turns in the invocation.
+        required: true
+
+  - name: HistoryStats
+    description: YAML-serializable per-invocation stats saved to the history directory.
+    fields:
+      - name: caller
+        type: string
+        description: Name of the calling workflow.
+        required: true
+      - name: taskID
+        type: string
+        description: Identifier of the task being processed.
+        required: true
+      - name: taskTitle
+        type: string
+        description: Title of the task being processed.
+        required: true
+      - name: startedAt
+        type: string
+        description: ISO 8601 timestamp when the invocation started.
+        required: true
+      - name: duration
+        type: string
+        description: Human-readable duration string.
+        required: true
+      - name: tokens
+        type: integer
+        description: Total tokens consumed.
+        required: true
+      - name: costUSD
+        type: number
+        description: Estimated cost in US dollars.
+        required: true
+      - name: locBefore
+        type: integer
+        description: Lines of code before the invocation.
+        required: true
+      - name: locAfter
+        type: integer
+        description: Lines of code after the invocation.
+        required: true
+      - name: diff
+        type: integer
+        description: Net change in lines of code.
+        required: true
+      - name: numTurns
+        type: integer
+        description: Number of conversational turns.
+        required: true
+      - name: durationAPIMs
+        type: integer
+        description: Total API call duration in milliseconds.
+        required: true
+      - name: rateLimitWaitS
+        type: number
+        description: Total time spent waiting on rate limits in seconds.
+        required: true
+      - name: sessionID
+        type: string
+        description: Unique session identifier for the run.
+        required: true
+
+operations:
+  - name: New
+    description: We construct an Orchestrator from a fully populated Config, building all domain structs and wiring dependencies.
+    parameters:
+      - name: cfg
+        type: object
+        description: Resolved orchestrator configuration.
+    returns:
+      - name: orchestrator
+        type: object
+
+  - name: NewFromFile
+    description: We read a configuration.yaml from the given path and construct an Orchestrator.
+    parameters:
+      - name: path
+        type: string
+        description: Filesystem path to the configuration YAML file.
+    returns:
+      - name: orchestrator
+        type: object
+      - name: error
+        type: error
+
+  - name: Config
+    description: We return the resolved Config from the Orchestrator.
+    parameters: []
+    returns:
+      - name: config
+        type: object
+
+  - name: Tracker
+    description: We return the WorkTracker used by the Orchestrator.
+    parameters: []
+    returns:
+      - name: tracker
+        type: object
+
+  - name: Git
+    description: We return the GitOps instance used by the Orchestrator.
+    parameters: []
+    returns:
+      - name: git
+        type: object
+
+  - name: DumpMeasurePrompt
+    description: We print the fully assembled measure prompt to stdout for debugging.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: DumpStitchPrompt
+    description: We print the fully assembled stitch prompt to stdout for debugging.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: TokenStats
+    description: We print token usage statistics for recent invocations.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: PrintContextFiles
+    description: We print the list of context files that would be sent to Claude.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: ConstitutionPreviewFile
+    description: We generate a preview of the assembled constitution file.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: GeneratorInit
+    description: We initialize the generator subsystem for the consuming project.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+  - name: WriteDefaultConfig
+    description: We write a default configuration.yaml to the consuming project root.
+    parameters: []
+    returns:
+      - name: error
+        type: error
+
+references:
+  - srd001-orchestrator-core
