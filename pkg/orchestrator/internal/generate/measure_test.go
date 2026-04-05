@@ -672,13 +672,13 @@ acceptance_criteria:
 
 	// Total weight = 1+4+3 = 8. Budget = 4 → should error.
 	result := ValidateMeasureOutput(issues, 0, 4, nil, reqStates)
-	if len(result.Errors) == 0 {
+	if len(result.WeightErrors) == 0 {
 		t.Error("expected weight budget error, got none")
 	}
 
 	// Budget = 10 → should pass.
 	result = ValidateMeasureOutput(issues, 0, 10, nil, reqStates)
-	for _, e := range result.Errors {
+	for _, e := range result.WeightErrors {
 		if contains(e, "total weight") {
 			t.Errorf("unexpected weight error with budget 10: %s", e)
 		}

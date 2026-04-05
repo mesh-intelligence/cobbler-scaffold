@@ -41,13 +41,27 @@ type IssueDescItem struct {
 
 // ValidationResult holds the outcome of measure output validation.
 type ValidationResult struct {
-	Warnings []string // advisory issues (logged but do not block import)
-	Errors   []string // blocking issues (cause rejection in enforcing mode)
+	Warnings          []string // advisory issues (logged but do not block import)
+	Errors            []string // blocking issues not categorized below (e.g., completed R-items)
+	WeightErrors      []string // weight budget violations (GH-2070)
+	GranularityErrors []string // P9 requirement/AC/DD count range violations (GH-2070)
+	FileNamingErrors  []string // P7 file naming convention violations (GH-2070)
 }
 
-// HasErrors returns true if the validation found blocking issues.
+// HasErrors returns true if the validation found any blocking issues.
 func (v ValidationResult) HasErrors() bool {
-	return len(v.Errors) > 0
+	return len(v.Errors) > 0 || len(v.WeightErrors) > 0 || len(v.GranularityErrors) > 0 || len(v.FileNamingErrors) > 0
+}
+
+// AllErrors returns all error slices concatenated, for backward-compatible
+// callers that treat all errors uniformly.
+func (v ValidationResult) AllErrors() []string {
+	all := make([]string, 0, len(v.Errors)+len(v.WeightErrors)+len(v.GranularityErrors)+len(v.FileNamingErrors))
+	all = append(all, v.WeightErrors...)
+	all = append(all, v.GranularityErrors...)
+	all = append(all, v.FileNamingErrors...)
+	all = append(all, v.Errors...)
+	return all
 }
 
 // ProposedIssue is the minimal interface needed by validation and logging.
@@ -143,41 +157,41 @@ func ValidateMeasureOutput(issues []ProposedIssue, maxReqs, maxWeight int, subIt
 			if expandedWeight > maxWeight {
 				msg := fmt.Sprintf("[%d] %q: total weight is %d, max is %d", issue.Index, issue.Title, expandedWeight, maxWeight)
 				Log("validateMeasureOutput: %s", msg)
-				result.Errors = append(result.Errors, msg)
+				result.WeightErrors = append(result.WeightErrors, msg)
 			}
 		} else if maxReqs > 0 && expandedCount > maxReqs {
 			// Fall back to count-based enforcement when weight is not configured.
 			msg := fmt.Sprintf("[%d] %q: expanded sub-item count is %d, max is %d", issue.Index, issue.Title, expandedCount, maxReqs)
 			Log("validateMeasureOutput: %s", msg)
-			result.Errors = append(result.Errors, msg)
+			result.WeightErrors = append(result.WeightErrors, msg)
 		}
 
 		if desc.DeliverableType == "code" {
 			if rCount < 5 || rCount > 8 {
 				msg := fmt.Sprintf("[%d] %q: requirement count %d outside P9 range 5-8", issue.Index, issue.Title, rCount)
 				Log("validateMeasureOutput: %s", msg)
-				result.Errors = append(result.Errors, msg)
+				result.GranularityErrors = append(result.GranularityErrors, msg)
 			}
 			if acCount < 5 || acCount > 8 {
 				msg := fmt.Sprintf("[%d] %q: acceptance criteria count %d outside P9 range 5-8", issue.Index, issue.Title, acCount)
 				Log("validateMeasureOutput: %s", msg)
-				result.Errors = append(result.Errors, msg)
+				result.GranularityErrors = append(result.GranularityErrors, msg)
 			}
 			if dCount < 3 || dCount > 5 {
 				msg := fmt.Sprintf("[%d] %q: design decision count %d outside P9 range 3-5", issue.Index, issue.Title, dCount)
 				Log("validateMeasureOutput: %s", msg)
-				result.Errors = append(result.Errors, msg)
+				result.GranularityErrors = append(result.GranularityErrors, msg)
 			}
 		} else if desc.DeliverableType == "documentation" {
 			if rCount < 2 || rCount > 4 {
 				msg := fmt.Sprintf("[%d] %q: requirement count %d outside P9 doc range 2-4", issue.Index, issue.Title, rCount)
 				Log("validateMeasureOutput: %s", msg)
-				result.Errors = append(result.Errors, msg)
+				result.GranularityErrors = append(result.GranularityErrors, msg)
 			}
 			if acCount < 3 || acCount > 5 {
 				msg := fmt.Sprintf("[%d] %q: acceptance criteria count %d outside P9 doc range 3-5", issue.Index, issue.Title, acCount)
 				Log("validateMeasureOutput: %s", msg)
-				result.Errors = append(result.Errors, msg)
+				result.GranularityErrors = append(result.GranularityErrors, msg)
 			}
 		}
 
@@ -190,7 +204,7 @@ func ValidateMeasureOutput(issues []ProposedIssue, maxReqs, maxWeight int, subIt
 				if file == dir+".go" || file == dir+"_test.go" {
 					msg := fmt.Sprintf("[%d] %q: file %s matches package name (P7 violation)", issue.Index, issue.Title, f.Path)
 					Log("validateMeasureOutput: %s", msg)
-					result.Errors = append(result.Errors, msg)
+					result.FileNamingErrors = append(result.FileNamingErrors, msg)
 				}
 			}
 		}

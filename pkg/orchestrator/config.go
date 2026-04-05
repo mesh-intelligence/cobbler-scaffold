@@ -205,11 +205,31 @@ type CobblerConfig struct {
 	// Set to -1 to disable budget enforcement entirely.
 	MaxContextBytes int `yaml:"max_context_bytes"`
 
-	// EnforceMeasureValidation enables strict validation of measure output.
-	// When true, issues that violate P9 granularity ranges or P7 file naming
-	// are rejected and measure retries. When false (default), violations are
-	// logged as advisory warnings and import proceeds.
+	// EnforceMeasureValidation enables strict validation of all measure
+	// output checks. When true, it acts as a shorthand that enables
+	// EnforceWeightValidation, EnforceGranularityValidation, and
+	// EnforceFileNamingValidation (existing behavior). When false
+	// (default), the three granular flags control enforcement
+	// independently. See GH-2070.
 	EnforceMeasureValidation bool `yaml:"enforce_measure_validation"`
+
+	// EnforceWeightValidation rejects proposed tasks whose total
+	// requirement weight exceeds MaxWeightPerTask (or whose expanded
+	// count exceeds MaxRequirementsPerTask). This is the most useful
+	// enforcement flag — it catches oversized tasks that will fail
+	// during stitch. Default false (GH-2070).
+	EnforceWeightValidation bool `yaml:"enforce_weight_validation"`
+
+	// EnforceGranularityValidation rejects proposed tasks that violate
+	// P9 granularity ranges (requirement count 5-8, AC count 5-8,
+	// design decisions 3-5 for code; 2-4/3-5 for documentation).
+	// Default false (GH-2070).
+	EnforceGranularityValidation bool `yaml:"enforce_granularity_validation"`
+
+	// EnforceFileNamingValidation rejects proposed tasks that contain
+	// files matching their parent package name (P7 violation, e.g.,
+	// cmd/foo/foo.go). Default false (GH-2070).
+	EnforceFileNamingValidation bool `yaml:"enforce_file_naming_validation"`
 
 	// MaxMeasureRetries is the maximum number of retry attempts per iteration
 	// when EnforceMeasureValidation rejects the output. When 0 (default),
@@ -578,6 +598,13 @@ func (c *Config) applyDefaults() {
 	// weight exceeds the budget (GH-1951).
 	if c.Cobbler.MaxRequirementsPerTask > 0 && c.Cobbler.MaxWeightPerTask == 0 {
 		c.Cobbler.MaxWeightPerTask = c.Cobbler.MaxRequirementsPerTask
+	}
+	// Backward compatibility: enforce_measure_validation: true enables
+	// all three granular flags (GH-2070).
+	if c.Cobbler.EnforceMeasureValidation {
+		c.Cobbler.EnforceWeightValidation = true
+		c.Cobbler.EnforceGranularityValidation = true
+		c.Cobbler.EnforceFileNamingValidation = true
 	}
 }
 

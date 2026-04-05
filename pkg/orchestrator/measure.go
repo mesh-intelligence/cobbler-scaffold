@@ -650,9 +650,27 @@ func (m *Measure) importIssuesImpl(yamlFile, repo, generation string, skipEnforc
 	if len(vr.Warnings) > 0 {
 		m.logf("importIssues: %d warning(s)", len(vr.Warnings))
 	}
-	if vr.HasErrors() && m.cfg.Cobbler.EnforceMeasureValidation && !skipEnforcement {
-		return nil, vr.Errors, fmt.Errorf("measure validation failed (%d error(s)): %s",
-			len(vr.Errors), strings.Join(vr.Errors, "; "))
+	// Collect enforced errors based on per-category flags (GH-2070).
+	if !skipEnforcement {
+		var enforced []string
+		if m.cfg.Cobbler.EnforceWeightValidation && len(vr.WeightErrors) > 0 {
+			enforced = append(enforced, vr.WeightErrors...)
+		}
+		if m.cfg.Cobbler.EnforceGranularityValidation && len(vr.GranularityErrors) > 0 {
+			enforced = append(enforced, vr.GranularityErrors...)
+		}
+		if m.cfg.Cobbler.EnforceFileNamingValidation && len(vr.FileNamingErrors) > 0 {
+			enforced = append(enforced, vr.FileNamingErrors...)
+		}
+		// Uncategorized errors (e.g., completed R-items) are always enforced
+		// when any enforcement flag is active.
+		if (m.cfg.Cobbler.EnforceWeightValidation || m.cfg.Cobbler.EnforceGranularityValidation || m.cfg.Cobbler.EnforceFileNamingValidation) && len(vr.Errors) > 0 {
+			enforced = append(enforced, vr.Errors...)
+		}
+		if len(enforced) > 0 {
+			return nil, enforced, fmt.Errorf("measure validation failed (%d error(s)): %s",
+				len(enforced), strings.Join(enforced, "; "))
+		}
 	}
 
 	// Deduplicate: fetch existing issues for this generation and skip any

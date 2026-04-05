@@ -94,8 +94,8 @@ design_decisions:
 	if !vr.HasErrors() {
 		t.Error("expected errors for code task with 2 requirements (P9 range 5-8)")
 	}
-	if len(vr.Errors) != 1 {
-		t.Errorf("expected 1 error, got %d: %v", len(vr.Errors), vr.Errors)
+	if len(vr.GranularityErrors) != 1 {
+		t.Errorf("expected 1 granularity error, got %d: %v", len(vr.GranularityErrors), vr.GranularityErrors)
 	}
 }
 
@@ -258,14 +258,14 @@ design_decisions:
 		t.Error("expected errors for file named after package (P7 violation)")
 	}
 	found := false
-	for _, e := range vr.Errors {
+	for _, e := range vr.FileNamingErrors {
 		if contains(e, "P7 violation") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected P7 violation error, got: %v", vr.Errors)
+		t.Errorf("expected P7 violation error, got: %v", vr.FileNamingErrors)
 	}
 }
 
@@ -313,13 +313,13 @@ design_decisions:
 	// the file name does not match the parent directory name.
 	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
 	p7Errors := 0
-	for _, e := range vr.Errors {
+	for _, e := range vr.FileNamingErrors {
 		if contains(e, "P7 violation") {
 			p7Errors++
 		}
 	}
 	if p7Errors > 0 {
-		t.Errorf("expected no P7 violation for difftest/runner.go, got %d: %v", p7Errors, vr.Errors)
+		t.Errorf("expected no P7 violation for difftest/runner.go, got %d: %v", p7Errors, vr.FileNamingErrors)
 	}
 }
 
@@ -430,7 +430,7 @@ func TestValidateMeasureOutput_MaxReqs_ZeroIsUnlimited(t *testing.T) {
 		Description: "deliverable_type: code\nrequirements:\n" + reqs,
 	}}
 	vr := validateMeasureOutput(issues, 0, 0, nil, nil)
-	for _, e := range vr.Errors {
+	for _, e := range vr.WeightErrors {
 		if contains(e, "max is") {
 			t.Errorf("maxReqs=0 should not produce max-requirements error, got: %s", e)
 		}
@@ -458,7 +458,7 @@ requirements:
 `,
 	}}
 	vr := validateMeasureOutput(issues, 5, 0, nil, nil)
-	for _, e := range vr.Errors {
+	for _, e := range vr.WeightErrors {
 		if contains(e, "max is") {
 			t.Errorf("5 requirements at maxReqs=5 should not error, got: %s", e)
 		}
@@ -489,14 +489,14 @@ requirements:
 	}}
 	vr := validateMeasureOutput(issues, 5, 0, nil, nil)
 	found := false
-	for _, e := range vr.Errors {
+	for _, e := range vr.WeightErrors {
 		if contains(e, "max is") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected max-requirements error for 6 reqs with limit 5, got errors: %v", vr.Errors)
+		t.Errorf("expected max-requirements error for 6 reqs with limit 5, got errors: %v", vr.WeightErrors)
 	}
 }
 
@@ -528,14 +528,14 @@ requirements:
 	}}
 	vr := validateMeasureOutput(issues, 5, 0, nil, nil)
 	found := false
-	for _, e := range vr.Errors {
+	for _, e := range vr.WeightErrors {
 		if contains(e, "8") && contains(e, "5") && contains(e, "Task Title") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("error should mention count (8), limit (5), and title; got: %v", vr.Errors)
+		t.Errorf("error should mention count (8), limit (5), and title; got: %v", vr.WeightErrors)
 	}
 }
 
@@ -658,14 +658,14 @@ design_decisions:
 	}}
 	vr := validateMeasureOutput(issues, 8, 0, subItems, nil)
 	found := false
-	for _, e := range vr.Errors {
+	for _, e := range vr.WeightErrors {
 		if contains(e, "expanded sub-item count") && contains(e, "max is") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected hard error for expanded count 13 > maxReqs 8, got errors: %v", vr.Errors)
+		t.Errorf("expected hard error for expanded count 13 > maxReqs 8, got errors: %v", vr.WeightErrors)
 	}
 }
 
@@ -712,7 +712,7 @@ design_decisions:
 	}}
 	// expanded = 2+4 = 6, maxReqs = 8 → no expanded-count error.
 	vr := validateMeasureOutput(issues, 8, 0, subItems, nil)
-	for _, e := range vr.Errors {
+	for _, e := range vr.WeightErrors {
 		if contains(e, "expanded sub-item count") {
 			t.Errorf("should not error when expanded count under limit, got: %s", e)
 		}
@@ -761,7 +761,7 @@ design_decisions:
 	}}
 	// 5 listed, expanded = 2+4 = 6. maxReqs = 8. Under limit — no error.
 	vr := validateMeasureOutput(issues, 8, 0, subItems, nil)
-	for _, e := range vr.Errors {
+	for _, e := range vr.WeightErrors {
 		if contains(e, "expanded sub-item count") {
 			t.Errorf("should not error when expanded count under limit, got: %s", e)
 		}
@@ -1440,6 +1440,103 @@ acceptance_criteria:
 	}
 	// ids will be empty because createCobblerIssue fails (no GitHub), but no error returned.
 	_ = ids
+}
+
+func TestImportIssuesImpl_WeightOnlyEnforcementPassesP9Violations(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	yamlFile := filepath.Join(dir, "issues.yaml")
+
+	// Code issue with 1 requirement — violates P9 (5-8) but not weight.
+	issues := []proposedIssue{{
+		Index: 1,
+		Title: "Small task",
+		Description: `deliverable_type: code
+requirements:
+  - id: R1
+    text: req1
+acceptance_criteria:
+  - id: AC1
+    text: ac1
+`,
+	}}
+	data, _ := yaml.Marshal(issues)
+	os.WriteFile(yamlFile, data, 0o644)
+
+	cfg := Config{}
+	cfg.Cobbler.Dir = dir
+	cfg.Cobbler.EnforceWeightValidation = true
+	// Granularity and file naming enforcement OFF.
+	o := New(cfg)
+
+	// Should NOT fail: P9 violation is not enforced, weight is fine.
+	// Will fail at createCobblerIssue (no real GitHub), but should NOT
+	// fail at validation.
+	_, _, err := o.Measure.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 0)
+	if err != nil {
+		t.Fatalf("expected no validation error with only weight enforcement, got: %v", err)
+	}
+}
+
+func TestImportIssuesImpl_WeightOnlyEnforcementRejectsWeightViolation(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	yamlFile := filepath.Join(dir, "issues.yaml")
+
+	// Code issue with valid P9 shape but exceeds weight budget.
+	issues := []proposedIssue{{
+		Index: 1,
+		Title: "Heavy task",
+		Description: `deliverable_type: code
+requirements:
+  - id: R1
+    text: req1
+  - id: R2
+    text: req2
+  - id: R3
+    text: req3
+  - id: R4
+    text: req4
+  - id: R5
+    text: req5
+  - id: R6
+    text: req6
+acceptance_criteria:
+  - id: AC1
+    text: ac1
+  - id: AC2
+    text: ac2
+  - id: AC3
+    text: ac3
+  - id: AC4
+    text: ac4
+  - id: AC5
+    text: ac5
+design_decisions:
+  - id: DD1
+    text: dd1
+  - id: DD2
+    text: dd2
+  - id: DD3
+    text: dd3
+`,
+	}}
+	data, _ := yaml.Marshal(issues)
+	os.WriteFile(yamlFile, data, 0o644)
+
+	cfg := Config{}
+	cfg.Cobbler.Dir = dir
+	cfg.Cobbler.EnforceWeightValidation = true
+	cfg.Cobbler.MaxRequirementsPerTask = 5 // 6 reqs exceeds limit
+	o := New(cfg)
+
+	_, validationErrs, err := o.Measure.importIssuesImpl(yamlFile, "owner/repo", "gen", false, 0)
+	if err == nil {
+		t.Error("expected validation error for weight violation")
+	}
+	if len(validationErrs) == 0 {
+		t.Error("expected non-empty validationErrs")
+	}
 }
 
 // --- importIssuesImpl upgrade path (GH-578) ---
