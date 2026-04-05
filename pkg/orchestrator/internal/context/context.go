@@ -1516,7 +1516,6 @@ var StandardContextPatterns = []string{
 	"docs/specs/test-suites/test-rel*.yaml",
 	"docs/specs/dependency-map.yaml",
 	"docs/specs/sources.yaml",
-	"docs/interfaces/ifc-*.yaml",
 }
 
 // TypedDocPaths lists documents that must always be loaded through their
