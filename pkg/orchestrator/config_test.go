@@ -307,6 +307,68 @@ func TestLoadConfig_EnforceMeasureValidationDefaultsFalse(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_GranularValidationFlags(t *testing.T) {
+	t.Parallel()
+	yaml := `cobbler:
+  enforce_weight_validation: true
+  enforce_granularity_validation: false
+  enforce_file_naming_validation: false
+`
+	f := writeTemp(t, yaml)
+	cfg, err := LoadConfig(f)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if !cfg.Cobbler.EnforceWeightValidation {
+		t.Error("EnforceWeightValidation: got false, want true")
+	}
+	if cfg.Cobbler.EnforceGranularityValidation {
+		t.Error("EnforceGranularityValidation: got true, want false")
+	}
+	if cfg.Cobbler.EnforceFileNamingValidation {
+		t.Error("EnforceFileNamingValidation: got true, want false")
+	}
+}
+
+func TestLoadConfig_EnforceMeasureValidationEnablesAllThree(t *testing.T) {
+	t.Parallel()
+	yaml := `cobbler:
+  enforce_measure_validation: true
+`
+	f := writeTemp(t, yaml)
+	cfg, err := LoadConfig(f)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if !cfg.Cobbler.EnforceWeightValidation {
+		t.Error("EnforceWeightValidation: got false, want true (backward compat)")
+	}
+	if !cfg.Cobbler.EnforceGranularityValidation {
+		t.Error("EnforceGranularityValidation: got false, want true (backward compat)")
+	}
+	if !cfg.Cobbler.EnforceFileNamingValidation {
+		t.Error("EnforceFileNamingValidation: got false, want true (backward compat)")
+	}
+}
+
+func TestLoadConfig_GranularFlagsDefaultFalse(t *testing.T) {
+	t.Parallel()
+	f := writeTemp(t, "project:\n  module_path: example.com/x\n")
+	cfg, err := LoadConfig(f)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.Cobbler.EnforceWeightValidation {
+		t.Error("EnforceWeightValidation default: got true, want false")
+	}
+	if cfg.Cobbler.EnforceGranularityValidation {
+		t.Error("EnforceGranularityValidation default: got true, want false")
+	}
+	if cfg.Cobbler.EnforceFileNamingValidation {
+		t.Error("EnforceFileNamingValidation default: got true, want false")
+	}
+}
+
 // --- LoadConfig: SeedFiles resolution ---
 
 func TestLoadConfig_SeedFilesResolved(t *testing.T) {
