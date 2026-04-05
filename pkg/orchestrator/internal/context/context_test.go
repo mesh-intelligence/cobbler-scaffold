@@ -1208,18 +1208,34 @@ operations:
         type: error
 `), 0o644)
 
+	// Interface specs are opt-in via context_sources (GH-2068).
+	// They are not in StandardContextPatterns, so without context_sources
+	// they should not appear.
 	project := ContextConfig{}
 	ctx, err := BuildProjectContext("", project, nil, ".cobbler")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ctx.InterfaceSpecs) != 1 {
-		t.Fatalf("expected 1 interface spec, got %d", len(ctx.InterfaceSpecs))
+	if len(ctx.InterfaceSpecs) != 0 {
+		t.Fatalf("expected 0 interface specs without opt-in, got %d", len(ctx.InterfaceSpecs))
 	}
-	if ctx.InterfaceSpecs[0].Name != "Builder" {
-		t.Errorf("expected name Builder, got %q", ctx.InterfaceSpecs[0].Name)
+
+	// With context_sources, interface specs appear as Extra documents.
+	project2 := ContextConfig{
+		ContextSources: "docs/interfaces/ifc-*.yaml",
 	}
-	if len(ctx.InterfaceSpecs[0].Operations) != 1 {
-		t.Errorf("expected 1 operation, got %d", len(ctx.InterfaceSpecs[0].Operations))
+	ctx2, err := BuildProjectContext("", project2, nil, ".cobbler")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, doc := range ctx2.Extra {
+		if doc.Name == "ifc-builder" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected ifc-builder in Extra documents via context_sources, not found")
 	}
 }
