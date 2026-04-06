@@ -71,7 +71,7 @@ func GenerateRequirementsFile(srdDir, cobblerDir string, preserveExisting bool) 
 
 	for _, path := range paths {
 		slug := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-		items := extractRItemsWeighted(path)
+		items := extractRItemsFromSRD(path)
 		if len(items) == 0 {
 			continue
 		}
@@ -80,14 +80,15 @@ func GenerateRequirementsFile(srdDir, cobblerDir string, preserveExisting bool) 
 			if existing != nil {
 				if prev, ok := existing[slug]; ok {
 					if st, ok := prev[item.ID]; ok {
-						// Preserve existing state but update weight from SRD.
-						st.Weight = item.Weight
+						// Preserve existing state and weight (GH-2080).
 						group[item.ID] = st
 						continue
 					}
 				}
 			}
-			group[item.ID] = RequirementState{Status: "ready", Weight: item.Weight}
+			// New items default to weight 1. Weights are managed in
+			// requirements.yaml, not in SRDs (GH-2080).
+			group[item.ID] = RequirementState{Status: "ready", Weight: 1}
 		}
 		allReqs[slug] = group
 	}
@@ -396,15 +397,16 @@ func extractTouchpointCitations(touchpoints []string) []touchpointCitation {
 	return citations
 }
 
-// rItemInfo holds an R-item ID and its weight from the SRD.
+// rItemInfo holds an R-item ID extracted from a SRD. Weight is not read
+// from SRDs — weights live only in requirements.yaml (GH-2080).
 type rItemInfo struct {
-	ID     string
-	Weight int
+	ID string
 }
 
-// extractRItems reads a SRD YAML file and returns all R-item IDs (e.g.
-// R1.1, R1.2, R2.1) with their weights, sorted by ID.
-func extractRItemsWeighted(path string) []rItemInfo {
+// extractRItemsFromSRD reads a SRD YAML file and returns all R-item IDs
+// (e.g. R1.1, R1.2, R2.1), sorted by ID. Weights are not extracted from
+// SRDs — they are managed in requirements.yaml (GH-2080).
+func extractRItemsFromSRD(path string) []rItemInfo {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
@@ -419,17 +421,8 @@ func extractRItemsWeighted(path string) []rItemInfo {
 		for _, item := range group.Items {
 			switch v := item.(type) {
 			case map[string]interface{}:
-				for k, val := range v {
-					w := 1
-					// Check for weighted format: {text: ..., weight: N}
-					if m, ok := val.(map[string]interface{}); ok {
-						if wv, ok := m["weight"]; ok {
-							if wi, ok := wv.(int); ok && wi > 0 {
-								w = wi
-							}
-						}
-					}
-					items = append(items, rItemInfo{ID: k, Weight: w})
+				for k := range v {
+					items = append(items, rItemInfo{ID: k})
 				}
 			}
 		}
@@ -440,9 +433,9 @@ func extractRItemsWeighted(path string) []rItemInfo {
 
 // extractRItems reads a SRD YAML file and returns all R-item IDs in sorted order.
 func extractRItems(path string) []string {
-	weighted := extractRItemsWeighted(path)
-	ids := make([]string, len(weighted))
-	for i, item := range weighted {
+	items := extractRItemsFromSRD(path)
+	ids := make([]string, len(items))
+	for i, item := range items {
 		ids[i] = item.ID
 	}
 	return ids
