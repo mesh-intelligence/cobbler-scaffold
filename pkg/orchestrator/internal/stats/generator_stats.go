@@ -1071,12 +1071,9 @@ func ExtractSRDRefs(text string) []string {
 		}
 		// Match "srd-<something>" (original format).
 		isSRD := strings.HasPrefix(w, "srd-") && len(w) > 4
-		// Match "srd<digit>..." e.g. "srd006-cat".
+		// Match "srd<digit>..." e.g. "srd006-cat" or short form "srd087" (GH-2120).
 		if !isSRD && len(w) >= 4 && w[3] >= '0' && w[3] <= '9' {
-			// Must have a hyphen after the digits to be a valid ref.
-			if strings.ContainsRune(w[3:], '-') {
-				isSRD = true
-			}
+			isSRD = true
 		}
 		if isSRD && !seen[w] {
 			seen[w] = true
