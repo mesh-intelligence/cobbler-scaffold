@@ -736,10 +736,14 @@ type CheckClaudeDeps struct {
 	EnsureCredentialsFn func() error
 }
 
-// CheckClaude verifies that Claude can be invoked.
+// CheckClaude verifies that Claude can be invoked. In CLI mode, the CLI
+// handles its own authentication so credential extraction is skipped (GH-2116).
 func CheckClaude(deps CheckClaudeDeps) error {
 	if _, err := exec.LookPath(BinClaude); err != nil {
 		return fmt.Errorf("claude not found on PATH; install the Claude CLI")
+	}
+	if deps.EffectiveMode == "cli" {
+		return nil
 	}
 	return deps.EnsureCredentialsFn()
 }

@@ -38,7 +38,6 @@ go.work.sum
 vscode-extension/**/node_modules/
 vscode-extension/out/
 vscode-extension/*.vsix
-.secrets/
 
 # Auto-generated config when mage runs from magefiles/
 magefiles/configuration.yaml

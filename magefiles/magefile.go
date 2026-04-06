@@ -94,9 +94,6 @@ func Install() error { return newOrch().Builder.Install() }
 // Clean removes build artifacts.
 func Clean() error { return newOrch().Builder.Clean() }
 
-// Credentials extracts Claude credentials from the macOS Keychain.
-func Credentials() error { return newOrch().Builder.ExtractCredentials() }
-
 // Analyze performs cross-artifact consistency checks (PRDs, use cases, test suites, roadmap).
 func Analyze() error { return newOrch().Analyzer.Analyze() }
 
