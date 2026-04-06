@@ -37,7 +37,7 @@ type AnalyzeResult struct {
 	UntracedSuccessCriteria        []string // S-items with no AC traces (warning)
 	UnreachableUCs                 []string // UCs whose touchpoint SRDs have no R-items (warning)
 	FailedRequirements             []string // R-items marked complete_with_failures (warning)
-	MissingWeights                 []string // R-items without explicit weight annotation (warning, GH-1946)
+	// MissingWeights removed — weights live in requirements.yaml, not SRDs (GH-2080).
 	BareTouchpoints                []string // Touchpoints citing SRDs without R-group references (warning, GH-1961)
 	UCIDPrefixMismatch             []string // Use case ID prefix doesn't match assigned release in roadmap (GH-1964)
 	BrokenInterfaceRefs            []string // implemented_by/used_by references non-existent architecture interface (GH-1968)
@@ -91,21 +91,8 @@ func CollectAnalyzeResult(deps AnalyzeDeps) (AnalyzeResult, AnalyzeCounts, error
 				groups[groupKey] = true
 				for _, item := range group.Items {
 					if m, ok := item.(map[string]interface{}); ok {
-						for itemKey, val := range m {
+						for itemKey := range m {
 							srdRItems[id] = append(srdRItems[id], itemKey)
-							// Check for missing weight annotation (GH-1946).
-							// Simple string value = no weight; nested map with
-							// "weight" key = has weight.
-							hasWeight := false
-							if nested, ok := val.(map[string]interface{}); ok {
-								if _, ok := nested["weight"]; ok {
-									hasWeight = true
-								}
-							}
-							if !hasWeight {
-								result.MissingWeights = append(result.MissingWeights,
-									fmt.Sprintf("%s %s: no weight (defaults to 1)", id, itemKey))
-							}
 						}
 					}
 				}
@@ -597,8 +584,7 @@ func CollectAnalyzeResult(deps AnalyzeDeps) (AnalyzeResult, AnalyzeCounts, error
 	}
 	deps.Log("analyze: failed requirements found %d (warning)", len(result.FailedRequirements))
 
-	sort.Strings(result.MissingWeights)
-	deps.Log("analyze: missing weights found %d (warning)", len(result.MissingWeights))
+	// MissingWeights check removed — weights live in requirements.yaml (GH-2080).
 
 	// Check 7: YAML schema validation.
 	result.SchemaErrors = deps.ValidateDocSchemas()
@@ -669,7 +655,7 @@ func (r AnalyzeResult) PrintReport(srdCount, ucCount, tsCount, smCount int) erro
 	PrintSection("Untraced success criteria (S-item with no AC trace — warning)", r.UntracedSuccessCriteria)
 	PrintSection("Unreachable UCs (touchpoint SRDs have no R-items — warning)", r.UnreachableUCs)
 	PrintSection("Failed requirements (R-items complete with test failures — warning)", r.FailedRequirements)
-	PrintSection("Missing weights (R-items without explicit weight annotation — warning)", r.MissingWeights)
+	// MissingWeights print removed — weights live in requirements.yaml (GH-2080).
 	PrintSection("Bare touchpoints (SRD cited without R-group references — warning)", r.BareTouchpoints)
 
 	if !hasIssues {

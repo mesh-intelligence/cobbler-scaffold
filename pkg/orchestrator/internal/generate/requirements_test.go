@@ -1513,10 +1513,10 @@ func assertReqState(t *testing.T, rf RequirementsFile, srd, rItem, wantStatus st
 }
 
 // ---------------------------------------------------------------------------
-// Requirement weights (GH-1832)
+// Requirement weights (GH-2080: weights live in requirements.yaml, not SRDs)
 // ---------------------------------------------------------------------------
 
-func TestExtractRItemsWeighted_SimpleFormat(t *testing.T) {
+func TestExtractRItemsFromSRD_ExtractsIDsOnly(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	srdPath := filepath.Join(dir, "srd001-test.yaml")
@@ -1530,73 +1530,34 @@ requirements:
     title: Basic
     items:
       - R1.1: Simple requirement
-      - R1.2: Another simple one
+      - R1.2:
+          text: Complex with SRD weight field
+          weight: 5
 non_goals: []
 acceptance_criteria: []
 `
 	os.WriteFile(srdPath, []byte(srd), 0o644)
 
-	items := extractRItemsWeighted(srdPath)
+	items := extractRItemsFromSRD(srdPath)
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
 	}
+	ids := map[string]bool{}
 	for _, item := range items {
-		if item.Weight != 1 {
-			t.Errorf("%s: weight = %d, want 1 (default)", item.ID, item.Weight)
-		}
+		ids[item.ID] = true
+	}
+	if !ids["R1.1"] || !ids["R1.2"] {
+		t.Errorf("expected R1.1 and R1.2, got %v", ids)
 	}
 }
 
-func TestExtractRItemsWeighted_WithWeights(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	srdPath := filepath.Join(dir, "srd002-test.yaml")
-	srd := `id: srd002
-title: Test
-problem: test
-goals:
-  - G1: goal
-requirements:
-  R1:
-    title: Complex
-    items:
-      - R1.1: Simple thing
-      - R1.2:
-          text: Complex parser
-          weight: 4
-      - R1.3:
-          text: Very complex
-          weight: 10
-non_goals: []
-acceptance_criteria: []
-`
-	os.WriteFile(srdPath, []byte(srd), 0o644)
-
-	items := extractRItemsWeighted(srdPath)
-	if len(items) != 3 {
-		t.Fatalf("expected 3 items, got %d", len(items))
-	}
-	weights := map[string]int{}
-	for _, item := range items {
-		weights[item.ID] = item.Weight
-	}
-	if weights["R1.1"] != 1 {
-		t.Errorf("R1.1 weight = %d, want 1", weights["R1.1"])
-	}
-	if weights["R1.2"] != 4 {
-		t.Errorf("R1.2 weight = %d, want 4", weights["R1.2"])
-	}
-	if weights["R1.3"] != 10 {
-		t.Errorf("R1.3 weight = %d, want 10", weights["R1.3"])
-	}
-}
-
-func TestGenerateRequirementsFile_CarriesWeight(t *testing.T) {
+func TestGenerateRequirementsFile_NewItemsDefaultWeight1(t *testing.T) {
 	dir := t.TempDir()
 	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
 	os.MkdirAll(srdDir, 0o755)
 	cobblerDir := filepath.Join(dir, ".cobbler")
 
+	// SRD has weight annotations but they should be ignored.
 	srd := `id: srd001
 title: Test
 problem: test
@@ -1608,7 +1569,7 @@ requirements:
     items:
       - R1.1: Simple
       - R1.2:
-          text: Weighted
+          text: Has SRD weight but should be ignored
           weight: 5
 non_goals: []
 acceptance_criteria: []
@@ -1630,10 +1591,69 @@ acceptance_criteria: []
 		t.Fatal("no states for srd001-test")
 	}
 
+	// Both items should default to weight 1 regardless of SRD weight field.
 	if w := srdStates["R1.1"].Weight; w != 1 {
 		t.Errorf("R1.1 weight = %d, want 1", w)
 	}
-	if w := srdStates["R1.2"].Weight; w != 5 {
-		t.Errorf("R1.2 weight = %d, want 5", w)
+	if w := srdStates["R1.2"].Weight; w != 1 {
+		t.Errorf("R1.2 weight = %d, want 1 (SRD weight should be ignored)", w)
+	}
+}
+
+func TestGenerateRequirementsFile_PreservesExistingWeight(t *testing.T) {
+	dir := t.TempDir()
+	srdDir := filepath.Join(dir, "docs", "specs", "software-requirements")
+	os.MkdirAll(srdDir, 0o755)
+	cobblerDir := filepath.Join(dir, ".cobbler")
+	os.MkdirAll(cobblerDir, 0o755)
+
+	srd := `id: srd001
+title: Test
+problem: test
+goals:
+  - G1: goal
+requirements:
+  R1:
+    title: Test
+    items:
+      - R1.1: Item one
+      - R1.2: Item two
+non_goals: []
+acceptance_criteria: []
+`
+	os.WriteFile(filepath.Join(srdDir, "srd001-test.yaml"), []byte(srd), 0o644)
+
+	// Pre-populate requirements.yaml with custom weights.
+	existing := `requirements:
+    srd001-test:
+        R1.1:
+            status: ready
+            weight: 4
+        R1.2:
+            status: complete
+            issue: 42
+            weight: 7
+`
+	os.WriteFile(filepath.Join(cobblerDir, "requirements.yaml"), []byte(existing), 0o644)
+
+	// Regenerate with preserveExisting=true.
+	_, err := GenerateRequirementsFile(srdDir, cobblerDir, true)
+	if err != nil {
+		t.Fatalf("GenerateRequirementsFile: %v", err)
+	}
+
+	states := LoadRequirementStates(cobblerDir)
+	srdStates := states["srd001-test"]
+
+	// Weights from existing requirements.yaml should be preserved.
+	if w := srdStates["R1.1"].Weight; w != 4 {
+		t.Errorf("R1.1 weight = %d, want 4 (preserved)", w)
+	}
+	if w := srdStates["R1.2"].Weight; w != 7 {
+		t.Errorf("R1.2 weight = %d, want 7 (preserved)", w)
+	}
+	// Status should also be preserved.
+	if s := srdStates["R1.2"].Status; s != "complete" {
+		t.Errorf("R1.2 status = %q, want complete", s)
 	}
 }
